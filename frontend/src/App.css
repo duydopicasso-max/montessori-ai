@@ -1,8 +1,18 @@
-/* ── App Shell ────────────────────────────────────────── */
 .app-shell {
   display: flex;
   height: 100vh;
   overflow: hidden;
+}
+
+.loading-screen {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #FAF7F2;
+  color: #6B9E78;
+  font-size: 20px;
+  font-weight: 600;
 }
 
 /* ── Sidebar ──────────────────────────────────────────── */
@@ -16,6 +26,45 @@
   gap: 32px;
   position: relative;
   overflow: hidden;
+}
+
+.user-profile-mini {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+}
+
+.mini-avatar {
+  font-size: 20px;
+  background: white;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.mini-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.mini-status {
+  font-size: 11px;
+  color: var(--sage-300);
 }
 .sidebar::before {
   content: '';
@@ -85,6 +134,24 @@
 .sidebar-footer {
   border-top: 1px solid rgba(255,255,255,0.1);
   padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reset-btn {
+  background: none;
+  border: none;
+  color: var(--sage-300);
+  font-size: 0.75rem;
+  padding: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+.reset-btn:hover {
+  opacity: 1;
+  color: #ff7675;
 }
 .footer-badge {
   display: flex;

@@ -8,16 +8,62 @@ import './ChatScreen.css';
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 
-const SUGGESTED_QUESTIONS = [
-  '🤰 Tôi đang mang thai 3 tháng, cần chú ý những gì?',
-  '🍼 Trẻ 6 tháng tuổi nên ăn dặm như thế nào?',
-  '🌱 Phương pháp Montessori phù hợp với trẻ mấy tuổi?',
-  '😴 Làm sao để bé ngủ ngon giấc hơn?',
-  '🧠 Cách kích thích phát triển trí não cho bé 1 tuổi?',
-  '🌡️ Bé bị sốt nhẹ thì xử lý thế nào tại nhà?',
-];
+const QUESTION_POOL = {
+  pregnant: [
+    '🤰 Chế độ dinh dưỡng tốt nhất cho mẹ bầu là gì?',
+    '🧘 Các bài tập vận động nhẹ nhàng cho mẹ bầu?',
+    '💤 Làm sao để mẹ bầu ngủ ngon hơn ở tam cá nguyệt này?',
+    '🏥 Những mốc khám thai quan trọng cần lưu ý?',
+    '🍼 Cần chuẩn bị những gì trước khi sinh bé?',
+    '🌱 Áp dụng Montessori cho bé ngay từ trong bụng mẹ?'
+  ],
+  newborn: [
+    '🤱 Cách thiết lập lịch sinh hoạt EASY cho bé sơ sinh?',
+    '😴 Mẹo giúp bé phân biệt ngày đêm và ngủ sâu giấc?',
+    '👐 Các hoạt động kích thích giác quan cho bé dưới 6 tháng?',
+    '🧴 Chăm sóc da và vệ sinh cho bé sơ sinh đúng cách?',
+    '🧩 Những đồ chơi Montessori đầu đời cho bé là gì?',
+    '🤱 Chế độ ăn uống cho mẹ để có sữa tốt cho bé?'
+  ],
+  infant: [
+    '🍎 Bé 6 tháng bắt đầu ăn dặm như thế nào là tốt nhất?',
+    '🥦 Thực đơn ăn dặm kiểu Nhật/BLW cho bé?',
+    '🚶 Dấu hiệu bé sắp biết bò/biết đi và cách hỗ trợ?',
+    '🦷 Bé mọc răng quấy khóc, Ba/Mẹ nên làm gì?',
+    '📦 Cách sắp xếp môi trường Montessori cho bé tập bò?',
+    '🗣️ Kích thích ngôn ngữ cho bé giai đoạn bập bẹ?'
+  ],
+  toddler: [
+    '🧠 Cách kích thích phát triển trí não cho bé 1-3 tuổi?',
+    '🎨 Các hoạt động Montessori tại nhà cho bé tập làm?',
+    '😤 Xử lý cơn hờn dỗi (tantrums) của bé như thế nào?',
+    '🚽 Khi nào và làm sao để tập cho bé đi vệ sinh (potty training)?',
+    '🥗 Làm sao để bé không bị biếng ăn giai đoạn này?',
+    '📖 Những cuốn sách hay cho bé 2 tuổi phát triển ngôn ngữ?'
+  ],
+  preschool: [
+    '🤝 Cách dạy bé kỹ năng giao tiếp và chia sẻ với bạn bè?',
+    '🧮 Hoạt động Montessori giúp bé làm quen với toán học?',
+    '📝 Chuẩn bị tâm lý và kỹ năng cho bé trước khi đi học?',
+    '🏃 Các trò chơi vận động ngoài trời cho bé 3-6 tuổi?',
+    '🎨 Phát triển tính sáng tạo qua hội họa và âm nhạc?',
+    '🧹 Dạy bé làm việc nhà theo tinh thần Montessori?'
+  ]
+};
 
-export default function ChatScreen() {
+const getSuggestedQuestions = (profile) => {
+  if (profile.status === 'pregnant') return QUESTION_POOL.pregnant;
+  
+  const months = parseInt(profile.ageInfo?.months || 0);
+  const years = parseInt(profile.ageInfo?.years || 0) || Math.floor(months / 12);
+  
+  if (months < 6) return QUESTION_POOL.newborn;
+  if (months < 12) return QUESTION_POOL.infant;
+  if (years < 3) return QUESTION_POOL.toddler;
+  return QUESTION_POOL.preschool;
+};
+
+export default function ChatScreen({ profile }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput]       = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +71,8 @@ export default function ChatScreen() {
   const [history, setHistory]   = useState([]);
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
+
+  const dynamicSuggestions = getSuggestedQuestions(profile);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -49,10 +97,17 @@ export default function ChatScreen() {
     setIsLoading(true);
 
     try {
+      // Construct a contextual prompt that includes user profile for better "xưng hô"
+      const profileContext = `[User Profile: Name: ${profile.displayName}, Role: ${profile.role}, Child: ${profile.childName}, Status: ${profile.status === 'born' ? 'Born' : 'Pregnant'}] `;
+      
       const res = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: question, sessionId, history }),
+        body: JSON.stringify({ 
+          message: profileContext + question, 
+          sessionId, 
+          history 
+        }),
       });
 
       if (!res.ok) throw new Error(await res.text());
@@ -117,11 +172,15 @@ export default function ChatScreen() {
       {/* ── Messages ── */}
       <div className="messages-container">
         {messages.length === 0 ? (
-          <WelcomeScreen onSuggest={sendMessage} />
+          <WelcomeScreen 
+            profile={profile} 
+            onSuggest={sendMessage} 
+            dynamicSuggestions={dynamicSuggestions} 
+          />
         ) : (
           <div className="messages-list">
             {messages.map(msg => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble key={msg.id} message={msg} profile={profile} />
             ))}
             {isLoading && <TypingIndicator />}
             <div ref={messagesEndRef} />
@@ -133,7 +192,7 @@ export default function ChatScreen() {
       <div className="input-area">
         {messages.length === 0 && (
           <div className="suggestions-row">
-            {SUGGESTED_QUESTIONS.slice(0, 3).map((q, i) => (
+            {dynamicSuggestions.slice(0, 3).map((q, i) => (
               <button key={i} className="suggestion-chip" onClick={() => sendMessage(q)}>
                 {q}
               </button>
@@ -173,21 +232,20 @@ export default function ChatScreen() {
 }
 
 /* ── Welcome Screen ────────────────────────────────────────── */
-function WelcomeScreen({ onSuggest }) {
+function WelcomeScreen({ profile, onSuggest, dynamicSuggestions }) {
   return (
     <div className="welcome-screen">
       <div className="welcome-hero">
         <div className="welcome-orb" />
         <div className="welcome-icon">🌿</div>
-        <h2 className="welcome-title">Xin chào, Mẹ ơi!</h2>
+        <h2 className="welcome-title">Xin chào, {profile.displayName}!</h2>
         <p className="welcome-desc">
-          Tôi là trợ lý AI được đào tạo từ tài liệu thai kỳ và giáo trình Montessori.
-          Hãy hỏi tôi bất kỳ điều gì về hành trình làm mẹ của bạn nhé!
+          Tôi là trợ lý AI Montessori. Tôi đã sẵn sàng đồng hành cùng {profile.role} trong hành trình chăm sóc {profile.childName} rồi đây!
         </p>
       </div>
 
       <div className="suggestions-grid">
-        {SUGGESTED_QUESTIONS.map((q, i) => (
+        {dynamicSuggestions.map((q, i) => (
           <button key={i} className="suggestion-card" onClick={() => onSuggest(q)}>
             {q}
           </button>
@@ -198,7 +256,7 @@ function WelcomeScreen({ onSuggest }) {
 }
 
 /* ── Message Bubble ────────────────────────────────────────── */
-function MessageBubble({ message }) {
+function MessageBubble({ message, profile }) {
   const isUser      = message.role === 'user';
   const isAssistant = message.role === 'assistant';
   const isError     = message.role === 'error';
@@ -224,7 +282,9 @@ function MessageBubble({ message }) {
         </time>
       </div>
       {isUser && (
-        <div className="avatar user-avatar">👤</div>
+        <div className="avatar user-avatar" style={{ fontSize: '1.2rem' }}>
+          {profile?.avatar || '👤'}
+        </div>
       )}
     </div>
   );
