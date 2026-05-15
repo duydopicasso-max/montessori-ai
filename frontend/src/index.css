@@ -1,0 +1,96 @@
+/* ════════════════════════════════════════════════════════════
+   Montessori AI — Global Design System
+   Palette: Warm Sage + Blush + Deep Forest
+   ════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Color Tokens */
+  --sage-50:  #f4f7f4;
+  --sage-100: #e8f0e8;
+  --sage-200: #c9dbc9;
+  --sage-300: #a3c1a3;
+  --sage-400: #739f73;
+  --sage-500: #557a55;
+  --sage-600: #426042;
+  --sage-700: #344d34;
+  --forest:   #1e3322;
+
+  --blush-50:  #fdf7f4;
+  --blush-100: #faeee8;
+  --blush-200: #f5d6c8;
+  --blush-300: #ecb89f;
+  --blush-400: #df8f6b;
+  --blush-500: #c96b42;
+
+  --cream:     #faf8f3;
+  --parchment: #f2ede3;
+  --warm-gray: #8a8278;
+  --text-dark: #2d2926;
+  --text-mid:  #5a5550;
+
+  /* Gradients */
+  --grad-hero: linear-gradient(135deg, #1e3322 0%, #344d34 50%, #426042 100%);
+  --grad-card: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(250,248,243,0.7));
+  --grad-blush: linear-gradient(135deg, #faeee8, #fdf7f4);
+  --grad-sage:  linear-gradient(135deg, #e8f0e8, #f4f7f4);
+
+  /* Shadows */
+  --shadow-sm:  0 2px 8px rgba(30,51,34,0.08);
+  --shadow-md:  0 8px 24px rgba(30,51,34,0.12);
+  --shadow-lg:  0 20px 60px rgba(30,51,34,0.18);
+  --shadow-glow: 0 0 40px rgba(85,122,85,0.25);
+
+  /* Spacing */
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-xl: 40px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: 'Be Vietnam Pro', -apple-system, sans-serif;
+  background: var(--cream);
+  color: var(--text-dark);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root { height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--sage-200); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--sage-300); }
+
+/* ── Typography ── */
+h1, h2, h3 { font-family: 'Playfair Display', serif; line-height: 1.25; }
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pulse-dot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1; }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
