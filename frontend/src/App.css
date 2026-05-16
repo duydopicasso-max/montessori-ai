@@ -180,6 +180,11 @@
   border-radius: 50%;
 }
 
+/* ── Hide Desktop Elements on Mobile ── */
+.sidebar-desktop {
+  display: none;
+}
+
 /* ── Desktop override (sidebar mode) ── */
 @media (min-width: 768px) {
   .app-shell { flex-direction: row; }
