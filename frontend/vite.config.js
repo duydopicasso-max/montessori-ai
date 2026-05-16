@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   // GitHub Pages serves from /montessori-ai/ — local dev uses /
-  base: '/montessori-ai/', // Explicit base path for GitHub Pages
+  base: process.env.GITHUB_ACTIONS ? '/montessori-ai/' : '/', // Dynamic base path
   server: {
     port: 5173,
     proxy: {
