@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import ChatScreen      from './pages/ChatScreen.jsx';
 import IngestScreen    from './pages/IngestScreen.jsx';
@@ -26,20 +26,32 @@ export default function App() {
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+    let profileUnsub = null;
+    const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setAuthUser(firebaseUser);
-        try {
-          const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (snap.exists()) setProfile({ user: firebaseUser, ...snap.data() });
-        } catch (e) { console.error('[App] Profile load error:', e); }
+        profileUnsub = onSnapshot(doc(db, 'users', firebaseUser.uid), (snap) => {
+          if (snap.exists()) {
+            setProfile({ user: firebaseUser, ...snap.data() });
+          } else {
+            setProfile(null);
+          }
+          setLoading(false);
+        }, (error) => {
+          console.error('[App] Profile load error:', error);
+          setLoading(false);
+        });
       } else {
         setAuthUser(null);
         setProfile(null);
+        setLoading(false);
+        if (profileUnsub) profileUnsub();
       }
-      setLoading(false);
     });
-    return unsub;
+    return () => {
+      authUnsub();
+      if (profileUnsub) profileUnsub();
+    };
   }, []);
 
   const handleOnboardingComplete = (newProfile) => setProfile(newProfile);

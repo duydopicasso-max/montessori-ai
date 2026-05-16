@@ -40,7 +40,7 @@ export default function GrowthScreen({ profile }) {
   const rawBaby  = babies[selectedBaby] || {};
   const override = babyOverrides[selectedBaby] || {};
   const baby     = { ...rawBaby, ...override };
-  const babyId   = (baby.name || `baby-${selectedBaby}`).toLowerCase().replace(/\s+/g, '-');
+  const babyId   = (rawBaby.id || rawBaby.name || `baby-${selectedBaby}`).toLowerCase().replace(/\s+/g, '-');
   const gender   = baby.gender || 'girl';
   const dob      = baby.dob || '';
   const ageMonths = getAgeInMonths(dob);
@@ -84,9 +84,14 @@ export default function GrowthScreen({ profile }) {
     setEditField(field);
     setEditVal(field === 'name' ? (baby.name || '') : (baby.dob || ''));
   };
-  const saveEdit = () => {
+  const saveEdit = async () => {
     setBabyOverrides(prev => ({ ...prev, [selectedBaby]: { ...(prev[selectedBaby] || {}), [editField]: editVal } }));
     setEditField(null);
+    try {
+      const newBabies = [...babies];
+      newBabies[selectedBaby] = { ...newBabies[selectedBaby], ...babyOverrides[selectedBaby], [editField]: editVal };
+      await updateDoc(doc(db, 'users', userId), { babies: newBabies });
+    } catch (e) { console.error('Save failed', e); }
   };
 
   /* ── Latest values ── */
