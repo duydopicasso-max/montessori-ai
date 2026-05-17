@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   collection, addDoc, onSnapshot, query, orderBy,
-  serverTimestamp, limit, updateDoc, doc, deleteDoc
+  serverTimestamp, limit, updateDoc, doc, deleteDoc, getDocs, where
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import './CommunityScreen.css';
@@ -42,6 +42,10 @@ export default function CommunityScreen({ profile }) {
   const [customRooms, setCustomRooms] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [privateChats, setPrivateChats] = useState([]);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+
   // Sync and auto-cleanup custom rooms (3 days = 72 hours)
   useEffect(() => {
     const q = query(collection(db, 'customRooms'), orderBy('lastMessageAt', 'desc'));
@@ -54,7 +58,6 @@ export default function CommunityScreen({ profile }) {
         const diffDays = (now - lastMsgTime) / (1000 * 60 * 60 * 24);
         
         if (diffDays >= 3) {
-          // Xoá phòng nếu quá 3 ngày không có tin nhắn
           deleteDoc(doc(db, 'customRooms', d.id)).catch(e => console.error('Lỗi xoá phòng:', e));
         } else {
           validRooms.push({ id: d.id, ...data, isCustom: true });
@@ -65,6 +68,67 @@ export default function CommunityScreen({ profile }) {
     return unsub;
   }, []);
 
+  // Sync Inbox (Friend Requests & Private Chats)
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsubReqs = onSnapshot(query(collection(db, 'friendRequests'), orderBy('createdAt', 'desc')), snap => {
+      const reqs = [];
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.receiverId === user.uid && data.status === 'pending') {
+          reqs.push({ id: d.id, ...data });
+        }
+      });
+      setFriendRequests(reqs);
+    });
+
+    const unsubChats = onSnapshot(query(collection(db, 'privateChats'), orderBy('lastMessageAt', 'desc')), snap => {
+      const chats = [];
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.participants?.includes(user.uid)) {
+          chats.push({ id: d.id, ...data, isPrivate: true });
+        }
+      });
+      setPrivateChats(chats);
+    });
+
+    return () => { unsubReqs(); unsubChats(); };
+  }, [user?.uid]);
+
+  const acceptRequest = async (req) => {
+    try {
+      await addDoc(collection(db, 'privateChats'), {
+        participants: [req.senderId, user.uid],
+        participantData: {
+          [req.senderId]: { name: req.senderName, photo: req.senderPhoto, baby: req.senderBaby },
+          [user.uid]: { name: authorName, photo: authorPhoto, baby: authorBaby }
+        },
+        createdAt: serverTimestamp(),
+        lastMessageAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, 'friendRequests', req.id), { status: 'accepted' });
+    } catch(e) { console.error(e); }
+  };
+
+  const declineRequest = async (reqId) => {
+    try {
+      await updateDoc(doc(db, 'friendRequests', reqId), { status: 'declined' });
+    } catch(e) { console.error(e); }
+  };
+
+  const handleUserClick = (msg) => {
+    if (msg.isAnon || msg.senderId === user.uid) return;
+    if (activeRoom?.isPrivate) return; 
+
+    setSelectedProfile({
+      uid: msg.senderId,
+      name: msg.senderName,
+      photo: msg.senderPhoto,
+      baby: msg.senderBaby
+    });
+  };
+
   // --- RENDERS ---
   if (activeRoom) {
     return (
@@ -72,6 +136,7 @@ export default function CommunityScreen({ profile }) {
         room={activeRoom} 
         onBack={() => setActiveRoom(null)}
         currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
+        onUserClick={handleUserClick}
       />
     );
   }
@@ -91,6 +156,7 @@ export default function CommunityScreen({ profile }) {
         </button>
         <button className={`comm-tab ${tab === 'inbox' ? 'active' : ''}`} onClick={() => setTab('inbox')}>
           📬 Hộp Thư
+          {friendRequests.length > 0 && <span className="tab-badge">{friendRequests.length}</span>}
         </button>
       </div>
 
@@ -138,10 +204,63 @@ export default function CommunityScreen({ profile }) {
         )}
 
         {tab === 'inbox' && (
-          <div className="inbox-empty">
-            <div className="inbox-icon">📬</div>
-            <h3>Hộp thư trống</h3>
-            <p>Khi có ai đó gửi yêu cầu trò chuyện hoặc nhắn tin riêng cho bạn, nó sẽ hiển thị ở đây.</p>
+          <div className="inbox-container">
+            {friendRequests.length > 0 && (
+              <div className="inbox-section">
+                <h2 className="rooms-section-title">Yêu cầu nhắn tin ({friendRequests.length})</h2>
+                <div className="requests-list">
+                  {friendRequests.map(req => (
+                    <div key={req.id} className="request-card">
+                      <Avatar name={req.senderName} photo={req.senderPhoto} size={48} />
+                      <div className="request-info">
+                        <h4 className="request-name">{req.senderName}</h4>
+                        {req.senderBaby && <p className="request-baby">Mẹ của {req.senderBaby}</p>}
+                      </div>
+                      <div className="request-actions">
+                        <button className="req-btn accept" onClick={() => acceptRequest(req)}>✓</button>
+                        <button className="req-btn decline" onClick={() => declineRequest(req.id)}>✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="inbox-section" style={{ marginTop: 24 }}>
+              <h2 className="rooms-section-title">Đang trò chuyện</h2>
+              <div className="rooms-list">
+                {privateChats.length === 0 ? (
+                  <div className="inbox-empty" style={{ paddingTop: 30 }}>
+                    <div className="inbox-icon">📬</div>
+                    <h3>Hộp thư trống</h3>
+                    <p>Khi có ai đó gửi yêu cầu trò chuyện hoặc nhắn tin riêng cho bạn, nó sẽ hiển thị ở đây.</p>
+                  </div>
+                ) : (
+                  privateChats.map(chat => {
+                    const otherUid = chat.participants.find(id => id !== user.uid);
+                    const otherUser = chat.participantData[otherUid];
+                    return (
+                      <div key={chat.id} className="room-card" onClick={() => {
+                        setActiveRoom({
+                          id: chat.id,
+                          name: otherUser.name,
+                          emoji: '💬',
+                          isPrivate: true,
+                          otherUser
+                        });
+                      }}>
+                        <Avatar name={otherUser.name} photo={otherUser.photo} size={50} />
+                        <div className="room-info" style={{ marginLeft: 16 }}>
+                          <h3 className="room-name">{otherUser.name}</h3>
+                          <p className="room-desc">Trò chuyện riêng tư</p>
+                        </div>
+                        <div className="room-arrow">➔</div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -150,6 +269,14 @@ export default function CommunityScreen({ profile }) {
         <CreateRoomModal 
           onClose={() => setShowCreateModal(false)} 
           currentUser={{ uid: user?.uid }}
+        />
+      )}
+
+      {selectedProfile && (
+        <UserProfileModal 
+          profile={selectedProfile} 
+          onClose={() => setSelectedProfile(null)}
+          currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
         />
       )}
     </div>
@@ -433,13 +560,15 @@ function ChatRoomView({ room, onBack, currentUser }) {
           </div>
         )}
 
-        <div className="anon-toggle">
-          <label className="switch">
-            <input type="checkbox" checked={isAnon} onChange={e => setIsAnon(e.target.checked)} />
-            <span className="slider round"></span>
-          </label>
-          <span className="anon-label">👻 Chế độ ẩn danh</span>
-        </div>
+        {!room.isPrivate && (
+          <div className="anon-toggle">
+            <label className="switch">
+              <input type="checkbox" checked={isAnon} onChange={e => setIsAnon(e.target.checked)} />
+              <span className="slider round"></span>
+            </label>
+            <span className="anon-label">👻 Chế độ ẩn danh</span>
+          </div>
+        )}
         
         <form className="chat-input-row" onSubmit={handleSend}>
           <button type="button" className="chat-attach-btn" onClick={() => fileInputRef.current?.click()}>
@@ -488,4 +617,71 @@ function Avatar({ name, photo, size }) {
         {initial}
       </div>
     );
+}
+
+function UserProfileModal({ profile, onClose, currentUser }) {
+  const [status, setStatus] = useState('none'); // 'none', 'pending', 'friends'
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const chatsSnap = await getDocs(query(collection(db, 'privateChats')));
+        const isFriend = chatsSnap.docs.some(d => {
+          const p = d.data().participants;
+          return p?.includes(currentUser.uid) && p?.includes(profile.uid);
+        });
+        if (isFriend) { setStatus('friends'); setLoading(false); return; }
+
+        const reqsSnap = await getDocs(query(collection(db, 'friendRequests')));
+        const isPending = reqsSnap.docs.some(d => {
+          const data = d.data();
+          return (data.senderId === currentUser.uid && data.receiverId === profile.uid && data.status === 'pending') ||
+                 (data.senderId === profile.uid && data.receiverId === currentUser.uid && data.status === 'pending');
+        });
+        if (isPending) setStatus('pending');
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkStatus();
+  }, [profile.uid, currentUser.uid]);
+
+  const sendRequest = async () => {
+    setStatus('pending');
+    await addDoc(collection(db, 'friendRequests'), {
+      senderId: currentUser.uid,
+      senderName: currentUser.name,
+      senderPhoto: currentUser.photo,
+      senderBaby: currentUser.baby,
+      receiverId: profile.uid,
+      status: 'pending',
+      createdAt: serverTimestamp()
+    });
+    alert('Đã gửi yêu cầu trò chuyện!');
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="profile-modal-card" onClick={e => e.stopPropagation()}>
+        <button className="sheet-close" style={{ position: 'absolute', top: 16, right: 16 }} onClick={onClose}>✕</button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 16 }}>
+          <Avatar name={profile.name} photo={profile.photo} size={80} />
+          <h3 style={{ fontSize: 20, fontWeight: 800, marginTop: 12, marginBottom: 4 }}>{profile.name}</h3>
+          {profile.baby && <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Mẹ của {profile.baby}</p>}
+        </div>
+        
+        <div className="profile-actions" style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
+          {loading ? <p style={{ fontSize: 13, color: 'var(--text-light)' }}>⏳ Đang kiểm tra...</p> : (
+            status === 'friends' ? <button className="submit-post-btn" style={{ width: '100%', background: 'var(--sage)' }} disabled>Đã là bạn bè</button> :
+            status === 'pending' ? <button className="submit-post-btn" style={{ width: '100%', background: 'var(--cream-dark)', color: 'var(--text-muted)' }} disabled>Đang chờ xác nhận</button> :
+            <button className="submit-post-btn" style={{ width: '100%' }} onClick={sendRequest}>Gửi yêu cầu trò chuyện</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
