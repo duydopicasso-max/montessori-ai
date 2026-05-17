@@ -182,3 +182,42 @@
   .foods-grid  { grid-template-columns: 1fr; }
   .play-grid   { grid-template-columns: 1fr; }
 }
+
+/* Medical Images Upload Preview */
+.medical-images-preview {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;
+}
+.medical-img-wrapper {
+  position: relative; width: 64px; height: 64px;
+}
+.medical-img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: var(--r-md);
+  border: 1.5px solid var(--cream-dark);
+}
+.remove-img-btn {
+  position: absolute; top: -6px; right: -6px;
+  background: white; color: var(--text-primary);
+  border: 1px solid var(--cream-dark); border-radius: 50%;
+  width: 20px; height: 20px; font-size: 10px; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: var(--shadow-sm); z-index: 2;
+}
+.upload-img-btn {
+  width: 64px; height: 64px; border-radius: var(--r-md);
+  border: 2px dashed var(--mint-soft); background: var(--surface-sage);
+  color: var(--sage); font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s;
+}
+.upload-img-btn:hover:not(:disabled) { background: var(--mint-pale); border-color: var(--sage); }
+
+/* Display attached images in records list */
+.record-row-images {
+  display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+}
+.record-attached-img {
+  width: 50px; height: 50px; object-fit: cover;
+  border-radius: var(--r-sm); border: 1px solid var(--cream-dark);
+  cursor: pointer; transition: transform 0.2s;
+}
+.record-attached-img:hover { transform: scale(1.05); }

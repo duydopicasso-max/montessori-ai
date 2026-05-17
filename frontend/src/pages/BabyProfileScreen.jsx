@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { getAgeInMonths } from '../data/whoData.js';
@@ -105,12 +105,35 @@ export default function BabyProfileScreen({ profile }) {
   );
 }
 
+const CLOUD_NAME   = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+async function uploadToCloudinary(file, folder) {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', UPLOAD_PRESET);
+  fd.append('folder', folder);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`);
+    xhr.onload = () => {
+      if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
+      else reject(new Error(xhr.responseText));
+    };
+    xhr.onerror = () => reject(new Error('Upload failed'));
+    xhr.send(fd);
+  });
+}
+
 /* ── Medical Records Tab ── */
 function MedicalTab({ userId, babyId }) {
   const [records, setRecords] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], disease: '', medicine: '', dosage: '', duration: '', symptoms: '', recovery: '' });
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef();
+  const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], disease: '', medicine: '', dosage: '', duration: '', symptoms: '', recovery: '', images: [] });
 
   useEffect(() => {
     if (!userId || !babyId) return;
@@ -124,21 +147,43 @@ function MedicalTab({ userId, babyId }) {
     try {
       const ref = await addDoc(collection(db, 'users', userId, 'babies', babyId, 'medicalRecords'), { ...form, createdAt: serverTimestamp() });
       setRecords(prev => [{ id: ref.id, ...form }, ...prev]);
-      setForm({ date: new Date().toISOString().split('T')[0], disease: '', medicine: '', dosage: '', duration: '', symptoms: '', recovery: '' });
+      setForm({ date: new Date().toISOString().split('T')[0], disease: '', medicine: '', dosage: '', duration: '', symptoms: '', recovery: '', images: [] });
       setShowForm(false);
     } finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Xoá bệnh án này?')) return;
+    if (!window.confirm('Xoá lịch sử khám này?')) return;
     await deleteDoc(doc(db, 'users', userId, 'babies', babyId, 'medicalRecords', id));
     setRecords(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      const folder = `montessori/${userId}/${babyId}/medical`;
+      for (const file of files) {
+        const result = await uploadToCloudinary(file, folder);
+        setForm(f => ({ ...f, images: [...(f.images || []), result.secure_url] }));
+      }
+    } catch (err) {
+      alert('Lỗi tải ảnh: ' + err.message);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeImage = (index) => {
+    setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== index) }));
   };
 
   return (
     <div className="tab-content">
       <div className="tab-header">
-        <h2 className="tab-title">🏥 Hồ sơ bệnh án</h2>
+        <h2 className="tab-title">🏥 Lịch sử khám bệnh</h2>
         <button className="add-btn" onClick={() => setShowForm(f => !f)}>{showForm ? '✕ Đóng' : '+ Thêm lần khám'}</button>
       </div>
 
@@ -160,12 +205,29 @@ function MedicalTab({ userId, babyId }) {
             </div>
           </div>
           <div className="form-group full-width"><label>📝 Triệu chứng</label><textarea rows={2} placeholder="Mô tả chi tiết triệu chứng..." value={form.symptoms} onChange={e => setForm(f=>({...f,symptoms:e.target.value}))} /></div>
+          
+          <div className="form-group full-width">
+            <label>📸 Đính kèm ảnh (Đơn thuốc / Vỏ thuốc)</label>
+            <div className="medical-images-preview">
+              {(form.images || []).map((img, i) => (
+                <div key={i} className="medical-img-wrapper">
+                  <img src={img} alt={`Đính kèm ${i}`} className="medical-img" />
+                  <button className="remove-img-btn" onClick={() => removeImage(i)}>✕</button>
+                </div>
+              ))}
+              <button className="upload-img-btn" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                {uploading ? '⏳...' : '+ Ảnh'}
+              </button>
+              <input type="file" multiple accept="image/*" ref={fileRef} hidden onChange={handleUpload} />
+            </div>
+          </div>
+
           <button className="save-btn" disabled={saving || !form.disease} onClick={handleSave}>{saving ? '⏳...' : '💾 Lưu bệnh án'}</button>
         </div>
       )}
 
       {records.length === 0 && !showForm && (
-        <div className="empty-state"><div className="empty-icon">🏥</div><p>Chưa có bệnh án nào.<br/>Nhấn "+ Thêm lần khám" để ghi lại.</p></div>
+        <div className="empty-state"><div className="empty-icon">🏥</div><p>Chưa có lịch sử khám bệnh.<br/>Nhấn "+ Thêm lần khám" để ghi lại.</p></div>
       )}
 
       <div className="records-list">
@@ -184,6 +246,15 @@ function MedicalTab({ userId, babyId }) {
             {r.medicine  && <div className="record-row"><span>💊</span><span>{r.medicine} — {r.dosage}</span></div>}
             {r.duration  && <div className="record-row"><span>⏱️</span><span>{r.duration}</span></div>}
             {r.symptoms  && <div className="record-row"><span>📝</span><span>{r.symptoms}</span></div>}
+            {r.images && r.images.length > 0 && (
+              <div className="record-row-images">
+                {r.images.map((img, i) => (
+                  <a key={i} href={img} target="_blank" rel="noreferrer">
+                    <img src={img} alt={`Đính kèm ${i}`} className="record-attached-img" />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
