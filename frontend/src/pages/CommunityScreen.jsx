@@ -151,12 +151,25 @@ export default function CommunityScreen({ profile }) {
   // --- RENDERS ---
   if (activeRoom) {
     return (
-      <ChatRoomView 
-        room={activeRoom} 
-        onBack={() => setActiveRoom(null)}
-        currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
-        onUserClick={handleUserClick}
-      />
+      <>
+        <ChatRoomView 
+          room={activeRoom} 
+          onBack={() => setActiveRoom(null)}
+          currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
+          onUserClick={handleUserClick}
+        />
+        {selectedProfile && (
+          <MemberProfileSheet 
+            profile={selectedProfile} 
+            onClose={() => setSelectedProfile(null)}
+            currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
+            onStartPrivateChat={(chat) => {
+              setActiveRoom(chat);
+              setSelectedProfile(null);
+            }}
+          />
+        )}
+      </>
     );
   }
 
@@ -550,7 +563,11 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
 
                 <div className="chat-bubble-col">
                   {showName && (
-                    <div className="chat-sender-name">
+                    <div 
+                      className="chat-sender-name" 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => onUserClick?.(msg)}
+                    >
                       {msg.senderName} 
                       {!msg.isAnon && msg.senderBaby && <span className="chat-sender-baby"> (Mẹ của {msg.senderBaby})</span>}
                     </div>
