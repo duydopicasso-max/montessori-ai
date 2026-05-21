@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { calculateDetailedAge, getHandbookForAge } from '../data/handbookData.js';
-import { LeafIcon } from '../icons.jsx';
+import { LeafIcon, SparkleIcon } from '../icons.jsx';
 import './ChatScreen.css';
 
 const API_BASE      = import.meta.env.VITE_API_URL || '/api';
@@ -138,9 +138,59 @@ export default function ChatScreen({ profile }) {
   const [nutritionLogs, setNutritionLogs] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
 
+  // Screen loading state simulation (Skeleton Loader Shimmer)
+  const [isScreenLoading, setIsScreenLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsScreenLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Active bottom sheets
   const [activeBottomSheet, setActiveBottomSheet] = useState(null); // 'nutrition' | 'sleep' | 'diaper' | 'growth' | 'kick' | 'contractions' | 'preg_weight' | 'preg_reminders'
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Dynamic age calculation & update time helpers
+  const getAgeString = () => {
+    if (status === 'pregnant') {
+      return `Tuần thai ${pregnancyInfo?.week || 30}`;
+    }
+    const m = parseInt(ageInfo?.months || 0);
+    const y = parseInt(ageInfo?.years  || 0);
+    const totalMonths = y * 12 + m;
+    if (totalMonths > 0) {
+      return `${totalMonths} tháng tuổi`;
+    }
+    return `${ageInfo?.days || 5} ngày tuổi`;
+  };
+
+  const getLatestUpdateTime = () => {
+    const times = [];
+    nutritionLogs.forEach(log => {
+      if (log.createdAt) {
+        try {
+          times.push(log.createdAt.toDate ? log.createdAt.toDate().getTime() : new Date(log.createdAt).getTime());
+        } catch(e) {}
+      }
+    });
+    activityLogs.forEach(log => {
+      if (log.createdAt) {
+        try {
+          times.push(log.createdAt.toDate ? log.createdAt.toDate().getTime() : new Date(log.createdAt).getTime());
+        } catch(e) {}
+      }
+    });
+    if (times.length === 0) return '10:45';
+    const latest = new Date(Math.max(...times));
+    return latest.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleSuggestionAction = () => {
+    setIsChatOpen(true);
+    sendMessage(`Hãy gợi ý chi tiết hoạt động Montessori phát triển kỹ năng hôm nay cho ${baby?.name || 'Cốm'} ${getAgeString()} theo phương pháp Montessori nhé!`);
+  };
 
   // Chat core states
   const [messages,      setMessages]      = useState([]);
@@ -747,40 +797,80 @@ export default function ChatScreen({ profile }) {
     return list.sort((a, b) => b.createdAt - a.createdAt);
   })();
 
+  if (isScreenLoading) {
+    return (
+      <div className="chat-screen screen-loading-state">
+        {/* Premium Shimmer Header */}
+        <div className="premium-ios-header skeleton-loading shimmer">
+          <div className="header-left-meta">
+            <div className="skeleton-line skeleton-title" />
+            <div className="skeleton-line skeleton-subtitle" />
+            <div className="skeleton-line skeleton-age" />
+          </div>
+          <div className="skeleton-avatar" />
+        </div>
+
+        {/* Skeleton Recommendation Card */}
+        <div className="montessori-daily-suggestion-card skeleton-loading shimmer">
+          <div className="skeleton-line skeleton-title" />
+          <div className="skeleton-line skeleton-paragraph-1" />
+          <div className="skeleton-line skeleton-paragraph-2" />
+          <div className="skeleton-button" />
+        </div>
+
+        {/* Skeleton 2x2 grid */}
+        <div className="dashboard-trackers-grid">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="tracker-item-card skeleton-loading shimmer">
+              <div className="skeleton-icon" />
+              <div className="skeleton-line skeleton-title" />
+              <div className="skeleton-line skeleton-status" />
+              <div className="skeleton-button" />
+            </div>
+          ))}
+        </div>
+
+        {/* Skeleton Timeline */}
+        <div className="daily-timeline-section">
+          <div className="skeleton-line skeleton-section-title" />
+          <div className="skeleton-timeline-path shimmer">
+            <div className="skeleton-timeline-node">
+              <div className="skeleton-time" />
+              <div className="skeleton-node-dot" />
+              <div className="skeleton-details" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="chat-screen">
       
-      {/* 🌿 DASHBOARD HEADER: Logo+Brand LEFT | Avatar+Name RIGHT */}
-      <header className="dashboard-header-container">
-        <div className="header-brand-section">
-          <div className="brand-logo-badge"><LeafIcon size={18} strokeWidth={2} /></div>
-          <div>
-            <span className="montessori-brand-title">Montessori AI</span>
-            <p className="montessori-brand-sub">Trợ lý mẹ &amp; bé</p>
+      {/* 📱 iOS-STYLE PREMIUM SINGLE HEADER */}
+      <header className="premium-ios-header">
+        <div className="header-left-meta">
+          <span className="greeting-label">Xin chào, Mẹ {profile?.momName || 'Maud'}</span>
+          <h1 className="baby-today-heading">Hôm nay của {baby?.name || 'Cốm'}</h1>
+          <div className="baby-age-meta-row">
+            <span className="baby-age-badge">{getAgeString()}</span>
+            <span className="meta-dot">·</span>
+            <span className="update-time-label">Cập nhật lúc {getLatestUpdateTime()}</span>
           </div>
         </div>
-        
-        <div className="header-user-profile">
-          <div className="mother-avatar-icon-glow">
+        <div className="header-right-profile">
+          <div className="mother-avatar-circle" title="Xem hồ sơ">
             {profile?.user?.photoURL ? (
               <img src={profile.user.photoURL} alt="avatar" className="mother-avatar-img" />
             ) : (
-              <span className="mother-avatar-emoji">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="7" r="4"/>
-                  <path d="M5 20a7 7 0 0 1 14 0"/>
-                </svg>
-              </span>
+              <div className="mother-avatar-emoji-wrap">
+                {profile.status === 'pregnant' ? '🤰' : '👩‍🍼'}
+              </div>
             )}
           </div>
-          <span className="mom-name-header-label">Mẹ {profile?.momName || 'Maud'}</span>
         </div>
       </header>
-
-      {/* 📌 LARGE PAGE HEADING */}
-      <h1 className="dashboard-page-main-heading">
-        Hôm nay với {baby?.name || 'Cốm'}
-      </h1>
 
       {/* 🤰 PREGNANCY BANNER */}
       {status === 'pregnant' && (
@@ -794,139 +884,188 @@ export default function ChatScreen({ profile }) {
         </div>
       )}
 
+      {/* 🌿 DAILY MONTESSORI RECOMMENDATION CARD */}
+      {status !== 'pregnant' && babies.length > 0 && (
+        <div className="montessori-daily-suggestion-card">
+          <SparkleIcon size={20} strokeWidth={1.8} className="suggestion-card-floating-sparkle" />
+          <div className="suggestion-card-header">
+            <span className="suggestion-card-icon-wrap">
+              <LeafIcon size={18} strokeWidth={2.2} className="suggestion-leaf-icon" />
+            </span>
+            <div className="suggestion-header-text-col">
+              <span className="suggestion-ai-badge">AI CÁ NHÂN HÓA</span>
+              <h3>Gợi ý Montessori hôm nay</h3>
+            </div>
+          </div>
+          
+          <p className="suggestion-card-body">
+            {baby?.name || 'Cốm'} có thể thử hoạt động phân loại đồ vật theo màu.
+          </p>
+
+          <div className="suggestion-card-metadata">
+            <span className="suggestion-metadata-item">⏱ 5–7 phút</span>
+            <span className="suggestion-metadata-dot">·</span>
+            <span className="suggestion-metadata-item">🏠 Dễ thực hiện tại nhà</span>
+          </div>
+
+          <button className="suggestion-card-action-btn" onClick={handleSuggestionAction}>
+            Xem hướng dẫn
+          </button>
+        </div>
+      )}
+
+      {/* ⚠️ MISSING PROFILE STATE WARNING */}
+      {status !== 'pregnant' && babies.length === 0 && (
+        <div className="missing-profile-warning-card">
+          <span className="warning-icon">⚠️</span>
+          <div className="warning-text-wrap">
+            <h4>Mẹ chưa tạo hồ sơ cho bé yêu</h4>
+            <p>Hãy thêm hồ sơ của bé trong tab **Hồ sơ** để nhận gợi ý hoạt động Montessori cá nhân hóa phù hợp nhất với độ tuổi.</p>
+          </div>
+        </div>
+      )}
+
       {/* 📊 2X2 DASHBOARD TRACKERS GRID */}
-      <div className="dashboard-trackers-grid">
-        {status === 'pregnant' ? (
-          /* PREGNANCY MODE */
-          <>
-            <div className="tracker-item-card mint-light">
-              <span className="tracker-card-icon">💓</span>
-              <h4 className="tracker-card-name">Đếm thai máy</h4>
-              <span className="tracker-card-status-text">{getLastKickText()}</span>
-              <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
-                Bắt đầu đếm
-              </button>
-            </div>
-
-            <div className="tracker-item-card peach-light">
-              <span className="tracker-card-icon">⏱️</span>
-              <h4 className="tracker-card-name">Đếm cơn gò</h4>
-              <span className="tracker-card-status-text">{getLastContraText()}</span>
-              <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('contractions'); setContraSecs(0); setContraCount(0); }}>
-                Bắt đầu đếm
-              </button>
-            </div>
-
-            <div className="tracker-item-card peach-light">
-              <span className="tracker-card-icon">⚖️</span>
-              <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
-              <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
-              <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
-                Cập nhật
-              </button>
-            </div>
-
-            <div className="tracker-item-card mint-light">
-              <span className="tracker-card-icon">💊</span>
-              <h4 className="tracker-card-name">Vitamin &amp; Nước</h4>
-              <span className="tracker-card-status-text">Lịch nhắc vi chất hàng ngày</span>
-              <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_reminders')}>
-                Ghi nhận
-              </button>
-            </div>
-          </>
-        ) : (
-          /* BABY MODE */
-          <>
-            {/* CARD 1: Ăn uống — Sage Green */}
-            <div className="tracker-item-card mint-light">
-              <div className="tracker-card-icon">
-                <BottleIcon />
+      {(!status || status !== 'pregnant' ? babies.length > 0 : true) && (
+        <div className="dashboard-trackers-grid">
+          {status === 'pregnant' ? (
+            /* PREGNANCY MODE */
+            <>
+              <div className="tracker-item-card mint-light">
+                <span className="tracker-card-icon">💓</span>
+                <h4 className="tracker-card-name">Đếm thai máy</h4>
+                <span className="tracker-card-status-text">{getLastKickText()}</span>
+                <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
+                  Bắt đầu đếm
+                </button>
               </div>
-              <h4 className="tracker-card-name">Ăn uống</h4>
-              <span className="tracker-card-status-text">{getLastNutriText()}</span>
-              <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('nutrition')}>
-                Ghi nhận ăn
-              </button>
-            </div>
 
-            {/* CARD 2: Ngủ — Salmon Peach */}
-            <div className="tracker-item-card peach-light">
-              <div className="tracker-card-icon">
-                <MoonStarIcon />
+              <div className="tracker-item-card pink-light">
+                <span className="tracker-card-icon">⏱️</span>
+                <h4 className="tracker-card-name">Đếm cơn gò</h4>
+                <span className="tracker-card-status-text">{getLastContraText()}</span>
+                <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('contractions'); setContraSecs(0); setContraCount(0); }}>
+                  Bắt đầu đếm
+                </button>
               </div>
-              <h4 className="tracker-card-name">Ngủ</h4>
-              <span className="tracker-card-status-text">{getLastSleepText()}</span>
-              <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('sleep'); setSleepSecs(0); }}>
-                Ghi nhận ngủ
-              </button>
-            </div>
 
-            {/* CARD 3: Thay tã */}
-            <div className="tracker-item-card peach-light">
-              <div className="tracker-card-icon">
-                <DiaperIcon />
+              <div className="tracker-item-card pink-light">
+                <span className="tracker-card-icon">⚖️</span>
+                <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
+                <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
+                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
+                  Cập nhật
+                </button>
               </div>
-              <h4 className="tracker-card-name">Thay tã</h4>
-              <span className="tracker-card-status-text">{getLastDiaperText()}</span>
-              <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('diaper')}>
-                Ghi nhận thay tã
-              </button>
-            </div>
 
-            {/* CARD 4: Phát triển — Sage Green */}
-            <div className="tracker-item-card mint-light">
-              <div className="tracker-card-icon">
-                <ScaleIcon />
+              <div className="tracker-item-card mint-light">
+                <span className="tracker-card-icon">💊</span>
+                <h4 className="tracker-card-name">Vitamin &amp; Nước</h4>
+                <span className="tracker-card-status-text">Lịch nhắc vi chất hàng ngày</span>
+                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_reminders')}>
+                  Ghi nhận
+                </button>
               </div>
-              <h4 className="tracker-card-name">Phát triển</h4>
-              <span className="tracker-card-status-text">{getLastGrowthText()}</span>
-              <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('growth')}>
-                Xem thống kê
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ⏰ DAILY TIMELINE */}
-      <section className="daily-timeline-section">
-        <h3 className="timeline-title-headline">Dòng thời gian hôm nay</h3>
-        <div className="timeline-outer-scroll-wrapper">
-          {timelineItems.length === 0 ? (
-            <div className="timeline-empty-state-box">
-              <span className="empty-state-icon">📝</span>
-              <p>Mẹ chưa ghi nhận hoạt động nào hôm nay. Hãy bắt đầu ghi chép nhé!</p>
-            </div>
+            </>
           ) : (
-            <div className="timeline-vertical-path-line">
-              {timelineItems.map((item, index) => {
-                /* Map type → SVG icon component */
-                let NodeIcon;
-                if (item.colorClass === 'timeline-nutrition') NodeIcon = TimelineBottleIcon;
-                else if (item.colorClass === 'timeline-sleep') NodeIcon = TimelineMoonIcon;
-                else if (item.colorClass === 'timeline-diaper') NodeIcon = TimelineDiaperIcon;
-                else if (item.colorClass === 'timeline-growth') NodeIcon = TimelineGrowthIcon;
-                else NodeIcon = TimelineSunIcon;
-                return (
-                  <div key={item.id || index} className="timeline-record-node">
-                    <div className="timeline-node-time-col">
-                      <span className="node-time-txt">{item.time}</span>
-                    </div>
-                    <div className={`timeline-node-icon-dot ${item.colorClass}`}>
-                      <NodeIcon />
-                    </div>
-                    <div className="timeline-node-details-card">
-                      <h4 className="node-details-title">{item.typeLabel}</h4>
-                      <p className="node-details-desc">{item.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            /* BABY MODE */
+            <>
+              {/* CARD 1: Ăn uống — Sage Green */}
+              <div className="tracker-item-card mint-light">
+                <div className="tracker-card-icon">
+                  <BottleIcon />
+                </div>
+                <h4 className="tracker-card-name">Ăn uống</h4>
+                <span className="tracker-card-status-text">{getLastNutriText()}</span>
+                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('nutrition')}>
+                  Ghi nhận ăn
+                </button>
+              </div>
+
+              {/* CARD 2: Ngủ — Salmon Peach Pink */}
+              <div className="tracker-item-card pink-light">
+                <div className="tracker-card-icon">
+                  <MoonStarIcon />
+                </div>
+                <h4 className="tracker-card-name">Ngủ</h4>
+                <span className="tracker-card-status-text">{getLastSleepText()}</span>
+                <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('sleep'); setSleepSecs(0); }}>
+                  Ghi nhận ngủ
+                </button>
+              </div>
+
+              {/* CARD 3: Thay tã — Salmon Peach Pink */}
+              <div className="tracker-item-card pink-light">
+                <div className="tracker-card-icon">
+                  <DiaperIcon />
+                </div>
+                <h4 className="tracker-card-name">Thay tã</h4>
+                <span className="tracker-card-status-text">{getLastDiaperText()}</span>
+                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('diaper')}>
+                  Ghi nhận thay tã
+                </button>
+              </div>
+
+              {/* CARD 4: Phát triển — Sage Green */}
+              <div className="tracker-item-card mint-light">
+                <div className="tracker-card-icon">
+                  <ScaleIcon />
+                </div>
+                <h4 className="tracker-card-name">Phát triển</h4>
+                <span className="tracker-card-status-text">{getLastGrowthText()}</span>
+                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('growth')}>
+                  Xem thống kê
+                </button>
+              </div>
+            </>
           )}
         </div>
-      </section>
+      )}
+
+      {/* ⏰ DAILY TIMELINE */}
+      {(!status || status !== 'pregnant' ? babies.length > 0 : true) && (
+        <section className="daily-timeline-section">
+          <h3 className="timeline-title-headline">Dòng thời gian hôm nay</h3>
+          <div className="timeline-outer-scroll-wrapper">
+            {timelineItems.length === 0 ? (
+              <div className="timeline-empty-state-box">
+                <span className="empty-state-icon">📝</span>
+                <h4>Chưa có hoạt động hôm nay</h4>
+                <p>Mẹ hãy ghi nhận hoạt động đầu tiên của bé để trợ lý Montessori AI theo dõi và phân tích sức khỏe tốt nhất!</p>
+                <button className="timeline-first-action-btn" onClick={() => setActiveBottomSheet('nutrition')}>
+                  + Ghi nhận đầu tiên
+                </button>
+              </div>
+            ) : (
+              <div className="timeline-vertical-path-line">
+                {timelineItems.map((item, index) => {
+                  /* Map type → SVG icon component */
+                  let NodeIcon;
+                  if (item.colorClass === 'timeline-nutrition') NodeIcon = TimelineBottleIcon;
+                  else if (item.colorClass === 'timeline-sleep') NodeIcon = TimelineMoonIcon;
+                  else if (item.colorClass === 'timeline-diaper') NodeIcon = TimelineDiaperIcon;
+                  else if (item.colorClass === 'timeline-growth') NodeIcon = TimelineGrowthIcon;
+                  else NodeIcon = TimelineSunIcon;
+                  return (
+                    <div key={item.id || index} className="timeline-record-node">
+                      <div className="timeline-node-time-col">
+                        <span className="node-time-txt">{item.time}</span>
+                      </div>
+                      <div className={`timeline-node-icon-dot ${item.colorClass}`}>
+                        <NodeIcon />
+                      </div>
+                      <div className="timeline-node-details-card">
+                        <h4 className="node-details-title">{item.typeLabel}</h4>
+                        <p className="node-details-desc">{item.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* 💬 FLOATING ASSISTANT BUTTON — fixed bottom-right */}
       <button

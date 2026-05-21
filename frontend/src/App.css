@@ -114,20 +114,20 @@
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 100;
-  padding: 0 16px calc(var(--safe-bottom) + 12px);
+  padding: 0 16px calc(var(--safe-bottom) + 16px);
   pointer-events: none;
 }
 .bottom-nav-inner {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-radius: var(--r-xl);
-  border: 1.5px solid rgba(255,255,255,0.8);
-  box-shadow: 0 8px 40px rgba(60,100,70,0.14), 0 2px 8px rgba(0,0,0,0.04);
-  padding: 8px 4px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border-radius: 32px;
+  border: 1px solid rgba(230, 240, 234, 0.8);
+  box-shadow: 0 12px 36px rgba(47, 107, 79, 0.12), 0 4px 12px rgba(0, 0, 0, 0.02);
+  padding: 8px 6px;
   pointer-events: all;
 }
 /* ── Bottom Nav Tab ── */
@@ -140,11 +140,11 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  border-radius: var(--r-md);
+  border-radius: 16px;
   transition: all var(--t-base) var(--ease-smooth);
   -webkit-tap-highlight-color: transparent;
   flex: 1;
-  color: #AEAEA8;
+  color: #7B8A82;
 }
 .nav-tab-icon {
   width: 24px;
@@ -157,21 +157,21 @@
 .nav-tab-icon svg {
   width: 24px;
   height: 24px;
-  stroke: #AEAEA8;
+  stroke: #7B8A82;
   transition: stroke 0.2s ease;
 }
 .nav-tab-label {
   font-size: 10px;
   font-weight: 600;
-  color: #AEAEA8;
+  color: #7B8A82;
   transition: color var(--t-base);
   letter-spacing: 0.1px;
   white-space: nowrap;
 }
 /* Active state: green icon + green label */
-.nav-tab.active { color: #5C9E7A; }
-.nav-tab.active .nav-tab-icon svg { stroke: #5C9E7A; }
-.nav-tab.active .nav-tab-label { color: #5C9E7A; font-weight: 700; }
+.nav-tab.active { color: #2F6B4F; }
+.nav-tab.active .nav-tab-icon svg { stroke: #2F6B4F; }
+.nav-tab.active .nav-tab-label { color: #2F6B4F; font-weight: 700; }
 .nav-tab.active .nav-tab-icon { transform: translateY(-1px); }
 .nav-tab:active { transform: scale(0.92); }
 

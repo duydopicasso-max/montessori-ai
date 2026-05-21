@@ -49,8 +49,8 @@ const NAV_TABS = [
   { id: 'chat',      IconComponent: LeafIcon,      label: 'Trợ lý' },
   { id: 'growth',    IconComponent: GrowthIcon,    label: 'Tăng trưởng' },
   { id: 'community', IconComponent: CommunityIcon, label: 'Cộng đồng' },
-  { id: 'baby',      IconComponent: ProfileIcon,   label: 'Hồ sơ' },
   { id: 'moments',   IconComponent: MomentsIcon,   label: 'Khoảnh khắc' },
+  { id: 'baby',      IconComponent: ProfileIcon,   label: 'Hồ sơ' },
 ];
 
 export default function App() {
@@ -144,25 +144,27 @@ export default function App() {
     <div className="app-shell">
 
       {/* ── TOP BAR (mobile only) ── */}
-      <div className="top-bar">
-        <div className="top-bar-brand">
-          <div className="top-bar-icon">🌿</div>
-          <div>
-            <div className="top-bar-name">Montessori AI</div>
-            <div className="top-bar-sub">Trợ lý mẹ & bé</div>
+      {activeTab !== 'chat' && (
+        <div className="top-bar">
+          <div className="top-bar-brand">
+            <div className="top-bar-icon">🌿</div>
+            <div>
+              <div className="top-bar-name">Montessori AI</div>
+              <div className="top-bar-sub">Trợ lý mẹ & bé</div>
+            </div>
+          </div>
+          <div className="top-bar-profile">
+            <div className="profile-chip">
+              {authUser.photoURL
+                ? <img src={authUser.photoURL} alt="avatar" className="profile-avatar" />
+                : <div className="profile-avatar-emoji">{profile.status === 'pregnant' ? '🤰' : '👩‍🍼'}</div>
+              }
+              <div className="profile-name">Mẹ {momName}</div>
+            </div>
+            <button className="logout-icon-btn" onClick={handleLogout} title="Đăng xuất">🚪</button>
           </div>
         </div>
-        <div className="top-bar-profile">
-          <div className="profile-chip">
-            {authUser.photoURL
-              ? <img src={authUser.photoURL} alt="avatar" className="profile-avatar" />
-              : <div className="profile-avatar-emoji">{profile.status === 'pregnant' ? '🤰' : '👩‍🍼'}</div>
-            }
-            <div className="profile-name">Mẹ {momName}</div>
-          </div>
-          <button className="logout-icon-btn" onClick={handleLogout} title="Đăng xuất">🚪</button>
-        </div>
-      </div>
+      )}
 
       {/* ── SIDEBAR (desktop) ── */}
       <aside className="sidebar-desktop">

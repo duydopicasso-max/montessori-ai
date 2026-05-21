@@ -31,6 +31,17 @@ export const LeafIcon = ({ size = 24, strokeWidth = 1.8, className = '' }) => (
   </svg>
 );
 
+export const SparkleIcon = ({ size = 24, strokeWidth = 1.8, className = '' }) => (
+  <svg
+    width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke="currentColor"
+    strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M12 2Q12 12 2 12Q12 12 12 22Q12 12 22 12Q12 12 12 2Z" />
+  </svg>
+);
+
 export const ChatBubbleIcon = ({ size = 24, strokeWidth = 1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>

@@ -1078,10 +1078,13 @@
 .tracker-item-card:active { transform: scale(0.97); }
 
 /* Light pastel sage green */
-.tracker-item-card.mint-light { background: #BEE0CC; }
+.tracker-item-card.mint-light { background: #E8F4EA; }
 
 /* Light pastel salmon peach */
 .tracker-item-card.peach-light { background: #F4B0A6; }
+
+/* Light pastel pink */
+.tracker-item-card.pink-light { background: #F9E1DD; }
 
 /* SVG outline icon container — sized for 24x24 viewBox */
 .tracker-card-icon {
@@ -1285,35 +1288,35 @@
    ══════════════════════════════════════ */
 .floating-assistant-fab {
   position: fixed;
-  bottom: 90px;        /* above bottom nav bar */
+  bottom: 104px;        /* cách Bottom Pill Nav tối thiểu 24px để không đè dữ liệu */
   right: 20px;
   z-index: 200;
-  width: 56px;
-  height: 56px;
+  width: 48px;         /* Nhỏ gọn hơn */
+  height: 48px;
   border-radius: 50%;
-  background: #5C9E7A;
+  background: #2F6B4F; /* Màu xanh thương hiệu đậm premium */
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow:
-    0 8px 28px rgba(92, 158, 122, 0.45),
-    0 3px 10px rgba(0, 0, 0, 0.12);
+    0 8px 24px rgba(47, 107, 79, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.08);
   transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275),
               box-shadow 0.2s ease;
   position: fixed; /* re-declare for z-index context */
 }
 .floating-assistant-fab svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
 }
 .floating-assistant-fab:hover {
   transform: scale(1.1) translateY(-2px);
   box-shadow:
-    0 12px 36px rgba(92, 158, 122, 0.5),
-    0 4px 14px rgba(0, 0, 0, 0.14);
+    0 12px 32px rgba(47, 107, 79, 0.42),
+    0 4px 12px rgba(0, 0, 0, 0.1);
 }
 .floating-assistant-fab:active {
   transform: scale(0.93);
@@ -1321,13 +1324,13 @@
 /* Green online dot indicator */
 .floating-fab-dot {
   position: absolute;
-  top: 9px;
-  right: 9px;
-  width: 11px;
-  height: 11px;
+  top: 3px;
+  right: 3px;
+  width: 10px;
+  height: 10px;
   background: #4CAF50;
   border-radius: 50%;
-  border: 2px solid #5C9E7A;
+  border: 1.8px solid #2F6B4F;
   animation: green-dot-pulse 2s ease-in-out infinite;
 }
 
@@ -2530,4 +2533,504 @@
   font-weight: 700;
   color: #1D2B1F;
 }
+
+/* ══════════════════════════════════════
+   📱 iOS-STYLE PREMIUM SINGLE HEADER
+   ══════════════════════════════════════ */
+.premium-ios-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 20px 16px;
+  background: #F7FAF8;
+  border-bottom: none;
+  flex-shrink: 0;
+}
+
+.header-left-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.greeting-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7B8A82;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.baby-today-heading {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: #1F2D26;
+  margin: 0;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.baby-age-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7B8A82;
+  margin-top: 4px;
+}
+
+.baby-age-badge {
+  background: #E8F4EA;
+  color: #2F6B4F;
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.meta-dot {
+  color: #A8D5BA;
+  font-weight: bold;
+}
+
+.update-time-label {
+  color: #7B8A82;
+}
+
+.header-right-profile {
+  display: flex;
+  align-items: center;
+}
+
+.mother-avatar-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: white;
+  border: 1.5px solid white;
+  box-shadow: 0 4px 12px rgba(47, 107, 79, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.mother-avatar-circle:active {
+  transform: scale(0.95);
+}
+
+.mother-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mother-avatar-emoji-wrap {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ══════════════════════════════════════
+   🌿 DAILY MONTESSORI RECOMMENDATION CARD
+   ══════════════════════════════════════ */
+.montessori-daily-suggestion-card {
+  background: linear-gradient(135deg, #F4FAF6 0%, #E9F5EE 100%);
+  border-radius: 30px;
+  padding: 24px;
+  margin: 12px 16px 20px;
+  box-shadow: 0 10px 24px rgba(47, 107, 79, 0.04), 0 2px 6px rgba(0, 0, 0, 0.01);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 1.5px solid rgba(74, 166, 114, 0.16);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.montessori-daily-suggestion-card::after {
+  content: '';
+  position: absolute;
+  right: -15px;
+  bottom: -20px;
+  width: 110px;
+  height: 110px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232F6B4F' stroke-width='0.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z'/%3E%3Cpath d='M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.04;
+  pointer-events: none;
+  transition: transform 0.6s ease;
+}
+
+.montessori-daily-suggestion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(47, 107, 79, 0.07), 0 4px 12px rgba(0, 0, 0, 0.015);
+  border-color: rgba(74, 166, 114, 0.26);
+}
+
+.montessori-daily-suggestion-card:hover::after {
+  transform: scale(1.08) rotate(-5deg);
+}
+
+.suggestion-card-floating-sparkle {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: rgba(74, 166, 114, 0.35);
+  animation: sparkle-float 3s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes sparkle-float {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-4px) rotate(15deg) scale(1.1);
+    opacity: 0.75;
+  }
+}
+
+.suggestion-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.suggestion-card-icon-wrap {
+  width: 38px;
+  height: 38px;
+  background: rgba(47, 107, 79, 0.07);
+  color: #2F6B4F;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.montessori-daily-suggestion-card:hover .suggestion-card-icon-wrap {
+  transform: rotate(15deg) scale(1.05);
+  background: rgba(47, 107, 79, 0.12);
+}
+
+.suggestion-header-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.suggestion-ai-badge {
+  font-family: 'Outfit', sans-serif;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #2F6B4F;
+  background: rgba(47, 107, 79, 0.08);
+  padding: 3px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: inline-block;
+  align-self: flex-start;
+}
+
+.suggestion-card-header h3 {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #2F6B4F;
+  margin: 0;
+}
+
+.suggestion-card-body {
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #1A3022;
+  margin: 3px 0;
+  font-weight: 600;
+}
+
+.suggestion-card-metadata {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #4A6B56;
+  margin-top: -2px;
+}
+
+.suggestion-metadata-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.suggestion-metadata-dot {
+  color: rgba(74, 107, 86, 0.35);
+  font-weight: 700;
+  padding: 0 2px;
+}
+
+.suggestion-card-action-btn {
+  background: #2F6B4F;
+  color: white;
+  border: none;
+  padding: 11px 22px;
+  border-radius: 100px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(47, 107, 79, 0.12);
+  font-family: 'Nunito', sans-serif;
+  margin-top: 2px;
+}
+
+.suggestion-card-action-btn:hover {
+  background: #23523C;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(47, 107, 79, 0.2);
+}
+
+.suggestion-card-action-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* ══════════════════════════════════════
+   ⚠️ MISSING PROFILE WARNING CARD
+   ══════════════════════════════════════ */
+.missing-profile-warning-card {
+  background: #FDF4E2;
+  border-radius: 20px;
+  padding: 16px 20px;
+  margin: 8px 16px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(243, 156, 18, 0.15);
+  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.05);
+}
+
+.warning-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.warning-text-wrap h4 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #A0522D;
+  margin: 0 0 4px;
+}
+
+.warning-text-wrap p {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #7F8C8D;
+  margin: 0;
+}
+
+/* ══════════════════════════════════════
+   ⏰ TIMELINE REFINEMENTS
+   ══════════════════════════════════════ */
+.timeline-empty-state-box h4 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1F2D26;
+  margin: 8px 0 2px;
+}
+
+.timeline-first-action-btn {
+  background: #2F6B4F;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 12px;
+  box-shadow: 0 4px 12px rgba(47, 107, 79, 0.2);
+  font-family: 'Nunito', sans-serif;
+}
+
+.timeline-first-action-btn:hover {
+  background: #25543D;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(47, 107, 79, 0.28);
+}
+
+.timeline-first-action-btn:active {
+  transform: translateY(0) scale(0.96);
+}
+
+/* ══════════════════════════════════════
+   🌀 SKELETON LOADING & SHIMMER SYSTEM
+   ══════════════════════════════════════ */
+.screen-loading-state {
+  padding-bottom: 120px;
+  background: #F7FAF8;
+  overflow: hidden;
+  height: 100vh;
+}
+
+@keyframes shimmer-pulse {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #F0F2F1 25%, #E6E8E7 50%, #F0F2F1 75%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.5s infinite linear;
+}
+
+.skeleton-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #F0F2F1 25%, #E6E8E7 50%, #F0F2F1 75%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.5s infinite linear;
+}
+
+.skeleton-title {
+  width: 140px;
+  height: 20px;
+  margin-bottom: 8px;
+}
+
+.skeleton-subtitle {
+  width: 180px;
+  height: 16px;
+  margin-bottom: 6px;
+}
+
+.skeleton-age {
+  width: 90px;
+  height: 12px;
+}
+
+.skeleton-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #F0F2F1 25%, #E6E8E7 50%, #F0F2F1 75%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.5s infinite linear;
+  flex-shrink: 0;
+}
+
+.skeleton-paragraph-1 {
+  width: 100%;
+  height: 14px;
+  margin-bottom: 8px;
+}
+
+.skeleton-paragraph-2 {
+  width: 85%;
+  height: 14px;
+  margin-bottom: 12px;
+}
+
+.skeleton-button {
+  width: 110px;
+  height: 32px;
+  border-radius: 100px;
+  background: linear-gradient(90deg, #F0F2F1 25%, #E6E8E7 50%, #F0F2F1 75%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.5s infinite linear;
+}
+
+.skeleton-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #F0F2F1 25%, #E6E8E7 50%, #F0F2F1 75%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.5s infinite linear;
+  margin-bottom: 8px;
+}
+
+.skeleton-status {
+  width: 100px;
+  height: 12px;
+  margin-bottom: 12px;
+}
+
+.skeleton-section-title {
+  width: 160px;
+  height: 22px;
+  margin: 16px 20px;
+}
+
+.skeleton-timeline-path {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 20px;
+}
+
+.skeleton-timeline-node {
+  display: grid;
+  grid-template-columns: 72px 44px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.skeleton-time {
+  width: 50px;
+  height: 12px;
+  justify-self: end;
+  background: linear-gradient(90deg, #F0F2F1 25%, #E6E8E7 50%, #F0F2F1 75%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.5s infinite linear;
+  border-radius: 4px;
+}
+
+.skeleton-node-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #F0F2F1 25%, #E6E8E7 50%, #F0F2F1 75%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.5s infinite linear;
+  justify-self: center;
+}
+
+.skeleton-details {
+  height: 48px;
+  background: linear-gradient(90deg, #F0F2F1 25%, #E6E8E7 50%, #F0F2F1 75%);
+  background-size: 200% 100%;
+  animation: shimmer-pulse 1.5s infinite linear;
+  border-radius: 16px;
+}
+
 

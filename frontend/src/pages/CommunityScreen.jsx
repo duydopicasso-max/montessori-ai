@@ -129,7 +129,6 @@ export default function CommunityScreen({ profile }) {
 
   const handleUserClick = (msg) => {
     if (msg.senderId === user.uid) return; // Không hiển thị profile của chính mình
-    if (activeRoom?.isPrivate) return; 
 
     if (msg.isAnon) {
       setSelectedProfile({
@@ -283,6 +282,7 @@ export default function CommunityScreen({ profile }) {
                           name: otherUser.name,
                           emoji: '💬',
                           isPrivate: true,
+                          otherUid,
                           otherUser
                         });
                       }}>
@@ -522,9 +522,26 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
     <div className="chat-room-screen">
       <header className="room-header">
         <button className="back-btn" onClick={onBack}>⬅</button>
-        <div className="room-header-info">
-          <h2 className="room-header-title">{room.name}</h2>
-          <span className="room-online-status">🟢 Đang hoạt động</span>
+        <div 
+          className="room-header-info" 
+          style={{ cursor: room.isPrivate ? 'pointer' : 'default' }}
+          onClick={room.isPrivate ? () => {
+            onUserClick?.({
+              senderId: room.otherUid,
+              senderName: room.otherUser.name,
+              senderPhoto: room.otherUser.photo,
+              senderBaby: room.otherUser.baby,
+              isAnon: false
+            });
+          } : undefined}
+        >
+          <div className="room-header-profile-trigger" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {room.isPrivate && <Avatar name={room.otherUser.name} photo={room.otherUser.photo} size={36} />}
+            <div className="room-header-text-col" style={{ display: 'flex', flexDirection: 'column' }}>
+              <h2 className="room-header-title">{room.name}</h2>
+              <span className="room-online-status">🟢 Đang hoạt động</span>
+            </div>
+          </div>
         </div>
       </header>
 
