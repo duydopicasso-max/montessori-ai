@@ -130,48 +130,50 @@
   padding: 8px 4px;
   pointer-events: all;
 }
+/* ── Bottom Nav Tab ── */
 .nav-tab {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 8px 14px;
+  padding: 6px 10px;
   border: none;
   background: transparent;
   cursor: pointer;
   border-radius: var(--r-md);
   transition: all var(--t-base) var(--ease-smooth);
   -webkit-tap-highlight-color: transparent;
-  min-width: 58px;
-  position: relative;
+  flex: 1;
+  color: #AEAEA8;
 }
 .nav-tab-icon {
-  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: transform var(--t-base) var(--ease-soft);
-  line-height: 1;
+}
+.nav-tab-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: #AEAEA8;
+  transition: stroke 0.2s ease;
 }
 .nav-tab-label {
   font-size: 10px;
-  font-weight: 700;
-  color: var(--text-light);
+  font-weight: 600;
+  color: #AEAEA8;
   transition: color var(--t-base);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
   white-space: nowrap;
 }
-.nav-tab.active .nav-tab-icon { transform: translateY(-2px); }
-.nav-tab.active .nav-tab-label { color: var(--sage); }
-.nav-tab.active::before {
-  content: '';
-  position: absolute;
-  top: 4px; left: 50%;
-  transform: translateX(-50%);
-  width: 28px; height: 28px;
-  background: var(--mint-pale);
-  border-radius: var(--r-sm);
-  z-index: -1;
-  animation: scaleIn 0.2s var(--ease-soft);
-}
-.nav-tab:hover { background: var(--mint-pale); }
+/* Active state: green icon + green label */
+.nav-tab.active { color: #5C9E7A; }
+.nav-tab.active .nav-tab-icon svg { stroke: #5C9E7A; }
+.nav-tab.active .nav-tab-label { color: #5C9E7A; font-weight: 700; }
+.nav-tab.active .nav-tab-icon { transform: translateY(-1px); }
+.nav-tab:active { transform: scale(0.92); }
 
 /* mini-photo util */
 .mini-photo {

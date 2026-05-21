@@ -10,14 +10,24 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import './CommunityScreen.css';
+import { PregnancyIcon, FoodBowlIcon, SleepMoonIcon, HealthHeartIcon, FamilyIcon, ChatBubbleIcon } from '../icons.jsx';
+
+/* Room ID → SVG icon map */
+const ROOM_ICON_MAP = {
+  pregnancy: PregnancyIcon,
+  weaning:   FoodBowlIcon,
+  sleep:     SleepMoonIcon,
+  health:    HealthHeartIcon,
+  family:    FamilyIcon,
+};
 
 /* ── Constants ── */
 const CHAT_ROOMS = [
-  { id: 'pregnancy', name: 'Góc Mẹ Bầu', emoji: '🤰', desc: 'Hành trình mang thai, thai giáo, chuẩn bị đón bé' },
-  { id: 'weaning',   name: 'Hành Trình Ăn Dặm', emoji: '🥣', desc: 'Thực đơn, phương pháp BLW, kiểu Nhật, truyền thống' },
-  { id: 'sleep',     name: 'Rèn Ngủ Xuyên Đêm', emoji: '💤', desc: 'EASY, luyện ngủ tự lập, tuần khủng hoảng (WW)' },
-  { id: 'health',    name: 'Sức Khoẻ Mẹ & Bé', emoji: '🏥', desc: 'Kinh nghiệm chăm sóc bé ốm, phục hồi sau sinh' },
-  { id: 'family',    name: 'Chuyện Gia Đình', emoji: '👨‍👩‍👧', desc: 'Tâm sự chuyện vợ chồng, bỉm sữa, xả stress' },
+  { id: 'pregnancy', name: 'Góc Mẹ Bầu',        desc: 'Hành trình mang thai, thai giáo, chuẩn bị đón bé' },
+  { id: 'weaning',   name: 'Hành Trình Ăn Dặm', desc: 'Thực đơn, phương pháp BLW, kiểu Nhật, truyền thống' },
+  { id: 'sleep',     name: 'Rèn Ngủ Xuyên Đêm', desc: 'EASY, luyện ngủ tự lập, tuần khủng hoảng (WW)' },
+  { id: 'health',    name: 'Sức Khoẻ Mẹ & Bé', desc: 'Kinh nghiệm chăm sóc bé ốm, phục hồi sau sinh' },
+  { id: 'family',    name: 'Chuyện Gia Đình',    desc: 'Tâm sự chuyện vợ chồng, bỉm sữa, xả stress' },
 ];
 
 const ANIMAL_NAMES = ['Thỏ Ngọc', 'Gấu Misa', 'Cún Con', 'Mèo Ú', 'Sóc Nhỏ', 'Cáo Nâu', 'Hươu Cao Cổ', 'Chim Cánh Cụt'];
@@ -118,8 +128,17 @@ export default function CommunityScreen({ profile }) {
   };
 
   const handleUserClick = (msg) => {
-    if (msg.isAnon || msg.senderId === user.uid) return;
+    if (msg.senderId === user.uid) return; // Không hiển thị profile của chính mình
     if (activeRoom?.isPrivate) return; 
+
+    if (msg.isAnon) {
+      setSelectedProfile({
+        isAnon: true,
+        name: msg.senderName,
+        photo: msg.senderPhoto
+      });
+      return;
+    }
 
     setSelectedProfile({
       uid: msg.senderId,
@@ -145,17 +164,17 @@ export default function CommunityScreen({ profile }) {
     <div className="community-screen">
       <header className="community-header">
         <div>
-          <h1 className="community-title">👩‍👩‍👧 Cộng đồng</h1>
+          <h1 className="community-title">Cộng đồng</h1>
           <p className="community-sub">Chia sẻ · Đồng hành · Chữa lành</p>
         </div>
       </header>
 
       <div className="community-tabs">
         <button className={`comm-tab ${tab === 'rooms' ? 'active' : ''}`} onClick={() => setTab('rooms')}>
-          💬 Phòng Chat
+          Phòng Chat
         </button>
         <button className={`comm-tab ${tab === 'inbox' ? 'active' : ''}`} onClick={() => setTab('inbox')}>
-          📬 Hộp Thư
+          Hộp Thư
           {friendRequests.length > 0 && <span className="tab-badge">{friendRequests.length}</span>}
         </button>
       </div>
@@ -167,16 +186,21 @@ export default function CommunityScreen({ profile }) {
               <h2 className="rooms-section-title">Phòng Cố Định</h2>
             </div>
             <div className="rooms-list">
-              {CHAT_ROOMS.map(r => (
-                <div key={r.id} className="room-card" onClick={() => setActiveRoom(r)}>
-                  <div className="room-icon">{r.emoji}</div>
-                  <div className="room-info">
-                    <h3 className="room-name">{r.name}</h3>
-                    <p className="room-desc">{r.desc}</p>
+              {CHAT_ROOMS.map(r => {
+                const RoomIcon = ROOM_ICON_MAP[r.id];
+                return (
+                  <div key={r.id} className="room-card" onClick={() => setActiveRoom(r)}>
+                    <div className="room-icon">
+                      {RoomIcon ? <RoomIcon size={28} strokeWidth={1.8} /> : null}
+                    </div>
+                    <div className="room-info">
+                      <h3 className="room-name">{r.name}</h3>
+                      <p className="room-desc">{r.desc}</p>
+                    </div>
+                    <div className="room-arrow">➡</div>
                   </div>
-                  <div className="room-arrow">➔</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="rooms-section-header custom-header">
@@ -273,10 +297,14 @@ export default function CommunityScreen({ profile }) {
       )}
 
       {selectedProfile && (
-        <UserProfileModal 
+        <MemberProfileSheet 
           profile={selectedProfile} 
           onClose={() => setSelectedProfile(null)}
           currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
+          onStartPrivateChat={(chat) => {
+            setActiveRoom(chat);
+            setSelectedProfile(null);
+          }}
         />
       )}
     </div>
@@ -358,7 +386,7 @@ function CreateRoomModal({ onClose, currentUser }) {
 /* ════════════════════════════════════════════════
    CHAT ROOM VIEW
 ════════════════════════════════════════════════ */
-function ChatRoomView({ room, onBack, currentUser }) {
+function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [isAnon, setIsAnon] = useState(false);
@@ -482,7 +510,7 @@ function ChatRoomView({ room, onBack, currentUser }) {
       <header className="room-header">
         <button className="back-btn" onClick={onBack}>⬅</button>
         <div className="room-header-info">
-          <h2 className="room-header-title">{room.emoji} {room.name}</h2>
+          <h2 className="room-header-title">{room.name}</h2>
           <span className="room-online-status">🟢 Đang hoạt động</span>
         </div>
       </header>
@@ -490,7 +518,7 @@ function ChatRoomView({ room, onBack, currentUser }) {
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="chat-empty">
-            <span>{room.emoji}</span>
+            <ChatBubbleIcon size={32} strokeWidth={1.6} />
             <p>Hãy là người đầu tiên gửi tin nhắn vào phòng này!</p>
           </div>
         )}
@@ -503,7 +531,11 @@ function ChatRoomView({ room, onBack, currentUser }) {
             <div key={msg.id} className={`chat-bubble-wrap ${isMe ? 'is-me' : 'is-other'}`}>
               <div className="chat-bubble-row">
                 {!isMe && (
-                  <div className="chat-avatar-wrap">
+                  <div 
+                    className="chat-avatar-wrap" 
+                    style={{ cursor: showAvatar ? 'pointer' : 'default' }}
+                    onClick={showAvatar ? () => onUserClick?.(msg) : undefined}
+                  >
                     {showAvatar ? (
                       msg.isAnon ? (
                         <div className="chat-anon-avatar">{msg.senderPhoto}</div>
@@ -619,27 +651,51 @@ function Avatar({ name, photo, size }) {
     );
 }
 
-function UserProfileModal({ profile, onClose, currentUser }) {
+function MemberProfileSheet({ profile, onClose, currentUser, onStartPrivateChat }) {
   const [status, setStatus] = useState('none'); // 'none', 'pending', 'friends'
-  const [loading, setLoading] = useState(true);
+  const [existingChat, setExistingChat] = useState(null);
+  const [loading, setLoading] = useState(!profile.isAnon);
+  const [showFullProfile, setShowFullProfile] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
 
   useEffect(() => {
+    if (profile.isAnon) return;
     const checkStatus = async () => {
       try {
-        const chatsSnap = await getDocs(query(collection(db, 'privateChats')));
+        const qChats = query(collection(db, 'privateChats'), where('participants', 'array-contains', currentUser.uid));
+        const chatsSnap = await getDocs(qChats);
+        let foundChat = null;
         const isFriend = chatsSnap.docs.some(d => {
-          const p = d.data().participants;
-          return p?.includes(currentUser.uid) && p?.includes(profile.uid);
-        });
-        if (isFriend) { setStatus('friends'); setLoading(false); return; }
-
-        const reqsSnap = await getDocs(query(collection(db, 'friendRequests')));
-        const isPending = reqsSnap.docs.some(d => {
           const data = d.data();
-          return (data.senderId === currentUser.uid && data.receiverId === profile.uid && data.status === 'pending') ||
-                 (data.senderId === profile.uid && data.receiverId === currentUser.uid && data.status === 'pending');
+          const matches = data.participants?.includes(profile.uid);
+          if (matches) {
+            const otherUid = data.participants.find(id => id !== currentUser.uid);
+            const otherUser = data.participantData[otherUid];
+            foundChat = {
+              id: d.id,
+              name: otherUser.name,
+              emoji: '💬',
+              isPrivate: true,
+              otherUser
+            };
+          }
+          return matches;
         });
-        if (isPending) setStatus('pending');
+
+        if (isFriend) {
+          setStatus('friends');
+          setExistingChat(foundChat);
+          setLoading(false);
+          return;
+        }
+
+        const qSent = query(collection(db, 'friendRequests'), where('senderId', '==', currentUser.uid), where('receiverId', '==', profile.uid), where('status', '==', 'pending'));
+        const qRecv = query(collection(db, 'friendRequests'), where('senderId', '==', profile.uid), where('receiverId', '==', currentUser.uid), where('status', '==', 'pending'));
+        const [sentSnap, recvSnap] = await Promise.all([getDocs(qSent), getDocs(qRecv)]);
+        
+        if (!sentSnap.empty || !recvSnap.empty) {
+          setStatus('pending');
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -647,40 +703,132 @@ function UserProfileModal({ profile, onClose, currentUser }) {
       }
     };
     checkStatus();
-  }, [profile.uid, currentUser.uid]);
+  }, [profile.uid, currentUser.uid, profile.isAnon]);
 
   const sendRequest = async () => {
-    setStatus('pending');
-    await addDoc(collection(db, 'friendRequests'), {
-      senderId: currentUser.uid,
-      senderName: currentUser.name,
-      senderPhoto: currentUser.photo,
-      senderBaby: currentUser.baby,
-      receiverId: profile.uid,
-      status: 'pending',
-      createdAt: serverTimestamp()
-    });
-    alert('Đã gửi yêu cầu trò chuyện!');
-    onClose();
+    if (sendingRequest) return;
+    setSendingRequest(true);
+    try {
+      await addDoc(collection(db, 'friendRequests'), {
+        senderId: currentUser.uid,
+        senderName: currentUser.name,
+        senderPhoto: currentUser.photo,
+        senderBaby: currentUser.baby,
+        receiverId: profile.uid,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      setStatus('pending');
+      alert('Đã gửi yêu cầu kết bạn!');
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+  const handlePrivateChat = async () => {
+    if (status === 'friends' && existingChat) {
+      onStartPrivateChat(existingChat);
+    } else if (status === 'pending') {
+      alert('Yêu cầu kết bạn đã được gửi trước đó. Cùng chờ đối phương chấp nhận tại Hộp thư nhé! 🌸');
+    } else {
+      await sendRequest();
+      alert('Chúng tôi đã gửi lời mời kết bạn giúp bạn. Khi đối phương chấp nhận, hộp thư sẽ tự động mở phòng chat riêng! 💌');
+    }
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="profile-modal-card" onClick={e => e.stopPropagation()}>
-        <button className="sheet-close" style={{ position: 'absolute', top: 16, right: 16 }} onClick={onClose}>✕</button>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 16 }}>
-          <Avatar name={profile.name} photo={profile.photo} size={80} />
-          <h3 style={{ fontSize: 20, fontWeight: 800, marginTop: 12, marginBottom: 4 }}>{profile.name}</h3>
-          {profile.baby && <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Mẹ của {profile.baby}</p>}
-        </div>
-        
-        <div className="profile-actions" style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
-          {loading ? <p style={{ fontSize: 13, color: 'var(--text-light)' }}>⏳ Đang kiểm tra...</p> : (
-            status === 'friends' ? <button className="submit-post-btn" style={{ width: '100%', background: 'var(--sage)' }} disabled>Đã là bạn bè</button> :
-            status === 'pending' ? <button className="submit-post-btn" style={{ width: '100%', background: 'var(--cream-dark)', color: 'var(--text-muted)' }} disabled>Đang chờ xác nhận</button> :
-            <button className="submit-post-btn" style={{ width: '100%' }} onClick={sendRequest}>Gửi yêu cầu trò chuyện</button>
-          )}
-        </div>
+      <div className="member-profile-sheet" onClick={e => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <button className="sheet-close-btn" onClick={onClose}>✕</button>
+
+        {profile.isAnon ? (
+          <div className="anon-profile-container">
+            <div className="anon-avatar-large">{profile.photo}</div>
+            <h3 className="member-name">{profile.name}</h3>
+            <p className="member-role">Thành viên ẩn danh</p>
+            <div className="anon-warning-box">
+              <span className="anon-warning-icon">👻</span>
+              <p className="anon-warning-text">
+                Thành viên này đang trò chuyện ẩn danh. Hồ sơ của họ được bảo mật để tôn trọng sự riêng tư.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="member-profile-container">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Avatar name={profile.name} photo={profile.photo} size={80} />
+              <h3 className="member-name">{profile.name}</h3>
+              <p className="member-role">
+                {profile.baby ? `Mẹ của ${profile.baby}` : 'Thành viên Montessori AI'}
+              </p>
+            </div>
+
+            {showFullProfile && (
+              <div className="montessori-profile-card">
+                <div className="card-section">
+                  <h4 className="section-title">🌿 Thông tin Mẹ</h4>
+                  <div className="section-item">
+                    <span className="item-label">Phương châm:</span>
+                    <span className="item-val">Nuôi dạy con bằng tình yêu và sự tôn trọng.</span>
+                  </div>
+                  <div className="section-item">
+                    <span className="item-label">Phương pháp:</span>
+                    <span className="item-val">Montessori & Easy</span>
+                  </div>
+                </div>
+
+                <div className="card-section" style={{ marginTop: 12 }}>
+                  <h4 className="section-title">👶 Thông tin Bé</h4>
+                  <div className="section-item">
+                    <span className="item-label">Bé cưng:</span>
+                    <span className="item-val">{profile.baby || 'Bé yêu'}</span>
+                  </div>
+                  <div className="section-item">
+                    <span className="item-label">Độ tuổi:</span>
+                    <span className="item-val">12 tháng tuổi (Dự đoán)</span>
+                  </div>
+                  <div className="section-item">
+                    <span className="item-label">Sở thích:</span>
+                    <span className="item-val">Chơi đồ chơi gỗ tự nhiên, vẽ tranh màu nước, khám phá thiên nhiên.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="sheet-actions">
+              {loading ? (
+                <div className="loading-status">⏳ Đang tải trạng thái...</div>
+              ) : (
+                <div className="actions-grid">
+                  {status === 'friends' ? (
+                    <button className="action-btn friend-btn status-friends" disabled>
+                      ✓ Bạn bè
+                    </button>
+                  ) : status === 'pending' ? (
+                    <button className="action-btn friend-btn status-pending" disabled>
+                      Đang chờ xác nhận
+                    </button>
+                  ) : (
+                    <button className="action-btn friend-btn" onClick={sendRequest} disabled={sendingRequest}>
+                      {sendingRequest ? '⏳...' : 'Kết bạn'}
+                    </button>
+                  )}
+
+                  <button className="action-btn chat-btn" onClick={handlePrivateChat}>
+                    Nhắn tin riêng
+                  </button>
+
+                  <button className="action-btn profile-btn" onClick={() => setShowFullProfile(!showFullProfile)}>
+                    {showFullProfile ? 'Ẩn hồ sơ' : 'Xem hồ sơ'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,919 @@
+/**
+ * TrackerScreen.css
+ * Phong cách chủ đạo: Soft Wellness Minimalism (Tối giản thư giãn)
+ * Tone màu chính: Xanh xô thơm (Sage #5C9E7A), Ngà ấm (#FAFAF7), Cát mịn (#EAE3DB)
+ * Tuyệt đối tuân thủ quy tắc màu sắc thương hiệu: Tránh các sắc độ tím hoặc hồng cánh sen.
+ */
+
+/* Container & Layout */
+.tracker-screen {
+  padding: 24px;
+  background: linear-gradient(180deg, #FAFAF7 0%, #F3F6F4 100%);
+  min-height: 100vh;
+  color: #2E3E33;
+  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header Banner */
+.tracker-header-banner {
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.header-badge {
+  display: inline-block;
+  background: rgba(92, 158, 122, 0.12);
+  color: #3B7252;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.tracker-main-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #1F2D24;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.tracker-sub-info {
+  font-size: 0.95rem;
+  color: #627267;
+  margin: 0;
+}
+
+.tracker-sub-info b {
+  color: #3B7252;
+}
+
+/* Pivot Navigation */
+.tracker-pivot-nav {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+  background: rgba(92, 158, 122, 0.06);
+  padding: 6px;
+  border-radius: 12px;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.pivot-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #5C6E62;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pivot-tab-btn:hover {
+  color: #1F2D24;
+  background: rgba(92, 158, 122, 0.06);
+}
+
+.pivot-tab-btn.active {
+  background: #FFFFFF;
+  color: #3B7252;
+  box-shadow: 0 4px 12px rgba(92, 158, 122, 0.08);
+}
+
+/* Grid Container */
+.tracker-container-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 28px;
+  align-items: start;
+}
+
+/* Mobile responsive split */
+@media (max-width: 900px) {
+  .tracker-container-grid {
+    grid-template-columns: 1fr;
+  }
+  .tracker-pivot-nav {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* Form Side Cards */
+.form-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(92, 158, 122, 0.03);
+  border: 1px solid rgba(92, 158, 122, 0.08);
+  margin-bottom: 24px;
+  transition: transform 0.3s ease;
+}
+
+.form-card-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-form-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(92, 158, 122, 0.06);
+  padding-bottom: 16px;
+}
+
+.card-form-icon {
+  font-size: 2rem;
+  background: rgba(92, 158, 122, 0.08);
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+}
+
+.card-form-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1F2D24;
+}
+
+.card-form-header p {
+  margin: 2px 0 0 0;
+  font-size: 0.85rem;
+  color: #7A8B80;
+}
+
+/* Standard Inputs & Groups */
+.form-group-item {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group-item label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #435447;
+}
+
+.form-group-item input[type="text"],
+.form-group-item textarea,
+.wellness-select {
+  background: #FAFAF8;
+  border: 1px solid rgba(92, 158, 122, 0.18);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  color: #2E3E33;
+  font-family: inherit;
+  transition: all 0.25s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-group-item input[type="text"]:focus,
+.form-group-item textarea:focus,
+.wellness-select:focus {
+  background: #FFFFFF;
+  border-color: #5C9E7A;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(92, 158, 122, 0.12);
+}
+
+.form-grid-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.form-grid-inputs label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #435447;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.form-grid-inputs input {
+  width: 100%;
+  background: #FAFAF8;
+  border: 1px solid rgba(92, 158, 122, 0.18);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+/* Fetal Kicks Wellness Counter Box */
+.kick-counter-wellness-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.kick-timer-display {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #5C6E62;
+  background: rgba(92, 158, 122, 0.06);
+  padding: 6px 16px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+}
+
+.kick-count-huge-number {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #3B7252;
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.kick-count-huge-number span {
+  font-size: 0.9rem;
+  color: #7A8B80;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.kick-primary-tap-btn {
+  background: linear-gradient(135deg, #78B291 0%, #5C9E7A 100%);
+  color: #FFFFFF;
+  border: none;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(92, 158, 122, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  user-select: none;
+  margin-bottom: 28px;
+}
+
+.kick-primary-tap-btn:active {
+  transform: scale(0.92);
+  box-shadow: 0 4px 10px rgba(92, 158, 122, 0.2);
+}
+
+.kick-controls-wellness {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  width: 100%;
+  justify-content: center;
+}
+
+.kick-toggle-timer {
+  background: rgba(92, 158, 122, 0.1);
+  color: #3B7252;
+  border: 1px solid rgba(92, 158, 122, 0.15);
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.kick-toggle-timer.active {
+  background: #F4FAF7;
+  border-color: #78B291;
+}
+
+.kick-reset-btn {
+  background: #FAFAF8;
+  color: #7A8B80;
+  border: 1px solid rgba(122, 139, 128, 0.2);
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.save-kicks-btn-full {
+  background: #3B7252;
+  color: #FFFFFF;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 30px;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(59, 114, 82, 0.25);
+  margin-bottom: 24px;
+  width: 80%;
+  transition: all 0.2s ease;
+}
+
+.save-kicks-btn-full:hover {
+  background: #2E5A40;
+}
+
+.wellness-tip-quote {
+  font-size: 0.85rem;
+  background: #F8F9F8;
+  border-left: 4px solid #5C9E7A;
+  padding: 12px;
+  border-radius: 4px 12px 12px 4px;
+  color: #4C5C51;
+  line-height: 1.4;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Baby Nutrition selectors */
+.milk-type-grid-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.milk-selector-chip {
+  background: #FAFAF8;
+  border: 1px solid rgba(92, 158, 122, 0.15);
+  border-radius: 12px;
+  padding: 14px 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #4C5C51;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.milk-selector-chip:hover {
+  background: #FFFFFF;
+  border-color: #5C9E7A;
+}
+
+.milk-selector-chip.active {
+  background: rgba(92, 158, 122, 0.1);
+  border-color: #5C9E7A;
+  color: #3B7252;
+  box-shadow: 0 4px 12px rgba(92, 158, 122, 0.05);
+}
+
+/* Breast Timer */
+.direct-breastfeeding-timer-block {
+  background: #FAFBFB;
+  border: 1px solid rgba(92, 158, 122, 0.1);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.breast-side-selector-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.side-choice-btn {
+  flex: 1;
+  background: #FFFFFF;
+  border: 1px solid rgba(92, 158, 122, 0.15);
+  border-radius: 8px;
+  padding: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #5C6E62;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.side-choice-btn.active {
+  background: #3B7252;
+  color: #FFFFFF;
+  border-color: #3B7252;
+}
+
+.double-breast-stopwatches {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.breast-watch-card {
+  flex: 1;
+  background: #FFFFFF;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid rgba(92, 158, 122, 0.08);
+}
+
+.side-watch-title {
+  font-size: 0.75rem;
+  color: #7A8B80;
+  text-transform: uppercase;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.side-watch-time {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #2E3E33;
+}
+
+.timer-controls-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.timer-action-btn {
+  flex: 2;
+  background: #5C9E7A;
+  color: #FFFFFF;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timer-action-btn.active {
+  background: #D96D55; /* Soft Red ban banish alert */
+}
+
+.timer-reset-soft {
+  flex: 1;
+  background: #F0F2F0;
+  color: #5C6E62;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Slider Milk Quantity */
+.ml-slider-amount-block {
+  margin-bottom: 18px;
+}
+
+.amount-input-flex {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+  margin-bottom: 14px;
+}
+
+.amount-input-flex input[type="range"] {
+  flex: 1;
+  accent-color: #5C9E7A;
+}
+
+.amount-ml-indicator {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #3B7252;
+  min-width: 70px;
+  text-align: right;
+}
+
+.suggested-amounts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.amount-quick-btn {
+  background: #F5FAF7;
+  color: #3B7252;
+  border: 1px solid rgba(92, 158, 122, 0.12);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.amount-quick-btn:hover {
+  background: #3B7252;
+  color: #FFFFFF;
+}
+
+/* Buttons */
+.submit-btn-sage {
+  background: linear-gradient(135deg, #78B291 0%, #5C9E7A 100%);
+  color: #FFFFFF;
+  border: none;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(92, 158, 122, 0.2);
+  transition: all 0.25s ease;
+}
+
+.submit-btn-sage:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(92, 158, 122, 0.3);
+}
+
+.btn-outline-wellness {
+  background: #FFFFFF;
+  color: #3B7252;
+  border: 1px solid rgba(92, 158, 122, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  width: 100%;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 18px;
+}
+
+.btn-outline-wellness:hover {
+  background: rgba(92, 158, 122, 0.05);
+}
+
+/* Sleep stopwatch circle */
+.sleep-stopwatch-dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.sleep-timer-pulse-ring {
+  margin-bottom: 16px;
+}
+
+.sleep-pulse-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: #FAFBFB;
+  border: 4px solid #DFE6E2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #4C5C51;
+  transition: all 0.3s ease;
+}
+
+.sleep-pulse-circle.active {
+  border-color: #5C9E7A;
+  box-shadow: 0 0 0 10px rgba(92, 158, 122, 0.05);
+  animation: sleepPulseRingKeyframe 2s infinite ease-in-out;
+}
+
+@keyframes sleepPulseRingKeyframe {
+  0% { box-shadow: 0 0 0 0px rgba(92, 158, 122, 0.15); }
+  70% { box-shadow: 0 0 0 15px rgba(92, 158, 122, 0); }
+  100% { box-shadow: 0 0 0 0px rgba(92, 158, 122, 0); }
+}
+
+.sleep-timer-status-text {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #6C7E72;
+  margin-bottom: 20px;
+}
+
+.sleep-trigger-btn {
+  background: #3B7252;
+  color: #FFFFFF;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 30px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sleep-trigger-btn.active {
+  background: #E6B56C;
+}
+
+/* Diaper Grid Selector */
+.diaper-types-radio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.diaper-radio-btn {
+  background: #FAFAF8;
+  border: 1px solid rgba(92, 158, 122, 0.15);
+  border-radius: 8px;
+  padding: 10px 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #5C6E62;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.diaper-radio-btn.active {
+  background: rgba(92, 158, 122, 0.1);
+  border-color: #5C9E7A;
+  color: #3B7252;
+}
+
+/* Pregnancy weight range */
+.weight-slider-input {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.weight-slider-input input {
+  flex: 1;
+  accent-color: #5C9E7A;
+}
+
+.slider-value-display {
+  font-size: 1.4rem;
+  font-weight: 950;
+  color: #3B7252;
+  min-width: 90px;
+  text-align: right;
+}
+
+/* Reminders & Timeline Streams column */
+.tracker-stream-side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.stream-section-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(92, 158, 122, 0.03);
+  border: 1px solid rgba(92, 158, 122, 0.08);
+}
+
+.stream-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1F2D24;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(92, 158, 122, 0.06);
+  padding-bottom: 12px;
+}
+
+.stream-empty {
+  padding: 30px 10px;
+  text-align: center;
+  color: #92A396;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Reminders log list */
+.reminders-stream-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.reminder-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #FAFBFB;
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid rgba(92, 158, 122, 0.08);
+  transition: all 0.25s ease;
+}
+
+.reminder-row-item.completed {
+  opacity: 0.65;
+  background: #F4F6F4;
+}
+
+.reminder-left-flex {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.reminder-left-flex input[type="checkbox"] {
+  accent-color: #5C9E7A;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.reminder-item-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #2E3E33;
+}
+
+.reminder-row-item.completed .reminder-item-title {
+  text-decoration: line-through;
+  color: #7A8B80;
+}
+
+.reminder-item-time {
+  font-size: 0.78rem;
+  color: #7A8B80;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.target-mom-badge {
+  background: rgba(220, 150, 130, 0.12);
+  color: #B55F45;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.target-baby-badge {
+  background: rgba(92, 158, 122, 0.12);
+  color: #3B7252;
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.delete-reminder-btn {
+  background: transparent;
+  border: none;
+  color: #A4B2A8;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 1rem;
+}
+
+.delete-reminder-btn:hover {
+  color: #D96D55;
+}
+
+/* Timeline logs scroller */
+.daily-logs-scroller {
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.stream-group {
+  margin-bottom: 8px;
+}
+
+.stream-group-header {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #5C6E62;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+  background: #F1F4F1;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.timeline-activity-item {
+  display: flex;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed rgba(92, 158, 122, 0.1);
+  margin-bottom: 12px;
+}
+
+.timeline-activity-item:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.timeline-icon {
+  font-size: 1.25rem;
+  background: #FAFBFB;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(92, 158, 122, 0.08);
+  flex-shrink: 0;
+}
+
+.timeline-body {
+  flex: 1;
+}
+
+.timeline-time-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.log-time {
+  font-size: 0.78rem;
+  color: #7A8B80;
+  font-weight: 700;
+}
+
+.del-btn-sub {
+  background: transparent;
+  border: none;
+  color: #B2C0B6;
+  font-size: 0.8rem;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.del-btn-sub:hover {
+  opacity: 1;
+  color: #D96D55;
+}
+
+.log-details-desc {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #2E3E33;
+  margin-top: 3px;
+  line-height: 1.35;
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeInKeyframe 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-slide-up {
+  animation: slideUpKeyframe 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInKeyframe {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUpKeyframe {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Custom scrollbars */
+.reminders-stream-list::-webkit-scrollbar,
+.daily-logs-scroller::-webkit-scrollbar {
+  width: 4px;
+}
+
+.reminders-stream-list::-webkit-scrollbar-thumb,
+.daily-logs-scroller::-webkit-scrollbar-thumb {
+  background: rgba(92, 158, 122, 0.2);
+  border-radius: 4px;
+}

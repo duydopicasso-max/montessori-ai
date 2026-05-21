@@ -3,6 +3,7 @@ import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, or
 import { db } from '../firebase.js';
 import { getAgeInMonths } from '../data/whoData.js';
 import './BabyProfileScreen.css';
+import { ClipboardIcon, PencilIcon, CalendarIcon } from '../icons.jsx';
 
 /* ── Gợi ý trò chơi theo nhóm tuổi ── */
 const PLAY_DATA = {
@@ -70,7 +71,7 @@ export default function BabyProfileScreen({ profile }) {
   return (
     <div className="profile-screen">
       <header className="profile-header">
-        <h1 className="profile-title">📋 Hồ sơ Bé yêu</h1>
+        <h1 className="profile-title"><ClipboardIcon size={22} strokeWidth={1.8} /> Hồ sơ Bé yêu</h1>
         <p className="profile-subtitle">Bệnh án · Món ăn · Gợi ý trò chơi</p>
       </header>
 
@@ -86,12 +87,12 @@ export default function BabyProfileScreen({ profile }) {
 
       <div className="profile-tabs">
         {[
-          { id: 'medical', label: '🏥 Bệnh án' },
-          { id: 'food',    label: '🍎 Món ăn' },
-          { id: 'play',    label: '🎮 Trò chơi' },
+          { id: 'medical', icon: '🏥', label: 'Bệnh án' },
+          { id: 'food',    icon: '🍎', label: 'Món ăn' },
+          { id: 'play',    icon: '🎮', label: 'Trò chơi' },
         ].map(t => (
           <button key={t.id} className={`profile-tab ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
-            {t.label}
+            {t.icon} {t.label}
           </button>
         ))}
       </div>

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import ChatScreen      from './pages/ChatScreen.jsx';
+import TrackerScreen   from './pages/TrackerScreen.jsx';
 import IngestScreen    from './pages/IngestScreen.jsx';
 import OnboardingScreen from './pages/OnboardingScreen.jsx';
 import GrowthScreen    from './pages/GrowthScreen.jsx';
@@ -11,12 +12,45 @@ import MomentsScreen   from './pages/MomentsScreen.jsx';
 import CommunityScreen from './pages/CommunityScreen.jsx';
 import './App.css';
 
+/* ══ SVG Outline Navigation Icons ══ */
+const LeafIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/>
+    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+  </svg>
+);
+const GrowthIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <path d="M8 17V13M12 17V8M16 17v-5"/>
+  </svg>
+);
+const CommunityIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+const ProfileIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+const MomentsIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+);
+
 const NAV_TABS = [
-  { id: 'chat',      icon: '💬', label: 'Trợ lý' },
-  { id: 'growth',    icon: '📊', label: 'Tăng trưởng' },
-  { id: 'community', icon: '👩‍👩‍👧', label: 'Cộng đồng' },
-  { id: 'baby',      icon: '📋', label: 'Hồ sơ' },
-  { id: 'moments',   icon: '📸', label: 'Khoảnh khắc' },
+  { id: 'chat',      IconComponent: LeafIcon,      label: 'Trợ lý' },
+  { id: 'growth',    IconComponent: GrowthIcon,    label: 'Tăng trưởng' },
+  { id: 'community', IconComponent: CommunityIcon, label: 'Cộng đồng' },
+  { id: 'baby',      IconComponent: ProfileIcon,   label: 'Hồ sơ' },
+  { id: 'moments',   IconComponent: MomentsIcon,   label: 'Khoảnh khắc' },
 ];
 
 export default function App() {
@@ -27,12 +61,30 @@ export default function App() {
 
   useEffect(() => {
     let profileUnsub = null;
+    let babiesUnsub = null;
     const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setAuthUser(firebaseUser);
         profileUnsub = onSnapshot(doc(db, 'users', firebaseUser.uid), (snap) => {
           if (snap.exists()) {
-            setProfile({ user: firebaseUser, ...snap.data() });
+            const data = snap.data();
+            setProfile(prev => {
+              const currentBabies = prev?.babies || [];
+              return { user: firebaseUser, babies: currentBabies, ...data };
+            });
+
+            if (!babiesUnsub) {
+              const babiesRef = collection(db, 'users', firebaseUser.uid, 'babies');
+              babiesUnsub = onSnapshot(babiesRef, (babiesSnap) => {
+                const babiesList = babiesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setProfile(prev => {
+                  if (!prev) return null;
+                  return { ...prev, babies: babiesList };
+                });
+              }, (error) => {
+                console.error('[App] Babies load error:', error);
+              });
+            }
           } else {
             setProfile(null);
           }
@@ -46,11 +98,13 @@ export default function App() {
         setProfile(null);
         setLoading(false);
         if (profileUnsub) profileUnsub();
+        if (babiesUnsub) { babiesUnsub(); babiesUnsub = null; }
       }
     });
     return () => {
       authUnsub();
       if (profileUnsub) profileUnsub();
+      if (babiesUnsub) { babiesUnsub(); }
     };
   }, []);
 
@@ -155,6 +209,7 @@ export default function App() {
       {/* ── MAIN CONTENT ── */}
       <main className="main-content">
         {activeTab === 'chat'      && <ChatScreen    profile={{ ...sharedProfile, displayName: `Mẹ ${momName}`, role: 'Mẹ' }} />}
+        {activeTab === 'tracker'   && <TrackerScreen profile={sharedProfile} />}
         {activeTab === 'growth'    && <GrowthScreen  profile={sharedProfile} />}
         {activeTab === 'community' && <CommunityScreen profile={sharedProfile} />}
         {activeTab === 'baby'      && <BabyProfileScreen profile={sharedProfile} />}
@@ -171,7 +226,7 @@ export default function App() {
               className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
             >
-              <span className="nav-tab-icon">{tab.icon}</span>
+              <span className="nav-tab-icon"><tab.IconComponent /></span>
               <span className="nav-tab-label">{tab.label}</span>
             </button>
           ))}

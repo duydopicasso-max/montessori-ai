@@ -19,6 +19,7 @@ import {
   getPctOfMedian, assessNutrition
 } from '../data/whoData.js';
 import './GrowthScreen.css';
+import { BarChartIcon, PencilIcon, CalendarIcon, WeightIcon, RulerIcon, HeadCircleIcon } from '../icons.jsx';
 
 export default function GrowthScreen({ profile }) {
   const babies        = profile?.babies || [];
@@ -145,8 +146,11 @@ export default function GrowthScreen({ profile }) {
   return (
     <div className="growth-screen">
       <header className="growth-header">
-        <h1 className="growth-title">📊 Theo dõi Tăng trưởng</h1>
-        <p className="growth-subtitle">Chuẩn WHO Việt Nam · Cân nặng · Chiều cao · Chu vi đầu</p>
+        <div className="growth-header-icon-wrap"><BarChartIcon size={28} strokeWidth={1.8} /></div>
+        <div>
+          <h1 className="growth-title">Theo dõi Tăng trưởng</h1>
+          <p className="growth-subtitle">Chuẩn WHO Việt Nam · Cân nặng · Chiều cao · Chu vi đầu</p>
+        </div>
       </header>
 
       {/* Baby tabs */}
@@ -170,7 +174,7 @@ export default function GrowthScreen({ profile }) {
         <div className="top-row">
           {/* Baby info card */}
           <div className="info-card">
-            <div className="info-card-title">👶 Thông tin bé</div>
+            <div className="info-card-title">Thông tin bé</div>
 
             {/* Name */}
             <div className="info-row">
@@ -184,7 +188,7 @@ export default function GrowthScreen({ profile }) {
               ) : (
                 <div className="info-value-row">
                   <span className="info-value">{baby.name || 'Chưa đặt tên'}</span>
-                  <button className="edit-btn" onClick={() => startEdit('name')}>✏️</button>
+                  <button className="edit-btn" onClick={() => startEdit('name')} title="Chỉnh tên"><PencilIcon size={14} strokeWidth={2} /></button>
                 </div>
               )}
             </div>
@@ -201,7 +205,7 @@ export default function GrowthScreen({ profile }) {
               ) : (
                 <div className="info-value-row">
                   <span className="info-value">{dob || '—'}</span>
-                  <button className="edit-btn" onClick={() => startEdit('dob')}>✏️</button>
+                  <button className="edit-btn" onClick={() => startEdit('dob')} title="Chỉnh ngày sinh"><PencilIcon size={14} strokeWidth={2} /></button>
                 </div>
               )}
             </div>
@@ -246,7 +250,7 @@ export default function GrowthScreen({ profile }) {
 
         {/* ── Measurement form ── */}
         <div className="section-header">
-          <h2 className="section-title">📋 Lịch sử đo lường</h2>
+          <h2 className="section-title">Lịch sử đo lường</h2>
           <button className="add-btn" onClick={() => setShowForm(f => !f)}>
             {showForm ? '✕ Đóng' : '+ Thêm lần đo'}
           </button>
@@ -255,13 +259,25 @@ export default function GrowthScreen({ profile }) {
         {showForm && (
           <div className="measure-form">
             <div className="form-grid">
-              <div className="form-group"><label>📅 Ngày đo</label><input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
-              <div className="form-group"><label>⚖️ Cân nặng (kg)</label><input type="number" step="0.01" placeholder="5.2" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} /></div>
-              <div className="form-group"><label>📏 Chiều dài/cao (cm)</label><input type="number" step="0.1" placeholder="65.0" value={form.height} onChange={e => setForm(f => ({ ...f, height: e.target.value }))} /></div>
-              <div className="form-group"><label>🔵 Chu vi đầu (cm)</label><input type="number" step="0.1" placeholder="42.0" value={form.head} onChange={e => setForm(f => ({ ...f, head: e.target.value }))} /></div>
+              <div className="form-group">
+                <label><CalendarIcon size={14} strokeWidth={2} /> Ngày đo</label>
+                <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label><WeightIcon size={14} strokeWidth={2} /> Cân nặng (kg)</label>
+                <input type="number" step="0.01" placeholder="5.2" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label><RulerIcon size={14} strokeWidth={2} /> Chiều dài/cao (cm)</label>
+                <input type="number" step="0.1" placeholder="65.0" value={form.height} onChange={e => setForm(f => ({ ...f, height: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label><HeadCircleIcon size={14} strokeWidth={2} /> Chu vi đầu (cm)</label>
+                <input type="number" step="0.1" placeholder="42.0" value={form.head} onChange={e => setForm(f => ({ ...f, head: e.target.value }))} />
+              </div>
             </div>
             <button className="save-measure-btn" disabled={saving} onClick={handleSave}>
-              {saving ? '⏳ Đang lưu...' : '💾 Lưu lần đo'}
+              {saving ? 'Đang lưu...' : 'Lưu lần đo'}
             </button>
           </div>
         )}
@@ -291,7 +307,7 @@ export default function GrowthScreen({ profile }) {
         {ageMonths <= 12 && <WhoChart title="Chu vi đầu" unit="cm" data={headData} color="#9C27B0" actualColor="#9C27B0" showActualLabel />}
 
         <div className="who-note">
-          📋 Biểu đồ theo <strong>Chuẩn tăng trưởng WHO 2006</strong> — áp dụng tại Việt Nam. Chỉ mang tính tham khảo, không thay thế đánh giá của bác sĩ.
+          Biểu đồ theo <strong>Chuẩn tăng trưởng WHO 2006</strong> — áp dụng tại Việt Nam. Chỉ mang tính tham khảo, không thay thế đánh giá của bác sĩ.
         </div>
       </div>
     </div>
