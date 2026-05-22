@@ -1510,7 +1510,19 @@ function ParentView({
                 onChange={e => setMeasureForm(f => ({ ...f, head: e.target.value }))} />
             </div>
           </div>
-          <button className="primary-btn" disabled={saving} onClick={handleSaveMeasure}>
+          <button 
+            className="primary-btn" 
+            disabled={saving} 
+            onTouchStart={e => {
+              e.preventDefault();
+              handleSaveMeasure();
+            }}
+            onMouseDown={e => {
+              e.preventDefault();
+              handleSaveMeasure();
+            }}
+            onClick={handleSaveMeasure}
+          >
             {saving ? 'Đang lưu...' : 'Lưu lần đo'}
           </button>
         </div>

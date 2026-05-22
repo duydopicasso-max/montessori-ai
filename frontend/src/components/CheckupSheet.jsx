@@ -1179,6 +1179,14 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
             <button
               className="checkup-save-btn"
               disabled={saving || !!nextApptPast}
+              onTouchStart={e => {
+                e.preventDefault();
+                handleSave();
+              }}
+              onMouseDown={e => {
+                e.preventDefault();
+                handleSave();
+              }}
               onClick={handleSave}
             >
               {saving ? (

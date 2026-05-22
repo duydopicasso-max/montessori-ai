@@ -3274,6 +3274,14 @@ ${logsDesc}`;
                   <div style={{ marginTop: '24px' }}>
                     <button
                       className="submit-tracker-log-btn-full"
+                      onTouchStart={e => {
+                        e.preventDefault();
+                        handleSavePregWeight();
+                      }}
+                      onMouseDown={e => {
+                        e.preventDefault();
+                        handleSavePregWeight();
+                      }}
                       onClick={handleSavePregWeight}
                       disabled={isSavingWeight || !isWeightValid}
                     >
@@ -3447,6 +3455,14 @@ ${logsDesc}`;
                   <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
                     <button 
                       className="submit-tracker-log-btn-full" 
+                      onTouchStart={e => {
+                        e.preventDefault();
+                        handleSaveVitamins();
+                      }}
+                      onMouseDown={e => {
+                        e.preventDefault();
+                        handleSaveVitamins();
+                      }}
                       onClick={handleSaveVitamins}
                       disabled={isSavingVitamins}
                       style={{ margin: 0 }}
@@ -3644,6 +3660,14 @@ ${logsDesc}`;
 
                       <button
                         className="submit-tracker-log-btn-full"
+                        onTouchStart={e => {
+                          e.preventDefault();
+                          handleSavePregClinic();
+                        }}
+                        onMouseDown={e => {
+                          e.preventDefault();
+                          handleSavePregClinic();
+                        }}
                         onClick={handleSavePregClinic}
                         disabled={isSavingClinic}
                         style={{ marginTop: '10px' }}
@@ -3823,6 +3847,14 @@ ${logsDesc}`;
                     {/* Save button */}
                     <button
                       className="submit-tracker-log-btn-full"
+                      onTouchStart={e => {
+                        e.preventDefault();
+                        handleSavePregEmotion();
+                      }}
+                      onMouseDown={e => {
+                        e.preventDefault();
+                        handleSavePregEmotion();
+                      }}
                       onClick={handleSavePregEmotion}
                       disabled={isSavingEmotion}
                       style={{ marginTop: '10px' }}
