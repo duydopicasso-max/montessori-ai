@@ -1666,8 +1666,8 @@
   align-items: flex-end;
   justify-content: center;
   animation: overlay-fade-in 0.25s ease;
-  /* Prevent ANY touch/scroll events from passing through to content below */
-  touch-action: none;
+  /* touch-action: auto — allow tap/click to close via onClick */
+  touch-action: auto;
 }
 
 .bottom-sheet-content-panel {
@@ -1682,8 +1682,8 @@
   overflow: hidden;
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.12);
   padding: 8px 20px 24px;
-  /* Allow touch events within the panel */
-  touch-action: pan-y;
+  /* manipulation: allows tap/click but prevents double-tap zoom delay */
+  touch-action: manipulation;
 }
 
 .sheet-drag-handle-pill {
@@ -1704,6 +1704,8 @@
   overscroll-behavior: contain;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+  /* pan-y allows vertical swipe scroll + tap/click on children */
+  touch-action: pan-y;
 }
 
 .tracker-sheet-viewport::-webkit-scrollbar {

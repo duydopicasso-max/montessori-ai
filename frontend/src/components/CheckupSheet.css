@@ -9,7 +9,8 @@
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   animation: overlayIn 0.28s ease;
-  touch-action: none;
+  /* auto: allow tap-to-close onClick while overscroll is blocked by body */
+  touch-action: auto;
 }
 @keyframes overlayIn {
   from { opacity: 0; }
@@ -723,7 +724,7 @@
   justify-content: center;
   padding: 16px;
   animation: overlayIn 0.24s ease;
-  touch-action: none;
+  touch-action: auto;
 }
 .custom-calendar-box {
   width: 100%;
@@ -885,7 +886,7 @@
   justify-content: center;
   padding: 16px;
   animation: overlayIn 0.24s ease;
-  touch-action: none;
+  touch-action: auto;
 }
 .cs-modal-box {
   width: 100%;
@@ -1014,16 +1015,12 @@
   background: #FFE4DF;
 }
 
-/* ─── SCROLL LOCK & POINTER ISOLATION ─── */
+/* ── SCROLL LOCK & POINTER ISOLATION ── */
 body.cs-modal-open {
   overflow: hidden !important;
-  touch-action: none;
+  /* Do NOT set touch-action: none here — it blocks taps on portal-rendered overlays */
 }
-body.cs-modal-open #root {
-  pointer-events: none !important;
-  user-select: none !important;
-  -webkit-user-select: none !important;
-}
+/* All overlay elements always receive pointer events */
 .checkup-overlay,
 .checkup-sheet,
 .custom-calendar-overlay,
