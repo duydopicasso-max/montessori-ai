@@ -383,6 +383,31 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
       // Don't prevent default if there are multiple touches or if event is not cancelable
       if (e.touches.length !== 1 || !e.cancelable) return;
 
+      // Check if touch is on an interactive element to prevent wiggles from blocking clicks
+      let checkTarget = e.target;
+      let isInteractive = false;
+      while (checkTarget && checkTarget !== document.body) {
+        if (
+          checkTarget.tagName === 'BUTTON' ||
+          checkTarget.tagName === 'INPUT' ||
+          checkTarget.tagName === 'SELECT' ||
+          checkTarget.tagName === 'TEXTAREA' ||
+          checkTarget.classList.contains('cs-date-trigger-btn') ||
+          checkTarget.classList.contains('cs-chip') ||
+          checkTarget.classList.contains('cs-metric-chip') ||
+          checkTarget.classList.contains('app-datepicker-day-cell') ||
+          checkTarget.classList.contains('app-datepicker-action-btn') ||
+          checkTarget.classList.contains('app-datepicker-nav-btn') ||
+          checkTarget.classList.contains('cs-clear-date-btn')
+        ) {
+          isInteractive = true;
+          break;
+        }
+        checkTarget = checkTarget.parentElement;
+      }
+
+      if (isInteractive) return;
+
       const hasActiveSubModal = showExplanation || !!calendarTarget || showConfirmClose;
 
       // Find the nearest target in the DOM tree that matches our classes
@@ -391,8 +416,15 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
 
       while (target && target !== document.body) {
         if (hasActiveSubModal) {
-          // If sub-modal is open, only allow scrolling inside the sub-modal's scrollable body
-          if (target.classList.contains('cs-modal-body')) {
+          // If sub-modal is open, only allow scrolling inside the sub-modal's scrollable body/wrapper
+          const isAllowedSubModalElement = 
+            target.classList.contains('cs-modal-body') || 
+            target.classList.contains('app-datepicker-box') || 
+            target.classList.contains('app-datepicker-overlay') ||
+            target.classList.contains('ios-confirm-card') ||
+            target.classList.contains('ios-confirm-overlay');
+
+          if (isAllowedSubModalElement) {
             interactiveElement = target;
             break;
           }
@@ -492,6 +524,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
       setNextAppointment(dateStr);
       if (validationMsg) setValidationMsg('');
     }
+    setCalendarTarget(null);
   };
 
   /* ── Insert quick chip text into textarea ── */
@@ -1160,14 +1193,15 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
       </div>
 
       {/* ── CUSTOM CALENDAR MODAL ── */}
-      {calendarTarget && (
+      {calendarTarget && createPortal(
         <AppDatePicker
           value={calendarTarget === 'visitDate' ? visitDate : nextAppointment}
           minDate={calendarTarget === 'nextAppointment' ? todayISO() : null}
           onConfirm={handleCalendarChange}
           onCancel={() => setCalendarTarget(null)}
           dateType={calendarTarget === 'visitDate' ? 'visitDate' : 'nextAppointmentDate'}
-        />
+        />,
+        document.body
       )}
 
       {/* ── EXPLANATION MODAL ── */}
