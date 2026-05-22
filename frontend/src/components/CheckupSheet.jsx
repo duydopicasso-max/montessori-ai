@@ -5,6 +5,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import DatePicker from './DatePicker.jsx';
 import './CheckupSheet.css';
 
 /* ── Icons ── */
@@ -92,169 +93,9 @@ const isDateInPast = (iso) => {
   return new Date(iso) < new Date(todayISO());
 };
 
-/* ═══════════════════════════════════════════════════════════
-   CUSTOM CALENDAR PICKER OVERLAY COMPONENT
-   ═══════════════════════════════════════════════════════════ */
-export function CustomCalendar({ value, onChange, onClose, minDate, maxDate }) {
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  
-  const [currentYear, setCurrentYear] = useState(() => {
-    if (value) return parseInt(value.split('-')[0]);
-    return today.getFullYear();
-  });
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    if (value) return parseInt(value.split('-')[1]) - 1;
-    return today.getMonth();
-  });
-  const [selectedDate, setSelectedDate] = useState(value || '');
-
-  const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
-  const startingDay = firstDayOfMonth.getDay();
-  const adjustedStartingDay = startingDay === 0 ? 6 : startingDay - 1;
-  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
-  
-  const cells = [];
-  // Fill leading empty cells
-  for (let i = adjustedStartingDay - 1; i >= 0; i--) {
-    const day = prevMonthDays - i;
-    const m = currentMonth === 0 ? 11 : currentMonth - 1;
-    const y = currentMonth === 0 ? currentYear - 1 : currentYear;
-    cells.push({ day, month: m, year: y, isCurrentMonth: false });
-  }
-  
-  // Current month cells
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ day: d, month: currentMonth, year: currentYear, isCurrentMonth: true });
-  }
-
-  // Trailing empty cells
-  const totalCells = Math.ceil(cells.length / 7) * 7;
-  const nextDaysCount = totalCells - cells.length;
-  for (let d = 1; d <= nextDaysCount; d++) {
-    const m = currentMonth === 11 ? 0 : currentMonth + 1;
-    const y = currentMonth === 11 ? currentYear + 1 : currentYear;
-    cells.push({ day: d, month: m, year: y, isCurrentMonth: false });
-  }
-
-  const monthsList = [
-    'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-    'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
-  ];
-
-  const handlePrevMonth = () => {
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear(y => y - 1);
-    } else {
-      setCurrentMonth(m => m - 1);
-    }
-  };
-
-  const handleNextMonth = () => {
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(y => y + 1);
-    } else {
-      setCurrentMonth(m => m + 1);
-    }
-  };
-
-  const handleSelectDay = (cell) => {
-    const y = cell.year;
-    const m = String(cell.month + 1).padStart(2, '0');
-    const d = String(cell.day).padStart(2, '0');
-    const dateStr = `${y}-${m}-${d}`;
-    
-    if (minDate && dateStr < minDate) return;
-    if (maxDate && dateStr > maxDate) return;
-    
-    setSelectedDate(dateStr);
-  };
-
-  const handleToday = () => {
-    const yStr = today.getFullYear();
-    const mStr = String(today.getMonth() + 1).padStart(2, '0');
-    const dStr = String(today.getDate()).padStart(2, '0');
-    const tISO = `${yStr}-${mStr}-${dStr}`;
-    
-    if (minDate && tISO < minDate) return;
-    if (maxDate && tISO > maxDate) return;
-
-    setSelectedDate(tISO);
-    setCurrentMonth(today.getMonth());
-    setCurrentYear(today.getFullYear());
-  };
-
-  const handleConfirm = () => {
-    if (selectedDate) {
-      onChange(selectedDate);
-    }
-    onClose();
-  };
-
-  return (
-    <div className="custom-calendar-overlay" onClick={onClose}>
-      <div className="custom-calendar-box" onClick={e => e.stopPropagation()}>
-        <div className="calendar-header-nav">
-          <button type="button" className="calendar-nav-btn" onClick={handlePrevMonth}>&larr;</button>
-          <div className="calendar-month-year">
-            {monthsList[currentMonth]} {currentYear}
-          </div>
-          <button type="button" className="calendar-nav-btn" onClick={handleNextMonth}>&rarr;</button>
-        </div>
-
-        <div className="calendar-weekdays">
-          {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(wd => (
-            <div key={wd} className="weekday-cell">{wd}</div>
-          ))}
-        </div>
-
-        <div className="calendar-days-grid">
-          {cells.map((cell, idx) => {
-            const y = cell.year;
-            const m = String(cell.month + 1).padStart(2, '0');
-            const d = String(cell.day).padStart(2, '0');
-            const dateStr = `${y}-${m}-${d}`;
-            
-            const isSelected = selectedDate === dateStr;
-            const isToday = todayStr === dateStr;
-            
-            let isDisabled = false;
-            if (minDate && dateStr < minDate) isDisabled = true;
-            if (maxDate && dateStr > maxDate) isDisabled = true;
-            
-            return (
-              <button
-                key={idx}
-                type="button"
-                className={`day-cell ${cell.isCurrentMonth ? '' : 'day-other-month'} ${isSelected ? 'day-selected' : ''} ${isToday ? 'day-today' : ''}`}
-                disabled={isDisabled}
-                onClick={() => handleSelectDay(cell)}
-              >
-                {cell.day}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="calendar-actions">
-          <button type="button" className="calendar-action-btn calendar-action-today" onClick={handleToday}>
-            Hôm nay
-          </button>
-          <div className="calendar-actions-right">
-            <button type="button" className="calendar-action-btn calendar-action-cancel" onClick={onClose}>
-              Hủy
-            </button>
-            <button type="button" className="calendar-action-btn calendar-action-confirm" onClick={handleConfirm}>
-              Xác nhận
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+/* ── CustomCalendar: backward-compat re-export wrapping DatePicker ── */
+export function CustomCalendar(props) {
+  return <DatePicker {...props} />;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1322,9 +1163,9 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         )}
       </div>
 
-      {/* ── CUSTOM CALENDAR MODAL ── */}
+      {/* ── DATE PICKER MODAL ── */}
       {calendarTarget && (
-        <CustomCalendar
+        <DatePicker
           value={calendarTarget === 'visitDate' ? visitDate : nextAppointment}
           minDate={calendarTarget === 'nextAppointment' ? todayISO() : null}
           onChange={handleCalendarChange}

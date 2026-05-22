@@ -19,7 +19,8 @@ import {
   getWHOData, getAgeInMonths, calcBMI, assessNutrition, getPctOfMedian
 } from '../data/whoData.js';
 import './GrowthScreen.css';
-import CheckupSheet, { CustomCalendar } from '../components/CheckupSheet.jsx';
+import CheckupSheet from '../components/CheckupSheet.jsx';
+import DatePicker from '../components/DatePicker.jsx';
 import {
   PencilIcon, CalendarIcon, WeightIcon,
   RulerIcon, HeadCircleIcon, PlusIcon
@@ -804,14 +805,13 @@ export default function GrowthScreen({ profile }) {
           document.body
         )}
 
-        {/* ── CUSTOM CALENDAR IN GROWTH SCREEN ── */}
-        {showEddCalendar && createPortal(
-          <CustomCalendar
+        {/* ── DATE PICKER: Chọn ngày dự sinh ── */}
+        {showEddCalendar && (
+          <DatePicker
             value={tempEdd}
             onChange={(dateStr) => setTempEdd(dateStr)}
             onClose={() => setShowEddCalendar(false)}
-          />,
-          document.body
+          />
         )}
 
         {/* ── CUSTOM RECALCULATION MODAL ── */}
