@@ -178,6 +178,7 @@ export default function GrowthScreen({ profile, setActiveTab }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [toastType, setToastType] = useState('delete'); // 'delete' | 'error'
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [tempBabyName, setTempBabyName] = useState('');
   const [tempEdd, setTempEdd] = useState('');
@@ -440,6 +441,7 @@ export default function GrowthScreen({ profile, setActiveTab }) {
 
     // 3. Show Toast with Undo option
     latestDeletedIdRef.current = visitId;
+    setToastType('delete');
     setToastMsg("Đã xóa ghi nhận khám thai");
     setToastVisible(true);
 
@@ -606,6 +608,7 @@ export default function GrowthScreen({ profile, setActiveTab }) {
     } catch (e) {
       console.error("Failed to update profile or recalculate:", e);
       // Nhẹ nhàng thông báo lỗi mà không khóa màn hình
+      setToastType('error');
       setToastMsg('Chưa lưu được thay đổi, mẹ kiểm tra kết nối mạng nhé 🌿');
       setToastVisible(true);
       setTimeout(() => setToastVisible(false), 3500);
@@ -786,7 +789,7 @@ export default function GrowthScreen({ profile, setActiveTab }) {
 
         {/* ── CUSTOM DELETE CONFIRM MODAL ── */}
         {showDeleteConfirm && createPortal(
-          <div className="cs-modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowDeleteConfirm(false)}>
+          <div className="cs-modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
             <div className="cs-confirm-box" onClick={e => e.stopPropagation()}>
               <h3 className="cs-confirm-title">Xóa ghi nhận khám thai?</h3>
               <p className="cs-confirm-text">Mẹ có chắc chắn muốn xóa ghi nhận này không? Thao tác này có thể hoàn tác trong vòng 5 giây.</p>
@@ -958,9 +961,11 @@ export default function GrowthScreen({ profile, setActiveTab }) {
         {/* ── FLOATING UNDO TOAST ── */}
         <div className={`checkup-toast ${toastVisible ? 'checkup-toast--visible' : ''}`}>
           <span>{toastMsg}</span>
-          <button type="button" className="checkup-toast-undo-btn" onClick={handleUndoDelete}>
-            Hoàn tác
-          </button>
+          {toastType === 'delete' && (
+            <button type="button" className="checkup-toast-undo-btn" onClick={handleUndoDelete}>
+              Hoàn tác
+            </button>
+          )}
         </div>
 
         {/* ── PARENT VIEW ── */}
