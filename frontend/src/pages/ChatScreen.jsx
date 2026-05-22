@@ -7,7 +7,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { calculateDetailedAge, getHandbookForAge } from '../data/handbookData.js';
 import { LeafIcon, SparkleIcon } from '../icons.jsx';
@@ -337,7 +337,7 @@ export function getPregnancyMontessoriSuggestion(weeks) {
   }
 }
 
-export default function ChatScreen({ profile, setActiveTab }) {
+export default function ChatScreen({ profile, setActiveTab, setGrowthPendingAction }) {
   const status = profile?.status || 'born';
   const userId = profile?.user?.uid;
   const babies = profile?.babies || [];
@@ -913,6 +913,53 @@ ${logsDesc}`;
     }
   };
 
+  // Pregnancy Logs: Weight
+  const handleSavePregWeight = async () => {
+    if (!userId) return;
+    const wNum = Number(pregWeight);
+    if (isNaN(wNum) || wNum < 30 || wNum > 200) return;
+    setIsSavingWeight(true);
+    setSaveWeightError(false);
+
+    const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const logData = {
+      date: todayStr,
+      time: formattedTime,
+      type: 'preg_weight',
+      weightKg: wNum,
+      note: `Cân nặng mẹ bầu: ${wNum} kg`,
+      createdAt: serverTimestamp()
+    };
+
+    // ── Ghi vào activityLogs (nhật ký hoạt động) ──
+    addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
+      .then(() => {
+        triggerChime();
+        showToast("Đã lưu cân nặng hôm nay");
+      })
+      .catch(err => {
+        console.error("Error background saving weight:", err);
+      });
+
+    // ── Đồng bộ vào pregnancyVisits để GrowthScreen đọc được ──
+    {
+      const visitRef = doc(db, 'users', userId, 'pregnancyVisits', `weight_${todayStr}`);
+      setDoc(visitRef, {
+        date: todayStr,
+        motherWeight: wNum,
+        type: 'weight_only',
+        source: 'chat_weight_tracker',
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(err => console.error('Error syncing weight to pregnancyVisits:', err));
+    }
+
+    // Close sheet immediately
+    handleCleanCloseSheet('preg_weight');
+    setIsSavingWeight(false);
+  };
+
   // Pregnancy Logs: Kick
   const handleSaveKick = async () => {
     if (!userId) return;
@@ -964,40 +1011,6 @@ ${logsDesc}`;
     }
   };
 
-  // Pregnancy Logs: Weight
-  const handleSavePregWeight = async () => {
-    if (!userId) return;
-    const wNum = Number(pregWeight);
-    if (isNaN(wNum) || wNum < 30 || wNum > 200) return;
-    setIsSavingWeight(true);
-    setSaveWeightError(false);
-
-    const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const logData = {
-      date: todayStr,
-      time: formattedTime,
-      type: 'preg_weight',
-      weightKg: wNum,
-      note: `Cân nặng mẹ bầu: ${wNum} kg`,
-      createdAt: serverTimestamp()
-    };
-
-    // Save in background
-    addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
-      .then(() => {
-        triggerChime();
-        showToast("Đã lưu cân nặng hôm nay");
-      })
-      .catch(err => {
-        console.error("Error background saving weight:", err);
-      });
-
-    // Close sheet immediately
-    handleCleanCloseSheet('preg_weight');
-    setIsSavingWeight(false);
-  };
 
   const handleSavePrePregWeight = async () => {
     if (!userId || !prePregInputValue) return;
@@ -1732,7 +1745,10 @@ ${logsDesc}`;
             </div>
             <h4 className="tracker-card-name">Lịch khám thai</h4>
             <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_clinic')}>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => {
+              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+              setActiveTab('growth');
+            }}>
               Ghi nhận
             </button>
           </div>
@@ -1848,7 +1864,10 @@ ${logsDesc}`;
             </div>
             <h4 className="tracker-card-name">Lịch khám thai</h4>
             <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_clinic')}>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => {
+              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+              setActiveTab('growth');
+            }}>
               Ghi nhận
             </button>
           </div>
@@ -1977,7 +1996,10 @@ ${logsDesc}`;
             </div>
             <h4 className="tracker-card-name">Lịch khám thai</h4>
             <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_clinic')}>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => {
+              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+              setActiveTab('growth');
+            }}>
               Ghi nhận
             </button>
           </div>

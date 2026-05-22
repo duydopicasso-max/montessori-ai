@@ -149,7 +149,7 @@ const removePendingFromLocalStorage = (visitId) => {
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
-export default function GrowthScreen({ profile, setActiveTab }) {
+export default function GrowthScreen({ profile, setActiveTab, pendingAction, onConsumePendingAction }) {
   const userStatus = profile?.status || 'parent';
   const userId     = profile?.user?.uid;
   const babies     = profile?.babies || [];
@@ -315,6 +315,15 @@ export default function GrowthScreen({ profile, setActiveTab }) {
     setShowMeasureForm(false);
     setShowVisitForm(false);
   }, [loadData]);
+
+  /* ── Consume pending action from App (e.g. navigate here + open CheckupSheet) ── */
+  useEffect(() => {
+    if (pendingAction === 'openCheckupSheet' && !loading) {
+      setEditingVisit(null);
+      setShowVisitForm(true);
+      if (onConsumePendingAction) onConsumePendingAction();
+    }
+  }, [pendingAction, loading, onConsumePendingAction]);
 
   /* ── Process lingering deletes from localStorage on mount ── */
   useEffect(() => {

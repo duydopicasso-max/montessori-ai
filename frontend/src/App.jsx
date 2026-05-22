@@ -58,6 +58,7 @@ export default function App() {
   const [authUser, setAuthUser]   = useState(null);
   const [profile, setProfile]     = useState(null);
   const [loading, setLoading]     = useState(true);
+  const [growthPendingAction, setGrowthPendingAction] = useState(null); // 'openCheckupSheet' | null
 
   // Initialize Global History Stack Overlay Coordinator (LIFO)
   useEffect(() => {
@@ -288,9 +289,9 @@ export default function App() {
 
       {/* ── MAIN CONTENT ── */}
       <main className="main-content">
-        {activeTab === 'chat'      && <ChatScreen    profile={{ ...sharedProfile, displayName: `Mẹ ${momName}`, role: 'Mẹ' }} setActiveTab={setActiveTab} />}
+        {activeTab === 'chat'      && <ChatScreen    profile={{ ...sharedProfile, displayName: `Mẹ ${momName}`, role: 'Mẹ' }} setActiveTab={setActiveTab} setGrowthPendingAction={setGrowthPendingAction} />}
         {activeTab === 'tracker'   && <TrackerScreen profile={sharedProfile} />}
-        {activeTab === 'growth'    && <GrowthScreen  profile={sharedProfile} setActiveTab={setActiveTab} />}
+        {activeTab === 'growth'    && <GrowthScreen  profile={sharedProfile} setActiveTab={setActiveTab} pendingAction={growthPendingAction} onConsumePendingAction={() => setGrowthPendingAction(null)} />}
         {activeTab === 'community' && <CommunityScreen profile={sharedProfile} />}
         {activeTab === 'baby'      && <BabyProfileScreen profile={sharedProfile} />}
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}
