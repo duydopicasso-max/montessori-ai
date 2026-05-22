@@ -105,6 +105,16 @@ export default function App() {
         if (!stack || stack.length === 0) return;
 
         const topOverlay = stack[stack.length - 1];
+        
+        // If the popped state's overlayId doesn't match the top of our stack,
+        // the overlay was already programmatically closed (via handleCleanCloseSheet).
+        // In that case, just close the top overlay cleanly.
+        const poppedId = event.state?.overlayId;
+        if (poppedId && !stack.some(item => item.id === poppedId)) {
+          // Already handled — nothing to do
+          return;
+        }
+
         const decision = topOverlay.checkClose();
 
         if (decision === 'saving') {

@@ -2324,8 +2324,12 @@ ${logsDesc}`;
   };
 
   const handleCleanCloseSheet = (sheetId) => {
+    // Clear BOTH dirty and saving flags before closing to prevent popstate
+    // handler from seeing 'saving' state and blocking the close
     chatOverlayStateRef.current.isDirty = false;
+    chatOverlayStateRef.current.saving = false;
     if (window._overlayStack && window._overlayStack.stack.some(item => item.id === sheetId)) {
+      window._overlayStack.pop(sheetId);
       window.history.back();
     } else {
       setActiveBottomSheet(null);
@@ -2340,14 +2344,18 @@ ${logsDesc}`;
       setInput('');
       setPendingImgs([]);
       chatOverlayStateRef.current.isDirty = false;
+      chatOverlayStateRef.current.saving = false;
       if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'chat-assistant')) {
+        window._overlayStack.pop('chat-assistant');
         window.history.back();
       } else {
         setIsChatOpen(false);
       }
     } else if (target) {
       chatOverlayStateRef.current.isDirty = false;
+      chatOverlayStateRef.current.saving = false;
       if (window._overlayStack && window._overlayStack.stack.some(item => item.id === target)) {
+        window._overlayStack.pop(target);
         window.history.back();
       } else {
         setActiveBottomSheet(null);
