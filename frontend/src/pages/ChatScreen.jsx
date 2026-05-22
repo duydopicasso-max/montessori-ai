@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { calculateDetailedAge, getHandbookForAge } from '../data/handbookData.js';
 import { LeafIcon, SparkleIcon } from '../icons.jsx';
@@ -64,6 +64,68 @@ const ScaleIcon = () => (
   </svg>
 );
 
+/* --- Cân nặng thai kỳ: Rounded digital/bathroom scale --- */
+const PregWeightIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="4" width="16" height="16" rx="3" />
+    <path d="M8 8a4 4 0 0 1 8 0" />
+    <line x1="12" y1="10" x2="12" y2="8" />
+  </svg>
+);
+
+/* --- Cảm xúc hôm nay: Smiley face --- */
+const PregEmotionIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M8 14c1.5 2 4.5 2 6 0"/>
+    <line x1="9" y1="9" x2="9.01" y2="9"/>
+    <line x1="15" y1="9" x2="15.01" y2="9"/>
+  </svg>
+);
+
+/* --- Lịch khám thai: Calendar with medical plus sign --- */
+const PregClinicIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+    <line x1="12" y1="13" x2="12" y2="17" />
+    <line x1="10" y1="15" x2="14" y2="15" />
+  </svg>
+);
+
+/* --- Vitamin & Nước: Pill capsule + water drop --- */
+const PregRemindersIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <g transform="rotate(-45 8.5 12)">
+      <rect x="6" y="7" width="5" height="10" rx="2.5" />
+      <line x1="6" y1="12" x2="11" y2="12" />
+    </g>
+    <path d="M16 19a3.5 3.5 0 0 0 3.5-3.5c0-2.15-3.5-5.5-3.5-5.5s-3.5 3.35-3.5 5.5A3.5 3.5 0 0 0 16 19z"/>
+  </svg>
+);
+
+/* --- Đếm thai máy: Concentric motion waves --- */
+const PregKickIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="2" />
+    <path d="M8 8 A 5.7 5.7 0 0 1 16 8" />
+    <path d="M5 5 A 9.9 9.9 0 0 1 19 5" />
+    <path d="M16 16 A 5.7 5.7 0 0 1 8 16" />
+    <path d="M19 19 A 9.9 9.9 0 0 1 5 19" />
+  </svg>
+);
+
+/* --- Đếm cơn gò: Clock/Timer line --- */
+const PregContraIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+
 /* ── Timeline node icons (compact 24x24) ── */
 const TimelineBottleIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -95,6 +157,96 @@ const TimelineGrowthIcon = () => (
     <path d="M7 17v-4M12 17V9M17 17V7"/>
   </svg>
 );
+const TimelineClinicIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+  </svg>
+);
+const TimelineEmotionIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+    <line x1="9" y1="9" x2="9" y2="9"/>
+    <line x1="15" y1="9" x2="15" y2="9"/>
+  </svg>
+);
+const TimelineVitaminIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="7" y="3" width="10" height="18" rx="5" transform="rotate(45 12 12)" />
+    <line x1="8.46" y1="8.46" x2="15.54" y2="15.54" />
+  </svg>
+);
+const TimelineWeightIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="4" width="16" height="16" rx="3" />
+    <path d="M8 8a4 4 0 0 1 8 0" />
+    <line x1="12" y1="10" x2="12" y2="8" />
+  </svg>
+);
+const EmotionSmileIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="emotion-icon-svg">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+    <line x1="9" y1="9" x2="9.01" y2="9"/>
+    <line x1="15" y1="9" x2="15.01" y2="9"/>
+  </svg>
+);
+const EmotionTiredIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="emotion-icon-svg">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M10 15h4"/>
+    <path d="M9 10a1.5 1.5 0 0 0-3 0"/>
+    <path d="M18 10a1.5 1.5 0 0 0-3 0"/>
+  </svg>
+);
+const EmotionSoftIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="emotion-icon-svg">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M8 15.5s1.5-1.5 4-1.5 4 1.5 4 1.5"/>
+    <circle cx="9" cy="9.5" r="1"/>
+    <circle cx="15" cy="9.5" r="1"/>
+    <path d="M9.5 11.5c0 .6-.4 1-.9 1s-.9-.4-.9-1c0-.6.9-1.5.9-1.5s.9.9.9 1.5z"/>
+  </svg>
+);
+const EmotionWorriedIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="emotion-icon-svg">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M8 16c2-1.5 4-1.5 6 0"/>
+    <path d="M8 9.5c.3-.5.9-.5 1.2 0"/>
+    <path d="M14.8 9.5c.3-.5.9-.5 1.2 0"/>
+    <circle cx="9" cy="11.5" r="1"/>
+    <circle cx="15" cy="11.5" r="1"/>
+  </svg>
+);
+const EmotionHeartSmileIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="emotion-icon-svg">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+    <path d="M7.3 8.3a1 1 0 0 1 1.4-1.4l.3.3.3-.3a1 1 0 0 1 1.4 1.4L8.7 10.3 6.7 8.3z" fill="currentColor"/>
+    <path d="M13.3 8.3a1 1 0 0 1 1.4-1.4l.3.3.3-.3a1 1 0 0 1 1.4 1.4l-2 2-2-2z" fill="currentColor"/>
+  </svg>
+);
+const LeafSparkleIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ width: '18px', height: '18px' }} className="leaf-sparkle-icon">
+    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-13.9.2" />
+    <path d="M9 22v-4h4" />
+  </svg>
+);
+const emotionIconMap = {
+  'Vui vẻ': EmotionSmileIcon,
+  'Mệt mỏi': EmotionTiredIcon,
+  'Nhạy cảm': EmotionSoftIcon,
+  'Lo lắng': EmotionWorriedIcon,
+  'Hạnh phúc': EmotionHeartSmileIcon
+};
+const emotionEmojiMap = {
+  'Vui vẻ': '😊',
+  'Mệt mỏi': '🥱',
+  'Nhạy cảm': '🥺',
+  'Lo lắng': '😰',
+  'Hạnh phúc': '🥰'
+};
+
 
 /* Suggested questions per child stage */
 const QUESTION_POOL = {
@@ -125,7 +277,65 @@ async function uploadToCloudinary(file) {
   return data.secure_url;
 }
 
-export default function ChatScreen({ profile }) {
+const PREGNANCY_FRUIT_MAP = {
+  1: { fruit: "🌱", fruitName: "hạt mầm", desc: "Phôi thai đang bắt đầu làm tổ trong tử cung ấm áp của mẹ.", sizeText: "siêu nhỏ" },
+  2: { fruit: "🌱", fruitName: "hạt mầm", desc: "Phôi thai đang bắt đầu làm tổ trong tử cung ấm áp của mẹ.", sizeText: "siêu nhỏ" },
+  3: { fruit: "🌱", fruitName: "hạt mầm", desc: "Phôi thai đang bắt đầu làm tổ trong tử cung ấm áp của mẹ.", sizeText: "siêu nhỏ" },
+  4: { fruit: "🍓", fruitName: "hạt vừng", desc: "Phôi thai nhỏ đã làm tổ chắc chắn trong tử cung. Các tế bào đang phân chia thần tốc.", sizeText: "khoảng 1mm" },
+  5: { fruit: "🍓", fruitName: "hạt táo", desc: "Hệ thần kinh, tuần hoàn và tim thai sơ khai đang dần hình thành.", sizeText: "khoảng 2-3mm" },
+  6: { fruit: "🫛", fruitName: "hạt đậu ngọt", desc: "Tim thai của bé bắt đầu đập nhịp nhàng, các chồi tay chân nhỏ xíu xuất hiện.", sizeText: "khoảng 5-6mm" },
+  7: { fruit: "🫐", fruitName: "quả việt quất", desc: "Não bộ phát triển nhanh chóng, các nét trên khuôn mặt bé dần rõ nét.", sizeText: "khoảng 1cm" },
+  8: { fruit: "🍇", fruitName: "quả mâm xôi", desc: "Các cơ quan quan trọng như tim, brain, phổi đang hình thành và tim thai đã đập nhịp nhàng.", sizeText: "khoảng 1.6cm" },
+  9: { fruit: "🍇", fruitName: "quả nho", desc: "Bé bắt đầu có những cử động nhỏ đầu tiên mà mẹ chưa cảm nhận được.", sizeText: "khoảng 2.3cm" },
+  10: { fruit: "🍊", fruitName: "quả quất", desc: "Các khớp nối chính như vai, khuỷu tay, đầu gối đã bắt đầu hoạt động.", sizeText: "khoảng 3cm" },
+  11: { fruit: "🍋", fruitName: "quả sung", desc: "Hệ xương của bé bắt đầu cứng cáp hơn, bé bắt đầu tập nuốt nước ối.", sizeText: "khoảng 4cm" },
+  12: { fruit: "🍋", fruitName: "quả chanh ta", desc: "Bé đã có đầy đủ ngón tay, ngón chân và có thể cử động nhẹ trong bọc ối.", sizeText: "khoảng 5.4cm, 14g" },
+  13: { fruit: "🍑", fruitName: "quả mận", desc: "Vân tay duy nhất của bé đã hình thành. Bé bắt đầu biết mút ngón tay cái.", sizeText: "khoảng 7.4cm, 23g" },
+  14: { fruit: "🍋", fruitName: "quả chanh vàng", desc: "Cổ bé đã dài ra giúp đầu đứng thẳng hơn. Bé bắt đầu biểu cảm khuôn mặt.", sizeText: "khoảng 8.7cm, 43g" },
+  15: { fruit: "🍎", fruitName: "quả táo tây", desc: "Bé rất nhạy cảm với ánh sáng đi qua da bụng của mẹ dù mắt vẫn nhắm.", sizeText: "khoảng 10.1cm, 70g" },
+  16: { fruit: "🥑", fruitName: "quả bơ", desc: "Bé đã bắt đầu nghe được âm thanh từ nhịp tim, mạch máu và giọng nói dịu dàng của mẹ.", sizeText: "khoảng 11.6cm, 100g" },
+  17: { fruit: "🍅", fruitName: "quả lựu", desc: "Lớp mỡ dưới da bắt đầu tích lũy để giúp bé giữ ấm sau khi chào đời.", sizeText: "khoảng 13cm, 140g" },
+  18: { fruit: "🫑", fruitName: "quả ớt chuông", desc: "Bé có thể ngáp, duỗi cơ và mẹ bắt đầu cảm nhận những cú cựa quậy nhẹ đầu tiên.", sizeText: "khoảng 14.2cm, 190g" },
+  19: { fruit: "🥭", fruitName: "quả xoài", desc: "Các giác quan như thính giác, khứu giác, vị giác đang phát triển vượt bậc.", sizeText: "khoảng 15.3cm, 240g" },
+  20: { fruit: "🍌", fruitName: "quả chuối", desc: "Da bé được bao phủ bởi lớp chất gây (vernix) bảo vệ. Bé nhào lộn rất tích cực.", sizeText: "khoảng 25.6cm, 300g" },
+  21: { fruit: "🥕", fruitName: "quả cà rốt", desc: "Hệ tiêu hóa của bé phát triển hơn, bé bắt đầu hấp thu lượng nhỏ đường từ nước ối.", sizeText: "khoảng 26.7cm, 360g" },
+  22: { fruit: "🥭", fruitName: "quả đu đủ", desc: "Vị giác hoàn thiện, bé có thể cảm nhận hương vị đồ ăn mẹ ăn qua nước ối.", sizeText: "khoảng 27.8cm, 430g" },
+  23: { fruit: "🍊", fruitName: "quả bưởi chùm", desc: "Hệ hô hấp phát triển nhanh, bé tập hít thở nước ối để chuẩn bị cho cuộc sống bên ngoài.", sizeText: "khoảng 28.9cm, 500g" },
+  24: { fruit: "🍈", fruitName: "quả dưa lưới", desc: "Da bé bớt nhăn nheo nhờ tích tụ thêm mỡ. Bé có thể phân biệt được giọng nói của bố và mẹ.", sizeText: "khoảng 30cm, 600g" },
+  25: { fruit: "🥦", fruitName: "quả súp lơ", desc: "Các mạch máu trong phổi đang phát triển. Bé bắt đầu có chu kỳ ngủ và thức rõ ràng.", sizeText: "khoảng 34.6cm, 660g" },
+  26: { fruit: "🥬", fruitName: "bắp cải đỏ", desc: "Mắt bé bắt đầu mở ra. Bé phản ứng rõ rệt hơn với âm thanh đột ngột từ bên ngoài.", sizeText: "khoảng 35.6cm, 760g" },
+  27: { fruit: "🥬", fruitName: "cây xà lách", desc: "Bé đã có thể cảm nhận được nhịp tim mẹ đập nhanh hay chậm để điều chỉnh cảm xúc.", sizeText: "khoảng 36.6cm, 875g" },
+  28: { fruit: "🥦", fruitName: "cây súp lơ lớn", desc: "Não bộ phát triển thần tốc với hàng tỷ tế bào thần kinh mới hình thành.", sizeText: "khoảng 37.6cm, 1kg" },
+  29: { fruit: "🎃", fruitName: "quả bí ngô nhỏ", desc: "Hệ xương của bé tiếp tục cứng cáp hơn. Bé cần nhiều Canxi từ mẹ.", sizeText: "khoảng 38.6cm, 1.2kg" },
+  30: { fruit: "🥥", fruitName: "quả dừa", desc: "Lượng nước ối đạt mức cao nhất. Bé bắt đầu nhấp nháy mắt thường xuyên hơn.", sizeText: "khoảng 39.9cm, 1.3kg" },
+  31: { fruit: "🍍", fruitName: "quả dứa", desc: "Bé có thể tự quay đầu từ bên này sang bên kia. Lớp mỡ dưới da tiếp tục dày lên.", sizeText: "khoảng 41.1cm, 1.5kg" },
+  32: { fruit: "🍉", fruitName: "quả dưa lê", desc: "Đa số các bé đã tự quay đầu xuống (ngôi thuận) để chuẩn bị chào đời.", sizeText: "khoảng 42.4cm, 1.7kg" },
+  33: { fruit: "🥬", fruitName: "củ cải đường", desc: "Hệ miễn dịch của bé đang nhận các kháng thể từ mẹ để tự bảo vệ sau sinh.", sizeText: "khoảng 43.7cm, 1.9kg" },
+  34: { fruit: "🍈", fruitName: "quả dưa hoàng kim", desc: "Lớp màng bảo vệ myelin quanh dây thần kinh đang hoàn thiện giúp bé phản xạ nhanh hơn.", sizeText: "khoảng 45cm, 2.1kg" },
+  35: { fruit: "🍉", fruitName: "quả dưa hấu nhỏ", desc: "Không gian trong tử cung đã khá chật chội. Bé không nhào lộn nhiều nữa nhưng đạp mạnh hơn.", sizeText: "khoảng 46.2cm, 2.4kg" },
+  36: { fruit: "🥬", fruitName: "cây xà lách lớn", desc: "Phổi đã gần như hoàn thiện hoàn toàn và sẵn sàng tự thở khi chào đời.", sizeText: "khoảng 47.4cm, 2.6kg" },
+  37: { fruit: "🥬", fruitName: "cây cải cầu vồng", desc: "Bé được coi là đủ tháng ở tuần tiếp theo. Bé tiếp tục tăng cân khoảng 200g mỗi tuần.", sizeText: "khoảng 48.6cm, 2.9kg" },
+  38: { fruit: "🧅", fruitName: "cây tỏi tây lớn", desc: "Các cơ quan đã hoàn thiện chức năng và sẵn sàng hoạt động độc lập bên ngoài tử cung.", sizeText: "khoảng 49.8cm, 3.1kg" },
+  39: { fruit: "🎃", fruitName: "quả bí ngô tròn", desc: "Lớp mỡ dưới da dày giúp cơ thể bé tròn trịa. Bé nhận được rất nhiều kháng thể từ mẹ.", sizeText: "khoảng 50.7cm, 3.3kg" },
+  40: { fruit: "🍉", fruitName: "quả dưa hấu lớn", desc: "Bé đã sẵn sàng chào đời! Con đang chờ đợi tín hiệu chuyển dạ từ cơ thể mẹ.", sizeText: "khoảng 51.2cm, 3.5kg" }
+};
+
+export function getPregnancyFruitAndDesc(weeks) {
+  const w = Math.max(1, Math.min(40, Math.floor(weeks || 30)));
+  return PREGNANCY_FRUIT_MAP[w] || PREGNANCY_FRUIT_MAP[40];
+}
+
+export function getPregnancyMontessoriSuggestion(weeks) {
+  if (weeks <= 13) {
+    return "Mẹ tập thở chánh niệm, nghe nhạc Kalimba nhẹ nhàng kết hợp thiền để giữ tâm trạng an yên, giảm bớt lo lắng thai kỳ.";
+  } else if (weeks <= 27) {
+    return "Thai giáo qua giọng nói: Bố mẹ cùng đọc truyện, trò chuyện dịu dàng hoặc hát cho bé nghe mỗi tối để gắn kết thính giác ban đầu.";
+  } else {
+    return "Sắp xếp và thiết kế góc phòng của bé sơ sinh theo tinh thần Montessori tối giản, an toàn, ngập tràn ánh sáng tự nhiên và học cụ kích thích thị giác.";
+  }
+}
+
+export default function ChatScreen({ profile, setActiveTab }) {
   const status = profile?.status || 'born';
   const userId = profile?.user?.uid;
   const babies = profile?.babies || [];
@@ -137,6 +347,7 @@ export default function ChatScreen({ profile }) {
   // Real-time local baby/mom logs
   const [nutritionLogs, setNutritionLogs] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
+  const [headerAvatarError, setHeaderAvatarError] = useState(false);
 
   // Screen loading state simulation (Skeleton Loader Shimmer)
   const [isScreenLoading, setIsScreenLoading] = useState(true);
@@ -149,21 +360,116 @@ export default function ChatScreen({ profile }) {
   }, []);
 
   // Active bottom sheets
-  const [activeBottomSheet, setActiveBottomSheet] = useState(null); // 'nutrition' | 'sleep' | 'diaper' | 'growth' | 'kick' | 'contractions' | 'preg_weight' | 'preg_reminders'
+  const [activeBottomSheet, setActiveBottomSheet] = useState(null); // 'nutrition' | 'sleep' | 'diaper' | 'growth' | 'kick' | 'contractions' | 'preg_weight' | 'preg_reminders' | 'preg_clinic' | 'preg_emotion'
   const [isChatOpen, setIsChatOpen] = useState(false);
 
+  // Status transition, Clinic and Emotion states
+  const [isTransitionCardDismissed, setIsTransitionCardDismissed] = useState(false);
+  const getTodayLocalyyyymmdd = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [clinicNote, setClinicNote] = useState('');
+  const [nextApptDate, setNextApptDate] = useState('');
+  const [visitDate, setVisitDate] = useState(getTodayLocalyyyymmdd());
+  const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [isClinicLoading, setIsClinicLoading] = useState(false);
+  const [isSavingClinic, setIsSavingClinic] = useState(false);
+  const [saveClinicError, setSaveClinicError] = useState(false);
+  const [loadClinicInfoError, setLoadClinicInfoError] = useState(false);
+  const [loadQuickSuggestionsError, setLoadQuickSuggestionsError] = useState(false);
+  const [showValidationWarning, setShowValidationWarning] = useState(false);
+
+  useEffect(() => {
+    if (activeBottomSheet === 'preg_clinic') {
+      setVisitDate(getTodayLocalyyyymmdd());
+      setClinicNote('');
+      setNextApptDate('');
+      setReminderEnabled(true);
+      setShowInfoModal(false);
+      setSaveClinicError(false);
+      setLoadClinicInfoError(false);
+      setLoadQuickSuggestionsError(false);
+      setShowValidationWarning(false);
+
+      setIsClinicLoading(true);
+      const timer = setTimeout(() => {
+        setIsClinicLoading(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    } else if (activeBottomSheet === 'preg_emotion') {
+      setSelectedEmotions([]);
+      setEmotionIntensity('Vừa');
+      setEmotionNote('');
+      setSaveEmotionError(false);
+      setLoadEmotionError(false);
+      setShowEmotionValidationWarning(false);
+      setShowMaxEmotionsWarning(false);
+
+      setIsEmotionLoading(true);
+      const timer = setTimeout(() => {
+        setIsEmotionLoading(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [activeBottomSheet]);
+
+  const [selectedEmotions, setSelectedEmotions] = useState([]);
+  const [emotionIntensity, setEmotionIntensity] = useState('Vừa');
+  const [emotionNote, setEmotionNote] = useState('');
+  const [isEmotionLoading, setIsEmotionLoading] = useState(false);
+  const [isSavingEmotion, setIsSavingEmotion] = useState(false);
+  const [saveEmotionError, setSaveEmotionError] = useState(false);
+  const [loadEmotionError, setLoadEmotionError] = useState(false);
+  const [showEmotionValidationWarning, setShowEmotionValidationWarning] = useState(false);
+  const [showMaxEmotionsWarning, setShowMaxEmotionsWarning] = useState(false);
+
   // Dynamic age calculation & update time helpers
+  const getDaysRemaining = () => {
+    const dueDateStr = profile?.dueDate || pregnancyInfo?.dueDate;
+    if (!dueDateStr) return null;
+    const dueDate = new Date(dueDateStr);
+    const today = new Date();
+    dueDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const diffTime = dueDate.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const getPregnancyWeekInfo = () => {
+    const daysRemaining = getDaysRemaining();
+    if (daysRemaining === null) {
+      const w = parseInt(pregnancyInfo?.weeks || 30);
+      const d = parseInt(pregnancyInfo?.days || 0);
+      return { weeks: w, days: d };
+    }
+    const currentPregnancyDays = 280 - daysRemaining;
+    const w = Math.max(1, Math.min(42, Math.floor(currentPregnancyDays / 7)));
+    const d = Math.max(0, Math.min(6, currentPregnancyDays % 7));
+    return { weeks: w, days: d };
+  };
+
+  const getDetailedAgeLabel = () => {
+    if (ageInfo.years > 0) {
+      return `${ageInfo.years} tuổi ${ageInfo.months} tháng`;
+    }
+    if (ageInfo.months > 0) {
+      return `${ageInfo.months} tháng ${ageInfo.days} ngày`;
+    }
+    return `${ageInfo.days} ngày tuổi`;
+  };
+
   const getAgeString = () => {
     if (status === 'pregnant') {
-      return `Tuần thai ${pregnancyInfo?.week || 30}`;
+      const { weeks } = getPregnancyWeekInfo();
+      return `Tuần thai ${weeks}`;
     }
-    const m = parseInt(ageInfo?.months || 0);
-    const y = parseInt(ageInfo?.years  || 0);
-    const totalMonths = y * 12 + m;
-    if (totalMonths > 0) {
-      return `${totalMonths} tháng tuổi`;
-    }
-    return `${ageInfo?.days || 5} ngày tuổi`;
+    return getDetailedAgeLabel();
   };
 
   const getLatestUpdateTime = () => {
@@ -251,6 +557,11 @@ export default function ChatScreen({ profile }) {
 
   // G. Pregnancy Weight inputs
   const [pregWeight, setPregWeight] = useState(58.5);
+  const [isSavingWeight, setIsSavingWeight] = useState(false);
+  const [saveWeightError, setSaveWeightError] = useState(false);
+  const [showPrePregInput, setShowPrePregInput] = useState(false);
+  const [prePregInputValue, setPrePregInputValue] = useState('');
+  const [isSavingPrePreg, setIsSavingPrePreg] = useState(false);
 
   // 2. Compute dynamic handbook & age data
   const ageInfo = calculateDetailedAge(dob, status, pregnancyInfo);
@@ -405,6 +716,44 @@ export default function ChatScreen({ profile }) {
   const removeImg = (id) => setPendingImgs(prev => prev.filter(p => p.id !== id));
 
   // Send message chatbot logic
+  const getDynamicContext = useCallback(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayNutrition = nutritionLogs.filter(l => l.date === todayStr);
+    const todayActivity = activityLogs.filter(l => l.date === todayStr);
+    
+    let logsDesc = '';
+    if (todayNutrition.length === 0 && todayActivity.length === 0) {
+      logsDesc = 'Chưa có ghi nhận hoạt động nào hôm nay.';
+    } else {
+      logsDesc = 'Các hoạt động đã ghi nhận hôm nay:\n' + 
+        [
+          ...todayNutrition.map(l => `[${l.time}] Ăn uống - ${l.type === 'breast_direct' ? 'Bú mẹ' : l.type === 'breast_pump' ? 'Bú sữa mẹ vắt' : l.type === 'formula' ? 'Bú sữa công thức' : l.type === 'solid' ? 'Ăn dặm' : 'Ăn'} (${l.amountMl ? `${l.amountMl}ml` : ''}${l.foodDetails || ''})`),
+          ...todayActivity.map(l => `[${l.time}] ${l.type === 'sleep' ? 'Ngủ' : l.type === 'diaper' ? 'Thay tã' : l.type === 'growth' ? 'Tăng trưởng' : l.type === 'preg_kick' ? 'Thai máy' : l.type === 'preg_contraction' ? 'Cơn gò' : l.type === 'preg_weight' ? 'Cân nặng mẹ' : l.type === 'preg_reminders' ? 'Vi chất' : 'Khác'} - ${l.note || ''}`)
+        ].join('\n');
+    }
+
+    if (status === 'pregnant') {
+      const { weeks, days } = getPregnancyWeekInfo();
+      const fruitInfo = getPregnancyFruitAndDesc(weeks);
+      const daysRemaining = getDaysRemaining();
+      return `[Ngữ cảnh hệ thống Montessori AI]
+Người dùng: Mẹ ${profile?.momName || 'Maud'}, đang mang thai bé ${baby?.name || 'Cốm'}.
+Tuần thai: Tuần ${weeks} + ${days} ngày.
+Kích thước thai nhi: Bằng một ${fruitInfo.fruitName} ${fruitInfo.fruit} (${fruitInfo.sizeText}). Mô tả phát triển: "${fruitInfo.desc}".
+Thời gian dự sinh: Còn ${daysRemaining !== null ? `${daysRemaining} ngày` : 'chưa thiết lập ngày dự sinh'}.
+${logsDesc}`;
+    } else {
+      const detailAge = getDetailedAgeLabel();
+      const devMilestone = handbook?.milestone || 'Phát triển khỏe mạnh toàn diện.';
+      return `[Ngữ cảnh hệ thống Montessori AI]
+Người dùng: Mẹ ${profile?.momName || 'Maud'}, em bé: ${baby?.name || 'Cốm'}.
+Tuổi của bé: ${detailAge} (${ageInfo?.months || 0} tháng tuổi).
+Mốc phát triển tháng tuổi này: "${devMilestone}".
+${logsDesc}`;
+    }
+  }, [status, profile, baby, nutritionLogs, activityLogs, ageInfo, handbook]);
+
+  // Send message chatbot logic
   const sendMessage = useCallback(async (text) => {
     const question = (text || input).trim();
     if ((!question && pendingImgs.length === 0) || isLoading) return;
@@ -423,11 +772,11 @@ export default function ChatScreen({ profile }) {
     setIsLoading(true);
 
     try {
-      const ctx = `[Profile: ${profile.displayName}, ${profile.role}, Child: ${profile.childName}, ${profile.status}] `;
+      const ctx = getDynamicContext();
       const res = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: ctx + (question || '(Gửi ảnh)'), sessionId, history }),
+        body: JSON.stringify({ message: `${ctx}\n\nHỏi: ${question || '(Gửi ảnh)'}`, sessionId, history }),
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
@@ -443,7 +792,7 @@ export default function ChatScreen({ profile }) {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, sessionId, history, pendingImgs, profile]);
+  }, [input, isLoading, sessionId, history, pendingImgs, profile, getDynamicContext]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -614,45 +963,435 @@ export default function ChatScreen({ profile }) {
   // Pregnancy Logs: Weight
   const handleSavePregWeight = async () => {
     if (!userId) return;
+    const wNum = Number(pregWeight);
+    if (isNaN(wNum) || wNum < 30 || wNum > 200) return;
+    setIsSavingWeight(true);
+    setSaveWeightError(false);
+
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const todayStr = new Date().toISOString().split('T')[0];
 
     const logData = {
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       time: formattedTime,
       type: 'preg_weight',
-      weightKg: Number(pregWeight),
-      note: `Cân nặng mẹ bầu: ${pregWeight} kg`,
+      weightKg: wNum,
+      note: `Cân nặng mẹ bầu: ${wNum} kg`,
       createdAt: serverTimestamp()
     };
 
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
+      showToast("Đã lưu cân nặng hôm nay");
       setActiveBottomSheet(null);
     } catch (err) {
       console.error(err);
+      setSaveWeightError(true);
+    } finally {
+      setIsSavingWeight(false);
     }
   };
 
-  // Pregnancy Logs: Vitamin Check-off
+  const handleSavePrePregWeight = async () => {
+    if (!userId || !prePregInputValue) return;
+    const val = Number(prePregInputValue);
+    if (isNaN(val) || val < 30 || val > 200) return;
+    setIsSavingPrePreg(true);
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        prePregnancyWeight: val
+      });
+      showToast("Đã lưu cân nặng trước thai kỳ");
+      setShowPrePregInput(false);
+    } catch (err) {
+      console.error("Error saving pre-pregnancy weight:", err);
+    } finally {
+      setIsSavingPrePreg(false);
+    }
+  };
+
+  // Pregnancy Logs: Vitamin & Nước
   const [vitaminsLogged, setVitaminsLogged] = useState({ Folic: false, Iron: false, Calcium: false, DHA: false });
+  const [waterCount, setWaterCount] = useState(0);
+  const [waterTarget, setWaterTarget] = useState(8);
+  const [configuredVitamins, setConfiguredVitamins] = useState(['Folic', 'Iron', 'Calcium', 'DHA']);
+  const [isSavingVitamins, setIsSavingVitamins] = useState(false);
+  const [saveVitaminsError, setSaveVitaminsError] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
+
+  useEffect(() => {
+    if (activeBottomSheet === 'preg_reminders') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayLog = activityLogs.find(l => l.type === 'preg_reminders' && l.date === todayStr);
+      if (todayLog) {
+        setVitaminsLogged({
+          Folic: todayLog.vitaminsLogged?.Folic || false,
+          Iron: todayLog.vitaminsLogged?.Iron || false,
+          Calcium: todayLog.vitaminsLogged?.Calcium || false,
+          DHA: todayLog.vitaminsLogged?.DHA || false
+        });
+        setWaterCount(todayLog.waterCount !== undefined ? todayLog.waterCount : 0);
+        setWaterTarget(todayLog.waterTarget !== undefined ? todayLog.waterTarget : 8);
+        if (todayLog.configuredVitamins) {
+          setConfiguredVitamins(todayLog.configuredVitamins);
+        } else {
+          setConfiguredVitamins(['Folic', 'Iron', 'Calcium', 'DHA']);
+        }
+      } else {
+        setVitaminsLogged({ Folic: false, Iron: false, Calcium: false, DHA: false });
+        setWaterCount(0);
+        setWaterTarget(8);
+        setConfiguredVitamins(['Folic', 'Iron', 'Calcium', 'DHA']);
+      }
+      setSaveVitaminsError(false);
+    } else if (activeBottomSheet === 'preg_weight') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayLog = activityLogs.find(l => l.type === 'preg_weight' && l.date === todayStr);
+      if (todayLog) {
+        setPregWeight(todayLog.weightKg);
+      } else {
+        const wLogs = activityLogs.filter(l => l.type === 'preg_weight');
+        if (wLogs.length > 0) {
+          setPregWeight(wLogs[0].weightKg);
+        } else {
+          setPregWeight(58.5);
+        }
+      }
+      setSaveWeightError(false);
+      setShowPrePregInput(false);
+      setPrePregInputValue(profile?.prePregnancyWeight || '');
+    }
+  }, [activeBottomSheet, activityLogs, profile]);
+
   const handleSaveVitamins = async () => {
     if (!userId) return;
+    setIsSavingVitamins(true);
+    setSaveVitaminsError(false);
+
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    const checked = Object.keys(vitaminsLogged).filter(k => vitaminsLogged[k]).join(', ');
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const activeCheckedVitamins = configuredVitamins.filter(k => vitaminsLogged[k]);
+    const checkedCount = activeCheckedVitamins.length;
+    const totalCount = configuredVitamins.length;
+
+    const logData = {
+      date: todayStr,
+      time: formattedTime,
+      type: 'preg_reminders',
+      note: `Đã ghi nhận ${checkedCount}/${totalCount} vi chất · ${waterCount}/${waterTarget} ly nước`,
+      vitaminsLogged,
+      vitaminCount: checkedCount,
+      totalVitamins: totalCount,
+      waterCount,
+      waterTarget,
+      configuredVitamins,
+      createdAt: serverTimestamp()
+    };
+
+    try {
+      const todayLog = activityLogs.find(l => l.type === 'preg_reminders' && l.date === todayStr);
+      if (todayLog) {
+        await updateDoc(doc(db, 'users', userId, 'babies', babyId, 'activityLogs', todayLog.id), {
+          ...logData,
+          createdAt: todayLog.createdAt || serverTimestamp()
+        });
+      } else {
+        await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
+      }
+      triggerChime();
+      setActiveBottomSheet(null);
+      showToast("Đã lưu ghi nhận hôm nay");
+    } catch (err) {
+      console.error(err);
+      setSaveVitaminsError(true);
+    } finally {
+      setIsSavingVitamins(false);
+    }
+  };
+
+  const getVitaminStatusText = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayLog = activityLogs.find(l => l.type === 'preg_reminders' && l.date === todayStr);
+    if (!todayLog) return 'Chưa ghi nhận hôm nay';
+    
+    const vitCount = todayLog.vitaminCount !== undefined ? todayLog.vitaminCount : 0;
+    const vitTotal = todayLog.totalVitamins !== undefined ? todayLog.totalVitamins : 4;
+    const watCount = todayLog.waterCount !== undefined ? todayLog.waterCount : 0;
+    const watTarget = todayLog.waterTarget !== undefined ? todayLog.waterTarget : 8;
+    return `Đã uống ${vitCount}/${vitTotal} vi chất · ${watCount}/${watTarget} ly nước`;
+  };
+
+
+  // Helper to format date YYYY-MM-DD to DD/MM/YYYY
+  const formatDateForDisplay = (val) => {
+    if (!val) return '';
+    const parts = val.split('-');
+    if (parts.length !== 3) return val;
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+  };
+
+  // Helper to check if a date string is in the past compared to local today
+  const isDateInPast = (dateStr) => {
+    if (!dateStr) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const date = new Date(dateStr);
+    date.setHours(0, 0, 0, 0);
+    return date < today;
+  };
+
+
+  // Helper to parse ultrasound indices from freeform checkup notes
+  const parseClinicNote = (note) => {
+    if (!note) return {};
+    const parseMetric = (regex) => {
+      const match = note.match(regex);
+      return match && match[1] ? parseFloat(match[1]) : null;
+    };
+    return {
+      bpd: parseMetric(/BPD:\s*(\d+(?:\.\d+)?)\s*mm/i),
+      fl: parseMetric(/FL:\s*(\d+(?:\.\d+)?)\s*mm/i),
+      ac: parseMetric(/AC:\s*(\d+(?:\.\d+)?)\s*mm/i),
+      hc: parseMetric(/HC:\s*(\d+(?:\.\d+)?)\s*mm/i),
+      crl: parseMetric(/CRL:\s*(\d+(?:\.\d+)?)\s*mm/i),
+      efw: parseMetric(/EFW:\s*(\d+(?:\.\d+)?)\s*(?:g|gram)/i),
+      fetalHeartRate: parseMetric(/Tim thai:\s*(\d+)\s*(?:bpm|lần\/phút)/i)
+    };
+  };
+
+  // Pregnancy Logs: Clinic Checkup
+  const handleSavePregClinic = async () => {
+    if (!userId) return;
+
+    setSaveClinicError(false);
+    setShowValidationWarning(false);
+
+    // Validation: Require either notes/chips or a next appointment date
+    if (!clinicNote.trim() && !nextApptDate) {
+      setShowValidationWarning(true);
+      return;
+    }
+
+    setIsSavingClinic(true);
+    const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const ultrasoundData = parseClinicNote(clinicNote);
+
+    const displayNote = nextApptDate
+      ? `Đã ghi nhận kết quả khám · Hẹn tiếp theo: ${formatDateForDisplay(nextApptDate)}`
+      : `Đã ghi nhận kết quả khám hôm nay`;
+
+    const logData = {
+      date: visitDate,
+      time: formattedTime,
+      type: 'preg_clinic',
+      clinicNote,
+      nextApptDate,
+      reminderEnabled: nextApptDate ? reminderEnabled : false,
+      note: displayNote,
+      createdAt: serverTimestamp(),
+      
+      // Dynamic variables support
+      pregnancy: {
+        currentWeek: pregWeeks || 30,
+        babyName: headerBabyName || 'Bé yêu'
+      },
+      appointment: {
+        visitDate: visitDate || null,
+        notes: clinicNote || '',
+        nextAppointmentDate: nextApptDate || null,
+        reminderEnabled: nextApptDate ? reminderEnabled : false
+      },
+      ultrasound: {
+        bpd: ultrasoundData.bpd || null,
+        fl: ultrasoundData.fl || null,
+        ac: ultrasoundData.ac || null,
+        hc: ultrasoundData.hc || null,
+        crl: ultrasoundData.crl || null,
+        efw: ultrasoundData.efw || null,
+        fetalHeartRate: ultrasoundData.fetalHeartRate || null
+      }
+    };
+
+    try {
+      await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
+      triggerChime();
+      
+      if (nextApptDate && reminderEnabled) {
+        showToast("Đã lưu ghi nhận khám thai · App sẽ nhắc mẹ trước 1 ngày");
+      } else {
+        showToast("Đã lưu ghi nhận khám thai");
+      }
+
+      setActiveBottomSheet(null);
+      setClinicNote('');
+      setNextApptDate('');
+    } catch (err) {
+      console.error(err);
+      setSaveClinicError(true);
+    } finally {
+      setIsSavingClinic(false);
+    }
+  };
+
+  const [activeChipLabel, setActiveChipLabel] = useState(null);
+
+  const handleQuickChipClick = (label, template) => {
+    setActiveChipLabel(label);
+    setTimeout(() => setActiveChipLabel(null), 150);
+
+    const textarea = document.getElementById('clinic-note-textarea');
+    if (!textarea) return;
+
+    let currentText = clinicNote;
+    const lines = currentText.split('\n');
+
+    // Check if label already exists (starts with label + ':')
+    const existingLineIndex = lines.findIndex(line => 
+      line.trim().toLowerCase().startsWith(label.toLowerCase() + ':') ||
+      line.trim().toLowerCase() === label.toLowerCase()
+    );
+
+    let newText = '';
+    let targetIndex = -1;
+    let lineStartOffset = 0;
+
+    if (existingLineIndex !== -1) {
+      newText = currentText;
+      lineStartOffset = lines.slice(0, existingLineIndex).join('\n').length + (existingLineIndex > 0 ? 1 : 0);
+    } else {
+      const prefix = currentText ? (currentText.endsWith('\n') ? '' : '\n') : '';
+      newText = currentText + prefix + template;
+      lineStartOffset = currentText.length + prefix.length;
+    }
+
+    setClinicNote(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      const currentLines = newText.split('\n');
+      const activeLine = existingLineIndex !== -1 ? currentLines[existingLineIndex] : template;
+      const placeholderOffset = activeLine.indexOf('--');
+
+      if (placeholderOffset !== -1) {
+        const cursorStart = lineStartOffset + placeholderOffset;
+        const cursorEnd = cursorStart + 2;
+        textarea.setSelectionRange(cursorStart, cursorEnd);
+      } else {
+        const cursorPosition = lineStartOffset + activeLine.length;
+        textarea.setSelectionRange(cursorPosition, cursorPosition);
+      }
+    }, 50);
+  };
+
+  // Get AI Suggestion based on selected emotions
+  const getEmotionAiSuggestion = (emotions) => {
+    if (!emotions || emotions.length === 0) return 'Chọn cảm xúc để nhận một gợi ý nhỏ từ AI.';
+    if (emotions.includes('Lo lắng')) {
+      return 'Mẹ thử hít thở chậm 1 phút và ghi lại điều khiến mẹ lo nhất hôm nay.';
+    }
+    if (emotions.includes('Nhạy cảm')) {
+      return 'Mẹ hãy cho mình một khoảng nghỉ nhẹ nhàng và viết ra cảm xúc đang đến.';
+    }
+    if (emotions.includes('Mệt mỏi')) {
+      return 'Mẹ có thể nghỉ 5 phút, uống nước và thả lỏng vai.';
+    }
+    if (emotions.includes('Vui vẻ') || emotions.includes('Hạnh phúc')) {
+      return 'Mẹ có thể lưu lại một điều nhỏ khiến mẹ vui hôm nay.';
+    }
+    return '';
+  };
+
+  const handleEmotionClick = (state) => {
+    if (selectedEmotions.includes(state)) {
+      setSelectedEmotions(selectedEmotions.filter(e => e !== state));
+      setShowMaxEmotionsWarning(false);
+    } else {
+      if (selectedEmotions.length >= 3) {
+        setShowMaxEmotionsWarning(true);
+        setTimeout(() => setShowMaxEmotionsWarning(false), 3000);
+      } else {
+        setSelectedEmotions([...selectedEmotions, state]);
+        setShowMaxEmotionsWarning(false);
+      }
+    }
+  };
+
+  // Pregnancy Logs: Emotion Tracker
+  const handleSavePregEmotion = async () => {
+    if (!userId) return;
+    
+    // Validation: if both emotions and notes are empty, show validation warning
+    if (selectedEmotions.length === 0 && !emotionNote.trim()) {
+      setShowEmotionValidationWarning(true);
+      return;
+    }
+    
+    setIsSavingEmotion(true);
+    setSaveEmotionError(false);
+    setShowEmotionValidationWarning(false);
+    
+    const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const aiSuggestionText = getEmotionAiSuggestion(selectedEmotions);
+    
+    let summaryNote = '';
+    const emotionsStr = selectedEmotions.join(' · ');
+    if (emotionsStr && emotionNote.trim()) {
+      summaryNote = `Tâm trạng: ${emotionsStr}. Chi tiết: ${emotionNote.trim()}`;
+    } else if (emotionsStr) {
+      summaryNote = `Tâm trạng: ${emotionsStr}. Mức độ: ${emotionIntensity}`;
+    } else if (emotionNote.trim()) {
+      summaryNote = `Ghi chú cảm xúc. Chi tiết: ${emotionNote.trim()}`;
+    }
 
     const logData = {
       date: new Date().toISOString().split('T')[0],
       time: formattedTime,
-      type: 'preg_reminders',
-      note: `Ghi nhận vi chất đã uống: ${checked || 'Chưa uống loại nào'}`,
+      type: 'preg_emotion',
+      selectedEmotions,
+      intensity: selectedEmotions.length > 0 ? emotionIntensity : null,
+      emotionNote: emotionNote.trim(),
+      aiSuggestion: selectedEmotions.length > 0 ? aiSuggestionText : null,
+      note: summaryNote,
       createdAt: serverTimestamp()
     };
 
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
+      showToast("Đã lưu cảm xúc hôm nay");
       setActiveBottomSheet(null);
+      
+      // Reset states
+      setSelectedEmotions([]);
+      setEmotionIntensity('Vừa');
+      setEmotionNote('');
+    } catch (err) {
+      console.error("Error saving pregnancy emotion log:", err);
+      setSaveEmotionError(true);
+    } finally {
+      setIsSavingEmotion(false);
+    }
+  };
+
+  // Overdue status transition
+  const handleTransitionToBorn = async () => {
+    if (!userId) return;
+    try {
+      await updateDoc(doc(db, 'users', userId), { status: 'born' });
+      triggerChime();
+      setIsTransitionCardDismissed(true);
+      alert("Chúc mừng mẹ và bé! 🎉 Trạng thái đã được chuyển sang nuôi con. Hãy cập nhật thông tin của bé yêu trong tab Hồ sơ nhé!");
+      setActiveTab('baby');
     } catch (err) {
       console.error(err);
     }
@@ -692,22 +1431,70 @@ export default function ChatScreen({ profile }) {
     return `Cú máy cuối: ${kickLogs[0].kickCount} lần`;
   };
 
+  const getKickStatusText = (weeks) => {
+    if (weeks < 16) {
+      return 'Chờ tuần 16+ để đếm máy';
+    }
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayKicks = activityLogs.filter(l => l.type === 'preg_kick' && l.date === todayStr);
+    const totalCount = todayKicks.reduce((sum, log) => sum + (log.kickCount || 0), 0);
+    
+    if (weeks >= 16 && weeks <= 27) {
+      if (todayKicks.length === 0) return 'Ghi nhận cảm nhận';
+      return `Hôm nay: ${totalCount} lần`;
+    }
+    return `Hôm nay: ${totalCount} lần`;
+  };
+
   const getLastContraText = () => {
     const contraLogs = activityLogs.filter(l => l.type === 'preg_contraction');
     if (contraLogs.length === 0) return 'Cơn gò: Bình thường';
     return `Ghi nhận cuối: ${contraLogs[0].time}`;
   };
 
+  const getContractionsStatusText = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayContras = activityLogs.filter(l => l.type === 'preg_contraction' && l.date === todayStr);
+    if (todayContras.length === 0) return 'Chưa có ghi nhận hôm nay';
+    const totalCount = todayContras.reduce((sum, log) => sum + (log.contraCount || 0), 0);
+    return `Hôm nay: ${totalCount} lần`;
+  };
+
   const getLastPregWeightText = () => {
     const wLogs = activityLogs.filter(l => l.type === 'preg_weight');
     if (wLogs.length === 0) return 'Cân nặng: -- kg';
-    return `Cân mẹ: ${wLogs[0].weightKg} kg`;
+    return `Cân nặng: ${wLogs[0].weightKg} kg`;
   };
+
+  const getLastClinicText = () => {
+    const clinicLogs = activityLogs.filter(l => l.type === 'preg_clinic');
+    if (clinicLogs.length === 0) return 'Lịch khám: Chưa ghi nhận';
+    const last = clinicLogs[0];
+    if (last.nextApptDate) {
+      return `Lịch khám: ${formatDateForDisplay(last.nextApptDate)}`;
+    }
+    return 'Đã ghi nhận kết quả khám';
+  };
+
+  const getLastEmotionText = () => {
+    const emotionLogs = activityLogs.filter(l => l.type === 'preg_emotion');
+    if (emotionLogs.length === 0) return 'Tâm trạng hôm nay: --';
+    const last = emotionLogs[0];
+    if (last.selectedEmotions && last.selectedEmotions.length > 0) {
+      return `Tâm trạng hôm nay: ${last.selectedEmotions.join(', ')}`;
+    } else if (last.emotionState) {
+      return `Tâm trạng hôm nay: ${last.emotionState}`;
+    }
+    return 'Đã lưu ghi chú cảm xúc';
+  };
+
 
   // Build vertical sorted list of timeline items
   const timelineItems = (() => {
     const list = [];
-    nutritionLogs.forEach(log => {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    nutritionLogs.filter(log => log.date === todayStr).forEach(log => {
       let desc = '';
       let typeLabel = 'Ăn uống';
       let icon = '🍼';
@@ -736,7 +1523,7 @@ export default function ChatScreen({ profile }) {
       });
     });
 
-    activityLogs.forEach(log => {
+    activityLogs.filter(log => log.date === todayStr).forEach(log => {
       let desc = log.note || '';
       let typeLabel = '';
       let icon = '⏱️';
@@ -770,15 +1557,47 @@ export default function ChatScreen({ profile }) {
         colorClass = 'timeline-contraction';
         desc = log.note || `Ghi nhận cơn gò`;
       } else if (log.type === 'preg_weight') {
-        typeLabel = 'Cân nặng mẹ';
+        typeLabel = 'Cân nặng thai kỳ';
         icon = '⚖️';
         colorClass = 'timeline-weight';
-        desc = `Cân nặng mẹ bầu: ${log.weightKg} kg`;
+        desc = `Đã ghi nhận ${log.weightKg} kg`;
       } else if (log.type === 'preg_reminders') {
         typeLabel = 'Vi chất';
         icon = '💊';
         colorClass = 'timeline-vitamin';
         desc = log.note || 'Uống vitamin bầu';
+      } else if (log.type === 'preg_clinic') {
+        typeLabel = 'Khám thai';
+        icon = '🏥';
+        colorClass = 'timeline-clinic';
+        if (log.nextApptDate) {
+          desc = `Đã ghi nhận kết quả khám · Hẹn tiếp theo: ${formatDateForDisplay(log.nextApptDate)}`;
+        } else {
+          desc = `Đã ghi nhận kết quả khám hôm nay`;
+        }
+      } else if (log.type === 'preg_emotion') {
+        typeLabel = 'Cảm xúc hôm nay';
+        icon = '😊';
+        colorClass = 'timeline-emotion';
+        
+        let emotionsText = '';
+        if (log.selectedEmotions && log.selectedEmotions.length > 0) {
+          emotionsText = log.selectedEmotions.join(' · ');
+        } else if (log.emotionState) {
+          emotionsText = log.emotionState;
+        }
+        
+        const hasNote = (log.emotionNote && log.emotionNote.trim()) || (log.note && log.note.includes('Chi tiết:'));
+        
+        if (emotionsText && hasNote) {
+          desc = `${emotionsText} · Có ghi chú tâm sự`;
+        } else if (emotionsText) {
+          desc = emotionsText;
+        } else if (hasNote) {
+          desc = 'Có ghi chú tâm sự';
+        } else {
+          desc = 'Đã ghi nhận cảm xúc hôm nay';
+        }
       }
 
       if (typeLabel) {
@@ -797,229 +1616,757 @@ export default function ChatScreen({ profile }) {
     return list.sort((a, b) => b.createdAt - a.createdAt);
   })();
 
-  if (isScreenLoading) {
+  // ── DYNAMIC PERSONALIZATION CONSTANTS & HELPERS ──
+  const daysRemaining = status === 'pregnant' ? getDaysRemaining() : null;
+  const { weeks: pregWeeks } = status === 'pregnant' ? getPregnancyWeekInfo() : { weeks: 0 };
+  const fruitInfo = status === 'pregnant' ? getPregnancyFruitAndDesc(pregWeeks) : null;
+  
+  const showTransitionCard = status === 'pregnant' && 
+    !isTransitionCardDismissed && 
+    (pregWeeks >= 40 || (daysRemaining !== null && daysRemaining <= 0));
+
+  const momNameUpper = `XIN CHÀO, ${(profile?.momName || 'Mẹ').toUpperCase()}`;
+  const headerBabyName = status === 'pregnant' 
+    ? (profile?.babyName || pregnancyInfo?.babyName || 'Bé yêu') 
+    : (baby?.name || 'Bé yêu');
+  
+  const headerAgeBadge = status === 'pregnant' 
+    ? `Tuần thai ${pregWeeks}` 
+    : getAgeString();
+  
+  const getHeaderAvatar = () => {
+    const avatarUrl = profile?.user?.avatar || profile?.avatar || profile?.user?.photoURL;
+    if (avatarUrl && !headerAvatarError) {
+      return (
+        <img 
+          src={avatarUrl} 
+          alt="avatar" 
+          className="mother-avatar-img" 
+          onError={() => setHeaderAvatarError(true)} 
+        />
+      );
+    }
+    const initial = status === 'pregnant'
+      ? (profile?.momName || 'M').charAt(0).toUpperCase()
+      : (baby?.name || profile?.momName || 'B').charAt(0).toUpperCase();
     return (
-      <div className="chat-screen screen-loading-state">
-        {/* Premium Shimmer Header */}
-        <div className="premium-ios-header skeleton-loading shimmer">
-          <div className="header-left-meta">
-            <div className="skeleton-line skeleton-title" />
-            <div className="skeleton-line skeleton-subtitle" />
-            <div className="skeleton-line skeleton-age" />
-          </div>
-          <div className="skeleton-avatar" />
-        </div>
+      <div className="mother-avatar-emoji-wrap" style={{
+        fontWeight: '700',
+        color: '#2F6B4F',
+        fontSize: '18px',
+        width: '100%',
+        height: '100%',
+        backgroundColor: '#E8F4EA',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '50%'
+      }}>
+        {initial}
+      </div>
+    );
+  };
 
-        {/* Skeleton Recommendation Card */}
-        <div className="montessori-daily-suggestion-card skeleton-loading shimmer">
-          <div className="skeleton-line skeleton-title" />
-          <div className="skeleton-line skeleton-paragraph-1" />
-          <div className="skeleton-line skeleton-paragraph-2" />
-          <div className="skeleton-button" />
-        </div>
+  const handlePregnancySuggestionAction = () => {
+    setIsChatOpen(true);
+    sendMessage(`Hãy gợi ý chi tiết hoạt động Montessori và chăm sóc sức khỏe hôm nay cho mẹ bầu ở tuần thai thứ ${pregWeeks} theo phương pháp Montessori nhé!`);
+  };
 
-        {/* Skeleton 2x2 grid */}
+  // ── PREGNANCY & BABY DASHBOARD GRID RENDERING HELPERS ──
+  const renderPregnancyGrid = (weeks) => {
+    if (weeks < 16) {
+      return (
         <div className="dashboard-trackers-grid">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="tracker-item-card skeleton-loading shimmer">
-              <div className="skeleton-icon" />
-              <div className="skeleton-line skeleton-title" />
-              <div className="skeleton-line skeleton-status" />
-              <div className="skeleton-button" />
+          {/* Card 1: Vitamin & Nước */}
+          <div className="tracker-item-card mint-light">
+            <div className="tracker-card-icon">
+              <PregRemindersIcon />
             </div>
-          ))}
+            <h4 className="tracker-card-name">Vitamin &amp; Nước</h4>
+            <span className="tracker-card-status-text">{getVitaminStatusText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_reminders')}>
+              Ghi nhận
+            </button>
+          </div>
+
+          {/* Card 2: Cân nặng thai kỳ */}
+          <div className="tracker-item-card pink-light">
+            <div className="tracker-card-icon">
+              <PregWeightIcon />
+            </div>
+            <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
+            <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
+              Cập nhật
+            </button>
+          </div>
+
+          {/* Card 3: Lịch khám thai */}
+          <div className="tracker-item-card mint-light">
+            <div className="tracker-card-icon">
+              <PregClinicIcon />
+            </div>
+            <h4 className="tracker-card-name">Lịch khám thai</h4>
+            <span className="tracker-card-status-text">{getLastClinicText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_clinic')}>
+              Ghi nhận
+            </button>
+          </div>
+
+          {/* Card 4: Cảm xúc hôm nay */}
+          <div className="tracker-item-card pink-light">
+            <div className="tracker-card-icon">
+              <PregEmotionIcon />
+            </div>
+            <h4 className="tracker-card-name">Cảm xúc hôm nay</h4>
+            <span className="tracker-card-status-text">{getLastEmotionText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_emotion')}>
+              Ghi nhận
+            </button>
+          </div>
+
+          {/* Full-width Info Card below 2x2 grid */}
+          <div className="tracker-info-card-full mint-light" style={{
+            gridColumn: '1 / -1',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            padding: '18px 20px',
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, #F4FAF6 0%, #E9F5EE 100%)',
+            border: '1.5px solid rgba(74, 166, 114, 0.16)',
+            boxShadow: '0 8px 20px rgba(47, 107, 79, 0.03)',
+            marginTop: '6px'
+          }}>
+            <div className="tracker-card-icon" style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '16px',
+              background: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(47, 107, 79, 0.08)',
+              color: '#2F6B4F',
+              flexShrink: 0
+            }}>
+              <PregKickIcon />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ color: '#2F6B4F', fontSize: '15px', fontWeight: '700', margin: '0 0 4px 0' }}>Thai máy (Tuần &lt; 16)</h4>
+              <p style={{ color: '#4A5D54', fontSize: '13px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
+                Thai máy thường bắt đầu rõ nét từ tuần 16-20. Mẹ hãy tìm hiểu trước cách theo dõi nhé!
+              </p>
+            </div>
+            <button 
+              type="button"
+              className="tracker-action-trigger-btn"
+              onClick={() => {
+                setIsChatOpen(true);
+                sendMessage("Khi nào thai máy bắt đầu rõ nét và cách theo dõi cử động của thai nhi ra sao?");
+              }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '100px',
+                background: '#2F6B4F',
+                color: 'white',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(47, 107, 79, 0.2)',
+                whiteSpace: 'nowrap',
+                margin: 0,
+                width: 'auto',
+                position: 'static'
+              }}
+            >
+              Tìm hiểu thêm
+            </button>
+          </div>
+        </div>
+      );
+    } else if (weeks >= 16 && weeks <= 27) {
+      return (
+        <div className="dashboard-trackers-grid">
+          {/* Card 1: Đếm thai máy */}
+          <div className="tracker-item-card mint-light">
+            <div className="tracker-card-icon">
+              <PregKickIcon />
+            </div>
+            <h4 className="tracker-card-name">Đếm thai máy</h4>
+            <span className="tracker-card-status-text">{getKickStatusText(weeks)}</span>
+            <button 
+              type="button"
+              className="tracker-action-trigger-btn" 
+              onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}
+            >
+              Bắt đầu đếm
+            </button>
+          </div>
+
+          {/* Card 2: Cân nặng thai kỳ */}
+          <div className="tracker-item-card pink-light">
+            <div className="tracker-card-icon">
+              <PregWeightIcon />
+            </div>
+            <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
+            <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
+              Cập nhật
+            </button>
+          </div>
+
+          {/* Card 3: Lịch khám thai */}
+          <div className="tracker-item-card mint-light">
+            <div className="tracker-card-icon">
+              <PregClinicIcon />
+            </div>
+            <h4 className="tracker-card-name">Lịch khám thai</h4>
+            <span className="tracker-card-status-text">{getLastClinicText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_clinic')}>
+              Ghi nhận
+            </button>
+          </div>
+
+          {/* Card 4: Cảm xúc hôm nay */}
+          <div className="tracker-item-card pink-light">
+            <div className="tracker-card-icon">
+              <PregEmotionIcon />
+            </div>
+            <h4 className="tracker-card-name">Cảm xúc hôm nay</h4>
+            <span className="tracker-card-status-text">{getLastEmotionText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_emotion')}>
+              Ghi nhận
+            </button>
+          </div>
+
+          {/* Full-width Vitamin Card below 2x2 grid */}
+          <div className="tracker-info-card-full mint-light" style={{
+            gridColumn: '1 / -1',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            padding: '18px 20px',
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, #F4FAF6 0%, #E9F5EE 100%)',
+            border: '1.5px solid rgba(74, 166, 114, 0.16)',
+            boxShadow: '0 8px 20px rgba(47, 107, 79, 0.03)',
+            marginTop: '6px'
+          }}>
+            <div className="tracker-card-icon" style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '16px',
+              background: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(47, 107, 79, 0.08)',
+              color: '#2F6B4F',
+              flexShrink: 0
+            }}>
+              <PregRemindersIcon />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ color: '#2F6B4F', fontSize: '15px', fontWeight: '700', margin: '0 0 4px 0' }}>Vitamin &amp; Nước</h4>
+              <p style={{ color: '#4A5D54', fontSize: '13px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
+                {getVitaminStatusText()}
+              </p>
+            </div>
+            <button 
+              type="button"
+              className="tracker-action-trigger-btn"
+              onClick={() => setActiveBottomSheet('preg_reminders')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '100px',
+                background: '#2F6B4F',
+                color: 'white',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(47, 107, 79, 0.2)',
+                whiteSpace: 'nowrap',
+                margin: 0,
+                width: 'auto',
+                position: 'static'
+              }}
+            >
+              Ghi nhận
+            </button>
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="dashboard-trackers-grid">
+          {/* Card 1: Đếm thai máy */}
+          <div className="tracker-item-card mint-light">
+            <div className="tracker-card-icon">
+              <PregKickIcon />
+            </div>
+            <h4 className="tracker-card-name">Đếm thai máy</h4>
+            <span className="tracker-card-status-text">{getKickStatusText(weeks)}</span>
+            <button 
+              type="button"
+              className="tracker-action-trigger-btn" 
+              onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}
+            >
+              Bắt đầu đếm
+            </button>
+          </div>
+
+          {/* Card 2: Đếm cơn gò */}
+          <div className="tracker-item-card pink-light">
+            <div className="tracker-card-icon">
+              <PregContraIcon />
+            </div>
+            <h4 className="tracker-card-name">Đếm cơn gò</h4>
+            <span className="tracker-card-status-text">{getContractionsStatusText()}</span>
+            <button 
+              type="button"
+              className="tracker-action-trigger-btn" 
+              onClick={() => { setActiveBottomSheet('contractions'); setContraSecs(0); setContraCount(0); }}
+            >
+              Bắt đầu đếm
+            </button>
+          </div>
+
+          {/* Card 3: Cân nặng thai kỳ */}
+          <div className="tracker-item-card pink-light">
+            <div className="tracker-card-icon">
+              <PregWeightIcon />
+            </div>
+            <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
+            <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
+              Cập nhật
+            </button>
+          </div>
+
+          {/* Card 4: Lịch khám thai */}
+          <div className="tracker-item-card mint-light">
+            <div className="tracker-card-icon">
+              <PregClinicIcon />
+            </div>
+            <h4 className="tracker-card-name">Lịch khám thai</h4>
+            <span className="tracker-card-status-text">{getLastClinicText()}</span>
+            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_clinic')}>
+              Ghi nhận
+            </button>
+          </div>
+
+          {/* Card 5: Vitamin & Nước (Full width) */}
+          <div className="tracker-info-card-full mint-light" style={{
+            gridColumn: '1 / -1',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            padding: '18px 20px',
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, #F4FAF6 0%, #E9F5EE 100%)',
+            border: '1.5px solid rgba(74, 166, 114, 0.16)',
+            boxShadow: '0 8px 20px rgba(47, 107, 79, 0.03)',
+            marginTop: '6px'
+          }}>
+            <div className="tracker-card-icon" style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '16px',
+              background: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(47, 107, 79, 0.08)',
+              color: '#2F6B4F',
+              flexShrink: 0
+            }}>
+              <PregRemindersIcon />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ color: '#2F6B4F', fontSize: '15px', fontWeight: '700', margin: '0 0 4px 0' }}>Vitamin &amp; Nước</h4>
+              <p style={{ color: '#4A5D54', fontSize: '13px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
+                {getVitaminStatusText()}
+              </p>
+            </div>
+            <button 
+              type="button"
+              className="tracker-action-trigger-btn"
+              onClick={() => setActiveBottomSheet('preg_reminders')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '100px',
+                background: '#2F6B4F',
+                color: 'white',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(47, 107, 79, 0.2)',
+                whiteSpace: 'nowrap',
+                margin: 0,
+                width: 'auto',
+                position: 'static'
+              }}
+            >
+              Ghi nhận
+            </button>
+          </div>
+
+          {/* Card 6: Cảm xúc hôm nay (Full width) */}
+          <div className="tracker-info-card-full pink-light" style={{
+            gridColumn: '1 / -1',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            padding: '18px 20px',
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, #FDF7F5 0%, #F9E1DD 100%)',
+            border: '1.5px solid rgba(217, 109, 85, 0.16)',
+            boxShadow: '0 8px 20px rgba(217, 109, 85, 0.03)',
+            marginTop: '6px'
+          }}>
+            <div className="tracker-card-icon" style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '16px',
+              background: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 10px rgba(217, 109, 85, 0.08)',
+              color: '#D96D55',
+              flexShrink: 0
+            }}>
+              <PregEmotionIcon />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ color: '#8C3D2B', fontSize: '15px', fontWeight: '700', margin: '0 0 4px 0' }}>Cảm xúc hôm nay</h4>
+              <p style={{ color: '#A65B49', fontSize: '13px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
+                {getLastEmotionText()}
+              </p>
+            </div>
+            <button 
+              type="button"
+              className="tracker-action-trigger-btn"
+              onClick={() => setActiveBottomSheet('preg_emotion')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '100px',
+                background: '#D96D55',
+                color: 'white',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(217, 109, 85, 0.2)',
+                whiteSpace: 'nowrap',
+                margin: 0,
+                width: 'auto',
+                position: 'static'
+              }}
+            >
+              Ghi nhận
+            </button>
+          </div>
+        </div>
+      );
+    }
+  };
+  
+  const renderBabyGrid = () => {
+    const babyAgeMonths = ageInfo?.years * 12 + ageInfo?.months || 0;
+    return (
+      <div className="dashboard-trackers-grid">
+        {/* CARD 1: Ăn uống */}
+        <div className="tracker-item-card mint-light">
+          <div className="tracker-card-icon">
+            <BottleIcon />
+          </div>
+          <h4 className="tracker-card-name">Ăn uống</h4>
+          <span className="tracker-card-status-text">{getLastNutriText()}</span>
+          <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('nutrition')}>
+            Ghi nhận ăn
+          </button>
         </div>
 
-        {/* Skeleton Timeline */}
-        <div className="daily-timeline-section">
-          <div className="skeleton-line skeleton-section-title" />
-          <div className="skeleton-timeline-path shimmer">
-            <div className="skeleton-timeline-node">
-              <div className="skeleton-time" />
-              <div className="skeleton-node-dot" />
-              <div className="skeleton-details" />
-            </div>
+        {/* CARD 2: Ngủ */}
+        <div className="tracker-item-card pink-light">
+          <div className="tracker-card-icon">
+            <MoonStarIcon />
           </div>
+          <h4 className="tracker-card-name">Ngủ</h4>
+          <span className="tracker-card-status-text">{getLastSleepText()}</span>
+          <button type="button" className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('sleep'); setSleepSecs(0); }}>
+            Ghi nhận ngủ
+          </button>
+        </div>
+
+        {/* CARD 3: Thay tã (Mờ 0.6 và hiện "Bé lớn: Tập đi toilet 🚽" nếu >= 24 tháng) */}
+        <div className="tracker-item-card pink-light" style={{ opacity: babyAgeMonths >= 24 ? 0.6 : 1 }}>
+          <div className="tracker-card-icon">
+            <DiaperIcon />
+          </div>
+          <h4 className="tracker-card-name">Thay tã</h4>
+          <span className="tracker-card-status-text">
+            {babyAgeMonths >= 24 ? 'Bé lớn: Tập đi toilet 🚽' : getLastDiaperText()}
+          </span>
+          <button 
+            type="button" 
+            className="tracker-action-trigger-btn" 
+            disabled={babyAgeMonths >= 24}
+            onClick={() => setActiveBottomSheet('diaper')}
+          >
+            {babyAgeMonths >= 24 ? 'Đang tập toilet' : 'Ghi nhận tã'}
+          </button>
+        </div>
+
+        {/* CARD 4: Phát triển */}
+        <div className="tracker-item-card mint-light">
+          <div className="tracker-card-icon">
+            <ScaleIcon />
+          </div>
+          <h4 className="tracker-card-name">Phát triển</h4>
+          <span className="tracker-card-status-text">{getLastGrowthText()}</span>
+          <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('growth')}>
+            Xem thống kê
+          </button>
         </div>
       </div>
     );
-  }
+  };
+
+  const getMontessoriSuggestion = () => {
+    if (status === 'pregnant') {
+      return {
+        text: `Nghe nhạc nhẹ và trò chuyện với Bé yêu 5–7 phút để tạo kết nối hôm nay.`,
+        meta: '5–7 phút · Thai giáo Montessori',
+        action: handlePregnancySuggestionAction
+      };
+    } else {
+      const babyAgeMonths = ageInfo?.years * 12 + ageInfo?.months || 0;
+      if (babyAgeMonths < 3) {
+        return {
+          text: `${headerBabyName} có thể thử quan sát thẻ kích thích thị giác đen trắng Montessori cách mắt bé 20-30cm.`,
+          meta: '5–7 phút · Dễ thực hiện tại nhà',
+          action: handleSuggestionAction
+        };
+      } else if (babyAgeMonths >= 3 && babyAgeMonths < 6) {
+        return {
+          text: `${headerBabyName} tập với và cầm nắm lục lạc gỗ hoặc vòng gỗ Montessori để kích thích xúc giác và cơ tay.`,
+          meta: '5–7 phút · Dễ thực hiện tại nhà',
+          action: handleSuggestionAction
+        };
+      } else if (babyAgeMonths >= 6 && babyAgeMonths < 12) {
+        return {
+          text: `${headerBabyName} bắt đầu học nhân quả với trò chơi thả bóng vào hộp Montessori (Object Permanence Box).`,
+          meta: '5–7 phút · Dễ thực hiện tại nhà',
+          action: handleSuggestionAction
+        };
+      } else if (babyAgeMonths >= 12 && babyAgeMonths < 24) {
+        return {
+          text: `${headerBabyName} tập rót hạt khô từ cốc này sang cốc khác bằng cốc nhựa nhỏ Montessori để rèn khéo léo.`,
+          meta: '5–7 phút · Dễ thực hiện tại nhà',
+          action: handleSuggestionAction
+        };
+      } else {
+        return {
+          text: `${headerBabyName} có thể thử hoạt động phân loại đồ vật theo màu sắc và xếp gọn đồ chơi vào rổ đựng sau khi chơi.`,
+          meta: '5–7 phút · Dễ thực hiện tại nhà',
+          action: handleSuggestionAction
+        };
+      }
+    }
+  };
+
+  const suggestionData = getMontessoriSuggestion();
 
   return (
     <div className="chat-screen">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="premium-toast-container">
+          <div className="premium-toast-content">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="toast-check-icon">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>{toastMessage}</span>
+          </div>
+        </div>
+      )}
       
       {/* 📱 iOS-STYLE PREMIUM SINGLE HEADER */}
       <header className="premium-ios-header">
         <div className="header-left-meta">
-          <span className="greeting-label">Xin chào, Mẹ {profile?.momName || 'Maud'}</span>
-          <h1 className="baby-today-heading">Hôm nay của {baby?.name || 'Cốm'}</h1>
+          <span className="greeting-label">{momNameUpper}</span>
+          <h1 className="baby-today-heading">Hôm nay của {headerBabyName}</h1>
           <div className="baby-age-meta-row">
-            <span className="baby-age-badge">{getAgeString()}</span>
+            <span className="baby-age-badge">{headerAgeBadge}</span>
             <span className="meta-dot">·</span>
             <span className="update-time-label">Cập nhật lúc {getLatestUpdateTime()}</span>
           </div>
         </div>
-        <div className="header-right-profile">
+        <div className="header-right-profile" onClick={() => setActiveTab('baby')} style={{ cursor: 'pointer' }}>
           <div className="mother-avatar-circle" title="Xem hồ sơ">
-            {profile?.user?.photoURL ? (
-              <img src={profile.user.photoURL} alt="avatar" className="mother-avatar-img" />
-            ) : (
-              <div className="mother-avatar-emoji-wrap">
-                {profile.status === 'pregnant' ? '🤰' : '👩‍🍼'}
-              </div>
-            )}
+            {getHeaderAvatar()}
           </div>
         </div>
       </header>
 
+      {/* 🎉 INTERACTIVE OVERDUE TRANSITION CARD */}
+      {showTransitionCard && (
+        <div className="pregnancy-overdue-transition-card animate-float-slow" style={{
+          background: '#FDF2F0',
+          border: '1.5px solid rgba(217, 109, 85, 0.18)',
+          borderRadius: '24px',
+          padding: '20px 24px',
+          margin: '12px 16px 20px',
+          boxShadow: '0 10px 24px rgba(217, 109, 85, 0.05)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          position: 'relative'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '28px' }}>👶🎉</span>
+            <div>
+              <h4 style={{ color: '#8C3D2B', fontSize: '16px', fontWeight: '700', margin: 0 }}>Bé yêu đã chào đời chưa mẹ ơi?</h4>
+              <p style={{ color: '#A65B49', fontSize: '13.5px', margin: '4px 0 0', fontWeight: '600', lineHeight: '1.4' }}>
+                Tuần thai hiện tại của mẹ đã đạt mốc {pregWeeks} tuần. Trợ lý AI sẵn sàng chuyển đổi sang chế độ chăm sóc bé yêu Montessori sơ sinh!
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+            <button
+              onClick={handleTransitionToBorn}
+              style={{
+                background: '#D96D55',
+                color: 'white',
+                border: 'none',
+                padding: '9px 18px',
+                borderRadius: '100px',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(217, 109, 85, 0.2)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Đã sinh bé 🍼
+            </button>
+            <button
+              onClick={() => setIsTransitionCardDismissed(true)}
+              style={{
+                background: 'transparent',
+                color: '#A65B49',
+                border: '1.5px solid rgba(217, 109, 85, 0.25)',
+                padding: '8px 16px',
+                borderRadius: '100px',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Chưa, tôi vẫn mang bầu 🤰
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 🤰 PREGNANCY BANNER */}
       {status === 'pregnant' && (
         <div className="pregnancy-ad-avocado-card animate-float-slow">
-          <div className="avocado-baby-illustration">🥑👶</div>
+          <div className="avocado-baby-illustration">
+            {fruitInfo && fruitInfo.fruit ? fruitInfo.fruit : '👶'}
+          </div>
           <div className="pregnancy-avocado-text-wrap">
-            <h4 className="avocado-growth-banner">Cốm đang lớn bằng quả bơ 🥑</h4>
-            <p className="avocado-growth-sub">Mẹ ơi, con đang tập đá bụng mẹ đấy!</p>
-            <span className="pregnancy-countdown-pill">Còn 120 ngày nữa là gặp Cốm!</span>
+            <h4 className="avocado-growth-banner">
+              {fruitInfo && fruitInfo.fruitName 
+                ? `Tuần ${pregWeeks}: ${headerBabyName} đang lớn bằng ${fruitInfo.fruitName} ${fruitInfo.fruit}`
+                : `Tuần ${pregWeeks}: ${headerBabyName} đang lớn lên từng ngày`
+              }
+            </h4>
+            <p className="avocado-growth-sub">
+              {fruitInfo && fruitInfo.desc 
+                ? fruitInfo.desc 
+                : 'Bé yêu đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.'
+              }
+            </p>
+            {daysRemaining !== null ? (
+              <span className="pregnancy-countdown-pill">
+                {daysRemaining > 0 
+                  ? `Còn khoảng ${daysRemaining} ngày nữa là gặp ${headerBabyName}!` 
+                  : `${headerBabyName} đã sẵn sàng chào đời!`}
+              </span>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#4A6B56', fontWeight: '500' }}>
+                  Thêm ngày dự sinh để tính ngày gặp bé chính xác hơn.
+                </span>
+                <button 
+                  type="button"
+                  className="pregnancy-add-due-date-btn"
+                  onClick={() => setActiveTab('baby')}
+                  style={{
+                    background: 'transparent',
+                    color: '#2F6B4F',
+                    border: '1px solid rgba(47, 107, 79, 0.3)',
+                    padding: '4px 10px',
+                    borderRadius: '100px',
+                    fontSize: '11.5px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    width: 'fit-content',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Thêm ngày dự sinh
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* 🌿 DAILY MONTESSORI RECOMMENDATION CARD */}
-      {status !== 'pregnant' && babies.length > 0 && (
-        <div className="montessori-daily-suggestion-card">
+      {(!status || status !== 'pregnant' ? babies.length > 0 : true) && (
+        <div className="montessori-daily-suggestion-card" onClick={suggestionData.action}>
           <SparkleIcon size={20} strokeWidth={1.8} className="suggestion-card-floating-sparkle" />
           <div className="suggestion-card-header">
             <span className="suggestion-card-icon-wrap">
               <LeafIcon size={18} strokeWidth={2.2} className="suggestion-leaf-icon" />
             </span>
             <div className="suggestion-header-text-col">
-              <span className="suggestion-ai-badge">AI CÁ NHÂN HÓA</span>
-              <h3>Gợi ý Montessori hôm nay</h3>
+              <h3>Gợi ý hôm nay cho mẹ</h3>
             </div>
           </div>
           
           <p className="suggestion-card-body">
-            {baby?.name || 'Cốm'} có thể thử hoạt động phân loại đồ vật theo màu.
+            {suggestionData.text}
           </p>
 
-          <div className="suggestion-card-metadata">
-            <span className="suggestion-metadata-item">⏱ 5–7 phút</span>
-            <span className="suggestion-metadata-dot">·</span>
-            <span className="suggestion-metadata-item">🏠 Dễ thực hiện tại nhà</span>
-          </div>
-
-          <button className="suggestion-card-action-btn" onClick={handleSuggestionAction}>
-            Xem hướng dẫn
-          </button>
-        </div>
-      )}
-
-      {/* ⚠️ MISSING PROFILE STATE WARNING */}
-      {status !== 'pregnant' && babies.length === 0 && (
-        <div className="missing-profile-warning-card">
-          <span className="warning-icon">⚠️</span>
-          <div className="warning-text-wrap">
-            <h4>Mẹ chưa tạo hồ sơ cho bé yêu</h4>
-            <p>Hãy thêm hồ sơ của bé trong tab **Hồ sơ** để nhận gợi ý hoạt động Montessori cá nhân hóa phù hợp nhất với độ tuổi.</p>
+          <div className="suggestion-card-footer">
+            <span className="suggestion-metadata-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle', display: 'inline-block' }}>
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              <span style={{ verticalAlign: 'middle' }}>{suggestionData.meta}</span>
+            </span>
+            <span className="suggestion-card-more-link">
+              Xem thêm <span className="suggestion-card-more-arrow">→</span>
+            </span>
           </div>
         </div>
       )}
-
       {/* 📊 2X2 DASHBOARD TRACKERS GRID */}
       {(!status || status !== 'pregnant' ? babies.length > 0 : true) && (
-        <div className="dashboard-trackers-grid">
-          {status === 'pregnant' ? (
-            /* PREGNANCY MODE */
-            <>
-              <div className="tracker-item-card mint-light">
-                <span className="tracker-card-icon">💓</span>
-                <h4 className="tracker-card-name">Đếm thai máy</h4>
-                <span className="tracker-card-status-text">{getLastKickText()}</span>
-                <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
-                  Bắt đầu đếm
-                </button>
-              </div>
-
-              <div className="tracker-item-card pink-light">
-                <span className="tracker-card-icon">⏱️</span>
-                <h4 className="tracker-card-name">Đếm cơn gò</h4>
-                <span className="tracker-card-status-text">{getLastContraText()}</span>
-                <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('contractions'); setContraSecs(0); setContraCount(0); }}>
-                  Bắt đầu đếm
-                </button>
-              </div>
-
-              <div className="tracker-item-card pink-light">
-                <span className="tracker-card-icon">⚖️</span>
-                <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
-                <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
-                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
-                  Cập nhật
-                </button>
-              </div>
-
-              <div className="tracker-item-card mint-light">
-                <span className="tracker-card-icon">💊</span>
-                <h4 className="tracker-card-name">Vitamin &amp; Nước</h4>
-                <span className="tracker-card-status-text">Lịch nhắc vi chất hàng ngày</span>
-                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_reminders')}>
-                  Ghi nhận
-                </button>
-              </div>
-            </>
-          ) : (
-            /* BABY MODE */
-            <>
-              {/* CARD 1: Ăn uống — Sage Green */}
-              <div className="tracker-item-card mint-light">
-                <div className="tracker-card-icon">
-                  <BottleIcon />
-                </div>
-                <h4 className="tracker-card-name">Ăn uống</h4>
-                <span className="tracker-card-status-text">{getLastNutriText()}</span>
-                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('nutrition')}>
-                  Ghi nhận ăn
-                </button>
-              </div>
-
-              {/* CARD 2: Ngủ — Salmon Peach Pink */}
-              <div className="tracker-item-card pink-light">
-                <div className="tracker-card-icon">
-                  <MoonStarIcon />
-                </div>
-                <h4 className="tracker-card-name">Ngủ</h4>
-                <span className="tracker-card-status-text">{getLastSleepText()}</span>
-                <button className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('sleep'); setSleepSecs(0); }}>
-                  Ghi nhận ngủ
-                </button>
-              </div>
-
-              {/* CARD 3: Thay tã — Salmon Peach Pink */}
-              <div className="tracker-item-card pink-light">
-                <div className="tracker-card-icon">
-                  <DiaperIcon />
-                </div>
-                <h4 className="tracker-card-name">Thay tã</h4>
-                <span className="tracker-card-status-text">{getLastDiaperText()}</span>
-                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('diaper')}>
-                  Ghi nhận thay tã
-                </button>
-              </div>
-
-              {/* CARD 4: Phát triển — Sage Green */}
-              <div className="tracker-item-card mint-light">
-                <div className="tracker-card-icon">
-                  <ScaleIcon />
-                </div>
-                <h4 className="tracker-card-name">Phát triển</h4>
-                <span className="tracker-card-status-text">{getLastGrowthText()}</span>
-                <button className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('growth')}>
-                  Xem thống kê
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        status === 'pregnant' ? renderPregnancyGrid(pregWeeks) : renderBabyGrid()
       )}
 
       {/* ⏰ DAILY TIMELINE */}
@@ -1030,11 +2377,22 @@ export default function ChatScreen({ profile }) {
             {timelineItems.length === 0 ? (
               <div className="timeline-empty-state-box">
                 <span className="empty-state-icon">📝</span>
-                <h4>Chưa có hoạt động hôm nay</h4>
-                <p>Mẹ hãy ghi nhận hoạt động đầu tiên của bé để trợ lý Montessori AI theo dõi và phân tích sức khỏe tốt nhất!</p>
-                <button className="timeline-first-action-btn" onClick={() => setActiveBottomSheet('nutrition')}>
-                  + Ghi nhận đầu tiên
-                </button>
+                <h4>Chưa có ghi nhận hôm nay</h4>
+                {status === 'pregnant' ? (
+                  <>
+                    <p>Mẹ bầu hãy ghi nhận cảm xúc hoặc chỉ số sức khỏe hôm nay để trợ lý Montessori AI đồng hành tốt nhất!</p>
+                    <button className="timeline-first-action-btn" onClick={() => setActiveBottomSheet('preg_emotion')}>
+                      + Ghi nhận đầu tiên
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p>Mẹ hãy ghi nhận hoạt động ăn uống, ngủ nghỉ của bé để trợ lý Montessori AI theo dõi sức khỏe tốt nhất!</p>
+                    <button className="timeline-first-action-btn" onClick={() => setActiveBottomSheet('nutrition')}>
+                      + Ghi nhận đầu tiên
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
               <div className="timeline-vertical-path-line">
@@ -1045,7 +2403,12 @@ export default function ChatScreen({ profile }) {
                   else if (item.colorClass === 'timeline-sleep') NodeIcon = TimelineMoonIcon;
                   else if (item.colorClass === 'timeline-diaper') NodeIcon = TimelineDiaperIcon;
                   else if (item.colorClass === 'timeline-growth') NodeIcon = TimelineGrowthIcon;
+                  else if (item.colorClass === 'timeline-weight') NodeIcon = TimelineWeightIcon;
+                  else if (item.colorClass === 'timeline-clinic') NodeIcon = TimelineClinicIcon;
+                  else if (item.colorClass === 'timeline-emotion') NodeIcon = TimelineEmotionIcon;
+                  else if (item.colorClass === 'timeline-vitamin') NodeIcon = TimelineVitaminIcon;
                   else NodeIcon = TimelineSunIcon;
+
                   return (
                     <div key={item.id || index} className="timeline-record-node">
                       <div className="timeline-node-time-col">
@@ -1494,54 +2857,708 @@ export default function ChatScreen({ profile }) {
             )}
 
             {/* 7. PREGNANCY: WEIGHT BOTTOM SHEET */}
-            {activeBottomSheet === 'preg_weight' && (
-              <div className="tracker-sheet-viewport">
-                <h3 className="tracker-sheet-title">Cân nặng thai kỳ</h3>
-                <div className="growth-ruler-sliders-pack">
-                  <div className="ruler-slider-node">
-                    <div className="ruler-title-meta-display">
-                      <span className="ruler-name">Cân nặng hiện tại (kg)</span>
-                      <h4 className="ruler-current-value font-weight-bold">{pregWeight} kg</h4>
+            {activeBottomSheet === 'preg_weight' && (() => {
+              // Calculate slider range dynamically based on last weight
+              const wLogs = activityLogs.filter(l => l.type === 'preg_weight');
+              const todayStr = new Date().toISOString().split('T')[0];
+              const prevLogs = wLogs.filter(l => l.date !== todayStr);
+              const lastWeight = prevLogs.length > 0 ? prevLogs[0].weightKg : (wLogs.length > 0 ? wLogs[0].weightKg : null);
+              
+              let min = 35;
+              let max = 120;
+              if (lastWeight) {
+                min = Math.max(30, lastWeight - 15);
+                max = Math.min(200, lastWeight + 15);
+              }
+              
+              const currentVal = Number(pregWeight);
+              if (!isNaN(currentVal) && currentVal > 0) {
+                if (currentVal < min) min = Math.max(30, Math.floor(currentVal - 5));
+                if (currentVal > max) max = Math.min(200, Math.ceil(currentVal + 5));
+              }
+
+              min = Math.round(min * 10) / 10;
+              max = Math.round(max * 10) / 10;
+
+              // Previous weight analysis
+              let deltaText = '';
+              if (lastWeight !== null) {
+                const delta = (currentVal - lastWeight).toFixed(1);
+                const sign = delta > 0 ? '+' : '';
+                deltaText = `Lần trước: ${lastWeight} kg · ${sign}${delta} kg`;
+              } else {
+                deltaText = "Đây sẽ là mốc cân nặng đầu tiên của mẹ.";
+              }
+
+              const isWeightValid = !isNaN(currentVal) && currentVal >= 30 && currentVal <= 200;
+              const hasPrePreg = profile?.prePregnancyWeight !== undefined && profile?.prePregnancyWeight !== null && profile?.prePregnancyWeight !== 0;
+
+              return (
+                <div className="tracker-sheet-viewport">
+                  <h3 className="tracker-sheet-title">Cân nặng thai kỳ</h3>
+                  <p className="tracker-sheet-subtitle" style={{ fontSize: '14px', color: '#7C8B80', marginTop: '-12px', marginBottom: '16px' }}>
+                    Ghi nhận cân nặng hiện tại của mẹ hôm nay.
+                  </p>
+
+                  {/* Large Input Selector */}
+                  <div className="weight-numeric-input-wrapper">
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="weight-numeric-input"
+                      value={pregWeight === '' ? '' : pregWeight}
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setPregWeight('');
+                        } else {
+                          setPregWeight(Number(val));
+                        }
+                      }}
+                      placeholder="0.0"
+                    />
+                    <span className="weight-unit-label">kg</span>
+                  </div>
+
+                  {/* Slider Control */}
+                  <div className="ruler-slider-node" style={{ padding: '0 8px' }}>
+                    <input
+                      type="range"
+                      min={min}
+                      max={max}
+                      step="0.1"
+                      value={currentVal || min}
+                      className="weight-slider-input"
+                      onChange={e => setPregWeight(Number(e.target.value))}
+                    />
+                    <div className="weight-ticks-line">
+                      {Array.from({ length: 11 }).map((_, i) => (
+                        <span key={i} className={`weight-tick-indicator ${i % 5 === 0 ? 'major' : ''}`} />
+                      ))}
                     </div>
-                    <div className="horizontal-ruler-simulation">
-                      <input type="range" min="40" max="120" step="0.5" value={pregWeight} className="horizontal-styled-ruler-bar" onChange={e => setPregWeight(Number(e.target.value))} />
-                      <div className="ticks-decor-line">
-                        {Array.from({ length: 16 }).map((_, i) => <span key={i} className="ruler-tick" />)}
+                  </div>
+
+                  {/* Weight comparison analysis badge */}
+                  <div className="weight-comparison-badge">
+                    {deltaText}
+                  </div>
+
+                  {/* Warning banner */}
+                  {!isWeightValid && pregWeight !== '' && (
+                    <div className="weight-warning-banner" style={{ marginTop: '16px' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>Mẹ kiểm tra lại cân nặng vừa nhập nhé.</span>
+                    </div>
+                  )}
+
+                  {/* Pre-pregnancy weight helper card */}
+                  {!hasPrePreg && (
+                    <div className="prepreg-card-box">
+                      <div className="prepreg-card-header">
+                        Thêm cân nặng trước thai kỳ để theo dõi mức tăng chính xác hơn.
+                      </div>
+                      {!showPrePregInput ? (
+                        <button type="button" className="prepreg-btn-trigger" onClick={() => setShowPrePregInput(true)}>
+                          Thêm thông tin
+                        </button>
+                      ) : (
+                        <div className="prepreg-inline-form">
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="kg"
+                            className="prepreg-inline-input"
+                            value={prePregInputValue}
+                            onChange={e => setPrePregInputValue(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="prepreg-save-btn"
+                            disabled={isSavingPrePreg || !prePregInputValue || Number(prePregInputValue) < 30 || Number(prePregInputValue) > 200}
+                            onClick={handleSavePrePregWeight}
+                          >
+                            {isSavingPrePreg ? 'Đang lưu...' : 'Lưu'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {saveWeightError && (
+                    <p style={{ color: '#d9534f', fontSize: '13px', margin: '8px 0 0', textAlign: 'center' }}>
+                      Lỗi khi lưu cân nặng. Vui lòng thử lại.
+                    </p>
+                  )}
+
+                  {/* Submit Button */}
+                  <div style={{ marginTop: '24px' }}>
+                    <button
+                      className="submit-tracker-log-btn-full"
+                      onClick={handleSavePregWeight}
+                      disabled={isSavingWeight || !isWeightValid}
+                    >
+                      {isSavingWeight ? 'Đang lưu...' : 'Lưu cân nặng'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 8. PREGNANCY: REMINDERS & VITAMINS */}
+            {activeBottomSheet === 'preg_reminders' && (() => {
+              const vitaminInfo = [
+                { 
+                  key: 'Folic', 
+                  label: 'Axit Folic', 
+                  sub: 'Ngừa dị tật ống thần kinh', 
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.5 1 9.8a7 7 0 0 1-9 8.2z" />
+                      <path d="M9 22v-4" />
+                    </svg>
+                  )
+                },
+                { 
+                  key: 'Iron', 
+                  label: 'Sắt & B9', 
+                  sub: 'Phòng ngừa thiếu máu, thiếu sắt', 
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-13-7-13S5 10.7 5 15a7 7 0 0 0 7 7z" />
+                    </svg>
+                  )
+                },
+                { 
+                  key: 'Calcium', 
+                  label: 'Canxi hữu cơ', 
+                  sub: 'Hỗ trợ phát triển hệ xương & răng', 
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="9" width="20" height="6" rx="3" transform="rotate(-45 12 12)" />
+                      <line x1="8.5" y1="15.5" x2="15.5" y2="8.5" />
+                    </svg>
+                  )
+                },
+                { 
+                  key: 'DHA', 
+                  label: 'DHA & Omega 3', 
+                  sub: 'Phát triển não bộ và thị giác của bé', 
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1 0-3.12 3 3 0 0 1 0-3.88 2.5 2.5 0 0 1 0-3.12A2.5 2.5 0 0 1 9.5 2z" />
+                      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 0-3.12 3 3 0 0 0 0-3.88 2.5 2.5 0 0 0 0-3.12A2.5 2.5 0 0 0 14.5 2z" />
+                    </svg>
+                  )
+                }
+              ];
+
+              return (
+                <div className="tracker-sheet-viewport">
+                  <h3 className="tracker-sheet-title">Ghi nhận Vitamin &amp; Nước</h3>
+                  <p className="vitamin-intro-meta" style={{ marginBottom: '16px' }}>
+                    Tích chọn vi chất mẹ đã uống và cập nhật lượng nước hôm nay.
+                  </p>
+
+                  {/* Nước hôm nay Section */}
+                  <div className="water-tracker-container">
+                    <div className="water-tracker-info">
+                      <div className="water-tracker-label-group">
+                        <span className="water-tracker-label">Nước uống hôm nay</span>
+                        <span className="water-tracker-count">{waterCount} / {waterTarget} ly</span>
+                      </div>
+                      <div className="water-tracker-controls">
+                        <button 
+                          type="button" 
+                          className="water-btn minus" 
+                          onClick={() => setWaterCount(prev => Math.max(0, prev - 1))}
+                          disabled={isSavingVitamins}
+                        >
+                          −
+                        </button>
+                        <button 
+                          type="button" 
+                          className="water-btn plus" 
+                          onClick={() => setWaterCount(prev => prev + 1)}
+                          disabled={isSavingVitamins}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <div className="water-progress-bar-bg">
+                      <div 
+                        className="water-progress-bar-fill" 
+                        style={{ width: `${Math.min(100, (waterCount / waterTarget) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Vi chất hôm nay Section */}
+                  <h4 style={{ color: '#2F6B4F', fontSize: '14px', fontWeight: '700', margin: '0 0 10px 0' }}>Vi chất hôm nay</h4>
+                  
+                  {configuredVitamins.length === 0 ? (
+                    <div className="vitamin-empty-state">
+                      <div className="empty-state-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                      </div>
+                      <p className="empty-state-title">Chưa có vi chất nào trong lịch nhắc</p>
+                      <p className="empty-state-desc">Mẹ có thể thêm vi chất theo chỉ định của bác sĩ.</p>
+                      <button 
+                        type="button" 
+                        className="empty-state-action-btn"
+                        onClick={() => setConfiguredVitamins(['Folic', 'Iron', 'Calcium', 'DHA'])}
+                      >
+                        Thêm vi chất
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="vitamin-cards-list">
+                      {vitaminInfo
+                        .filter(item => configuredVitamins.includes(item.key))
+                        .map(item => (
+                          <label key={item.key} className={`vitamin-card-row ${vitaminsLogged[item.key] ? 'checked' : ''}`}>
+                            <div className="vitamin-card-left">
+                              <div className="vitamin-checkbox-wrapper">
+                                <input 
+                                  type="checkbox" 
+                                  checked={vitaminsLogged[item.key]} 
+                                  onChange={e => setVitaminsLogged({ ...vitaminsLogged, [item.key]: e.target.checked })} 
+                                  className="vitamin-checkbox-input"
+                                  disabled={isSavingVitamins}
+                                />
+                                <span className="vitamin-checkbox-custom">
+                                  {vitaminsLogged[item.key] && (
+                                    <svg className="checkmark-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  )}
+                                </span>
+                              </div>
+                              <div className="vitamin-card-icon-wrap">
+                                {item.icon}
+                              </div>
+                              <div className="vitamin-card-info">
+                                <span className="vitamin-card-label">{item.label}</span>
+                                <span className="vitamin-card-sub">{item.sub}</span>
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Error display */}
+                  {saveVitaminsError && (
+                    <div className="vitamin-error-alert">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span>Chưa thể lưu ghi nhận. Mẹ thử lại sau một chút nhé.</span>
+                    </div>
+                  )}
+
+                  {/* Primary Save Button */}
+                  <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
+                    <button 
+                      className="submit-tracker-log-btn-full" 
+                      onClick={handleSaveVitamins}
+                      disabled={isSavingVitamins}
+                      style={{ margin: 0 }}
+                    >
+                      {isSavingVitamins ? "Đang lưu..." : saveVitaminsError ? "Thử lại" : "Lưu ghi nhận hôm nay"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 9. PREGNANCY: CLINIC CHECKUP BOTTOM SHEET */}
+            {activeBottomSheet === 'preg_clinic' && (
+              <>
+                <div className="tracker-sheet-viewport clinic-sheet-viewport">
+                  <h3 className="tracker-sheet-title" style={{ marginBottom: '6px' }}>Ghi nhận khám thai</h3>
+                  <p className="clinic-subtitle">Lưu lại kết quả khám và lịch hẹn tiếp theo của mẹ.</p>
+
+                  {isClinicLoading ? (
+                    <div className="clinic-skeleton-container">
+                      <div className="clinic-skeleton-item">
+                        <div className="clinic-skeleton-label"></div>
+                        <div className="clinic-skeleton-input"><div className="clinic-shimmer"></div></div>
+                      </div>
+                      <div className="clinic-skeleton-item">
+                        <div className="clinic-skeleton-label"></div>
+                        <div className="clinic-skeleton-textarea"><div className="clinic-shimmer"></div></div>
+                      </div>
+                      <div className="clinic-skeleton-item">
+                        <div className="clinic-skeleton-label"></div>
+                        <div className="clinic-skeleton-chips">
+                          <div className="clinic-skeleton-chip" style={{ width: '80px' }}></div>
+                          <div className="clinic-skeleton-chip" style={{ width: '80px' }}></div>
+                          <div className="clinic-skeleton-chip" style={{ width: '80px' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {/* Banners */}
+                      {showValidationWarning && (
+                        <div className="clinic-warning-banner">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                          <span>Mẹ hãy thêm nội dung khám hoặc ngày hẹn tiếp theo trước khi lưu nhé.</span>
+                        </div>
+                      )}
+
+                      {nextApptDate && isDateInPast(nextApptDate) && (
+                        <div className="clinic-warning-banner">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                          <span>Mẹ kiểm tra lại ngày hẹn khám nhé.</span>
+                        </div>
+                      )}
+
+                      {saveClinicError && (
+                        <div className="clinic-error-banner">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            <span>Lưu thất bại. Vui lòng thử lại.</span>
+                          </div>
+                          <button type="button" className="clinic-retry-btn" onClick={handleSavePregClinic}>Thử lại</button>
+                        </div>
+                      )}
+
+                      {/* Ngày khám */}
+                      <div className="clinic-input-group">
+                        <label className="clinic-label">Ngày khám</label>
+                        <div className="clinic-date-input-wrapper">
+                          <div className="clinic-custom-date-display">
+                            <div className="clinic-date-icon-text">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                              <span className="clinic-date-value">{formatDateForDisplay(visitDate) || "Hôm nay"}</span>
+                            </div>
+                            <span className="clinic-date-chevron">▼</span>
+                          </div>
+                          <input
+                            type="date"
+                            value={visitDate}
+                            disabled={isSavingClinic}
+                            onChange={(e) => setVisitDate(e.target.value)}
+                            className="clinic-native-date-input"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Nội dung kết quả khám */}
+                      <div className="clinic-input-group">
+                        <label className="clinic-label">Nội dung hoặc kết quả khám</label>
+                        <textarea
+                          id="clinic-note-textarea"
+                          placeholder="Mẹ ghi lại kết quả siêu âm hoặc lưu ý của bác sĩ..."
+                          value={clinicNote}
+                          disabled={isSavingClinic}
+                          onChange={(e) => setClinicNote(e.target.value)}
+                          className="clinic-textarea"
+                        />
+
+                        {/* Quick Suggestions Chips */}
+                        <div className="clinic-suggestions-container">
+                          <div className="clinic-suggestions-section">
+                            <div className="clinic-section-header">
+                              <span className="clinic-section-title">Chỉ số siêu âm (mm, g)</span>
+                              <button
+                                type="button"
+                                className="clinic-info-trigger-btn"
+                                onClick={() => setShowInfoModal(true)}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                <span>Giải thích chỉ số</span>
+                              </button>
+                            </div>
+                            <div className="clinic-chips-grid">
+                              {[
+                                { label: 'BPD', template: 'BPD: -- mm' },
+                                { label: 'FL', template: 'FL: -- mm' },
+                                { label: 'AC', template: 'AC: -- mm' },
+                                { label: 'HC', template: 'HC: -- mm' },
+                                { label: 'CRL', template: 'CRL: -- mm' },
+                                { label: 'EFW', template: 'EFW: -- g' }
+                              ].map((chip) => (
+                                <button
+                                  key={chip.label}
+                                  type="button"
+                                  disabled={isSavingClinic}
+                                  onClick={() => handleQuickChipClick(chip.label, chip.template)}
+                                  className={`clinic-quick-chip ${activeChipLabel === chip.label ? 'chip-active' : ''}`}
+                                >
+                                  + {chip.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="clinic-suggestions-section">
+                            <span className="clinic-section-title">Thông tin khám</span>
+                            <div className="clinic-chips-grid">
+                              {[
+                                { label: 'Tim thai', template: 'Tim thai: -- bpm' },
+                                { label: 'Lưu ý bác sĩ', template: 'Lưu ý bác sĩ: --' },
+                                { label: 'Kết quả xét nghiệm', template: 'Kết quả xét nghiệm: --' },
+                                { label: 'Lịch tái khám', template: 'Lịch tái khám: --' }
+                              ].map((chip) => (
+                                <button
+                                  key={chip.label}
+                                  type="button"
+                                  disabled={isSavingClinic}
+                                  onClick={() => handleQuickChipClick(chip.label, chip.template)}
+                                  className={`clinic-quick-chip ${activeChipLabel === chip.label ? 'chip-active' : ''}`}
+                                >
+                                  + {chip.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Ngày hẹn khám tiếp theo */}
+                      <div className="clinic-input-group">
+                        <label className="clinic-label">Ngày hẹn khám tiếp theo</label>
+                        <div className="clinic-date-input-wrapper">
+                          <div className="clinic-custom-date-display">
+                            <div className="clinic-date-icon-text">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                              <span className="clinic-date-value">
+                                {nextApptDate ? formatDateForDisplay(nextApptDate) : "Chọn ngày hẹn khám"}
+                              </span>
+                            </div>
+                            <span className="clinic-date-chevron">▼</span>
+                          </div>
+                          <input
+                            type="date"
+                            value={nextApptDate}
+                            disabled={isSavingClinic}
+                            onChange={(e) => setNextApptDate(e.target.value)}
+                            className="clinic-native-date-input"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Reminder Toggle Card */}
+                      {nextApptDate && (
+                        <div className="clinic-reminder-toggle-card">
+                          <div className="clinic-reminder-info">
+                            <span className="clinic-reminder-title">Nhắc lịch khám trước 1 ngày</span>
+                            <span className="clinic-reminder-desc">Nhận thông báo để không bỏ lỡ lịch hẹn</span>
+                          </div>
+                          <label className="clinic-toggle-switch">
+                            <input
+                              type="checkbox"
+                              checked={reminderEnabled}
+                              disabled={isSavingClinic}
+                              onChange={(e) => setReminderEnabled(e.target.checked)}
+                            />
+                            <span className="clinic-toggle-slider"></span>
+                          </label>
+                        </div>
+                      )}
+
+                      <button
+                        className="submit-tracker-log-btn-full"
+                        onClick={handleSavePregClinic}
+                        disabled={isSavingClinic}
+                        style={{ marginTop: '10px' }}
+                      >
+                        {isSavingClinic ? "Đang lưu..." : "Lưu lịch khám"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {showInfoModal && (
+                  <div className="clinic-info-modal-overlay" onClick={() => setShowInfoModal(false)}>
+                    <div className="clinic-info-modal" onClick={(e) => e.stopPropagation()}>
+                      <div className="clinic-modal-header">
+                        <h4 className="clinic-modal-title">Giải thích chỉ số siêu âm</h4>
+                        <button
+                          type="button"
+                          className="clinic-modal-close-btn"
+                          onClick={() => setShowInfoModal(false)}
+                        >
+                          &times;
+                        </button>
+                      </div>
+                      <div className="clinic-modal-body">
+                        {[
+                          { acronym: 'BPD (Biparietal Diameter)', desc: 'Đường kính lưỡng đỉnh: Đo ngang qua xương tai từ hai bên đầu của bé, giúp ước tính tuổi thai và cân nặng.' },
+                          { acronym: 'FL (Femur Length)', desc: 'Chiều dài xương đùi: Đo chiều dài xương đùi của bé, phản ánh sự phát triển chiều dài cơ thể.' },
+                          { acronym: 'AC (Abdominal Circumference)', desc: 'Chu vi vòng bụng: Đo xung quanh bụng bé, là chỉ số quan trọng nhất để ước lượng cân nặng thai nhi.' },
+                          { acronym: 'HC (Head Circumference)', desc: 'Chu vi vòng đầu: Đo vòng quanh đầu của bé, giúp kiểm tra sự phát triển não bộ.' },
+                          { acronym: 'CRL (Crown Rump Length)', desc: 'Chiều dài đầu mông: Đo từ đỉnh đầu đến mông bé, dùng chủ yếu trong 3 tháng đầu để tính tuổi thai cực chính xác.' },
+                          { acronym: 'EFW (Estimated Fetal Weight)', desc: 'Cân nặng thai nhi ước tính: Tính toán dựa trên các chỉ số BPD, FL, AC, HC để theo dõi sự tăng trưởng của bé.' }
+                        ].map((item) => (
+                          <div key={item.acronym} className="clinic-acronym-item">
+                            <span className="clinic-acronym-name">{item.acronym}</span>
+                            <span className="clinic-acronym-desc">{item.desc}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="clinic-modal-footer">
+                        <button
+                          type="button"
+                          className="clinic-modal-ok-btn"
+                          onClick={() => setShowInfoModal(false)}
+                        >
+                          Đồng ý
+                        </button>
                       </div>
                     </div>
                   </div>
-                  <button className="submit-tracker-log-btn-full" onClick={handleSavePregWeight}>
-                    Lưu cân nặng
-                  </button>
-                </div>
-              </div>
+                )}
+              </>
             )}
 
-            {/* 8. PREGNANCY: REMINDERS & VITAMINS */}
-            {activeBottomSheet === 'preg_reminders' && (
-              <div className="tracker-sheet-viewport">
-                <h3 className="tracker-sheet-title">Lịch nhắc vi chất dinh dưỡng</h3>
-                <div className="prenatal-vitamins-checklist-block">
-                  <p className="vitamin-intro-meta">Tích chọn các loại vi chất mẹ đã uống hôm nay:</p>
-                  
-                  <div className="vitamin-checklist-grid">
-                    {[
-                      { key: 'Folic', label: '🤰 Axit Folic (Ngừa dị tật)' },
-                      { key: 'Iron', label: '🩸 Sắt & B9 (Bổ máu)' },
-                      { key: 'Calcium', label: '🦴 Canxi hữu cơ (Hệ xương)' },
-                      { key: 'DHA', label: '🧠 DHA & Omega 3 (Trí não)' }
-                    ].map(item => (
-                      <label key={item.key} className="vitamin-checkbox-row">
-                        <input type="checkbox" checked={vitaminsLogged[item.key]} onChange={e => setVitaminsLogged({ ...vitaminsLogged, [item.key]: e.target.checked })} className="v-custom-checkbox" />
-                        <span className="v-label-txt">{item.label}</span>
-                      </label>
-                    ))}
+            {/* 10. PREGNANCY: EMOTION TRACKER BOTTOM SHEET */}
+            {activeBottomSheet === 'preg_emotion' && (
+              <div className="tracker-sheet-viewport emotion-sheet-viewport">
+                <h3 className="tracker-sheet-title">Cảm xúc mẹ bầu hôm nay</h3>
+                <p className="tracker-sheet-subtitle">Mẹ có thể chọn tối đa 3 cảm xúc.</p>
+                
+                {isEmotionLoading ? (
+                  <div className="emotion-skeleton-container">
+                    <div className="skeleton-line skeleton-title" />
+                    <div className="skeleton-chips-grid">
+                      <div className="skeleton-chip" />
+                      <div className="skeleton-chip" />
+                      <div className="skeleton-chip" />
+                      <div className="skeleton-chip" />
+                      <div className="skeleton-chip" />
+                    </div>
+                    <div className="skeleton-line skeleton-intensity-label" />
+                    <div className="skeleton-intensity-bar" />
+                    <div className="skeleton-card skeleton-ai-card" />
+                    <div className="skeleton-textarea" />
+                    <div className="skeleton-button" />
                   </div>
+                ) : (
+                  <div className="emotion-sheet-content">
+                    {/* Chips section */}
+                    <div className="emotion-chips-section">
+                      <div className="emotion-chips-grid">
+                        {Object.keys(emotionIconMap).map(state => {
+                          const IconComponent = emotionIconMap[state];
+                          const isSelected = selectedEmotions.includes(state);
+                          return (
+                            <button
+                              key={state}
+                              type="button"
+                              className={`emotion-chip-btn ${isSelected ? 'active' : ''}`}
+                              onClick={() => handleEmotionClick(state)}
+                              disabled={isSavingEmotion}
+                            >
+                              <span className="emotion-chip-icon">
+                                <IconComponent />
+                              </span>
+                              <span className="emotion-chip-label">{state}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      {showMaxEmotionsWarning && (
+                        <div className="emotion-alert-banner emotion-warning-banner animate-fade-in">
+                          <span>Mẹ chỉ nên chọn tối đa 3 cảm xúc tiêu biểu nhất nhé.</span>
+                        </div>
+                      )}
+                    </div>
 
-                  <button className="submit-tracker-log-btn-full" onClick={handleSaveVitamins}>
-                    Hoàn thành uống thuốc
-                  </button>
-                </div>
+                    {/* Intensity control */}
+                    {selectedEmotions.length > 0 && (
+                      <div className="emotion-intensity-section animate-fade-in">
+                        <label className="emotion-section-label">Mức độ hôm nay:</label>
+                        <div className="intensity-segmented-control">
+                          {['Nhẹ', 'Vừa', 'Nhiều'].map(level => (
+                            <button
+                              key={level}
+                              type="button"
+                              className={`intensity-segment-btn ${emotionIntensity === level ? 'active' : ''}`}
+                              onClick={() => setEmotionIntensity(level)}
+                              disabled={isSavingEmotion}
+                            >
+                              {level}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI suggestion card */}
+                    <div className="emotion-ai-section">
+                      {selectedEmotions.length > 0 ? (
+                        <div className="emotion-ai-card active-suggestion animate-fade-in">
+                          <div className="ai-card-header">
+                            <LeafSparkleIcon />
+                            <span className="ai-card-title">Gợi ý từ AI</span>
+                          </div>
+                          <p className="ai-card-text">
+                            {getEmotionAiSuggestion(selectedEmotions)}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="emotion-ai-card placeholder-dashed">
+                          <div className="ai-card-header">
+                            <LeafSparkleIcon />
+                            <span className="ai-card-title">Gợi ý từ AI</span>
+                          </div>
+                          <p className="ai-card-text placeholder-text">
+                            Mẹ hãy chọn ít nhất một cảm xúc ở trên để nhận lời khuyên gợi ý từ AI nhé.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Notes field */}
+                    <div className="emotion-notes-section">
+                      <label className="emotion-section-label">Ghi chú tâm sự (nếu có)</label>
+                      <textarea
+                        className="emotion-notes-textarea"
+                        placeholder="Mẹ bầu có cảm nhận hay tâm sự gì muốn lưu giữ hôm nay không..."
+                        value={emotionNote}
+                        onChange={e => setEmotionNote(e.target.value)}
+                        disabled={isSavingEmotion}
+                      />
+                    </div>
+
+                    {/* Banners */}
+                    {showEmotionValidationWarning && (
+                      <div className="emotion-alert-banner emotion-validation-banner animate-fade-in">
+                        <span>Mẹ hãy chọn một cảm xúc hoặc viết vài dòng trước khi lưu nhé.</span>
+                      </div>
+                    )}
+                    {saveEmotionError && (
+                      <div className="emotion-alert-banner emotion-error-banner animate-fade-in">
+                        <span>Gặp lỗi khi lưu cảm xúc. Mẹ vui lòng thử lại nhé.</span>
+                      </div>
+                    )}
+
+                    {/* Save button */}
+                    <button
+                      className="submit-tracker-log-btn-full"
+                      onClick={handleSavePregEmotion}
+                      disabled={isSavingEmotion}
+                      style={{ marginTop: '10px' }}
+                    >
+                      {isSavingEmotion ? "Đang lưu..." : "Lưu cảm xúc hôm nay"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1558,6 +3575,7 @@ function MessageBubble({ message, profile }) {
   const isUser  = message.role === 'user';
   const isError = message.role === 'error';
   const [expanded, setExpanded] = useState(null);
+  const [imgError, setImgError] = useState(false);
 
   const timeStr = message.timestamp?.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
@@ -1568,6 +3586,8 @@ function MessageBubble({ message, profile }) {
     if (message.status === 'seen')    return <span className="msg-status seen">✓✓</span>;
     return <span className="msg-status sent">✓</span>;
   };
+
+  const avatarUrl = profile?.user?.avatar || profile?.avatar || profile?.user?.photoURL;
 
   return (
     <div className={`message-row ${isUser ? 'user' : 'ai'}`}>
@@ -1604,14 +3624,26 @@ function MessageBubble({ message, profile }) {
       </div>
 
       {isUser && (
-        <div className="msg-avatar user-msg-avatar">
-          {profile?.user?.photoURL
-            ? <img src={profile.user.photoURL} alt="me" />
-            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="7" r="4"/>
-                <path d="M5 20a7 7 0 0 1 14 0"/>
-              </svg>
-          }
+        <div className="msg-avatar user-msg-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {avatarUrl && !imgError ? (
+            <img src={avatarUrl} alt="me" onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: '#E8F4EA',
+              color: '#2F6B4F',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: '700',
+              fontSize: '13px',
+              borderRadius: '50%',
+              textTransform: 'uppercase'
+            }}>
+              {(profile?.momName || 'M').charAt(0).toUpperCase()}
+            </div>
+          )}
         </div>
       )}
 

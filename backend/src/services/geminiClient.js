@@ -134,3 +134,79 @@ Hãy dựa vào kiến thức trên để trả lời câu hỏi của người 
     return result.response.text();
   });
 }
+
+/**
+ * Community-optimized RAG response: concise, mobile-friendly, structured.
+ * Max ~200 words. No raw Markdown. Structured as:
+ *   1. Direct answer (1–3 sentences)
+ *   2. Gợi ý thực hành (2–4 bullets)
+ *   3. Lưu ý an toàn (optional)
+ *
+ * @param {string}   userQuestion
+ * @param {string[]} contextChunks
+ * @param {Array}    history
+ * @param {string}   roomType
+ * @returns {Promise<string>}
+ */
+export async function generateCommunityRAGResponse(
+  userQuestion, contextChunks, history = [], roomType = 'general'
+) {
+  const contextText = contextChunks.length > 0
+    ? contextChunks.join('\n\n')
+    : 'Không có tài liệu liên quan trực tiếp.';
+
+  const safetyNote = roomType === 'health'
+    ? '\nLƯU Ý QUAN TRỌNG: Luôn nhắc người dùng rằng thông tin chỉ mang tính tham khảo và không thay thế tư vấn bác sĩ. Nếu bé sinh non, có dị ứng, hoặc tình trạng đặc biệt, khuyên hỏi bác sĩ.'
+    : roomType === 'weaning'
+    ? '\nLƯU Ý QUAN TRỌNG: Nhắc sữa mẹ hoặc sữa công thức vẫn là nguồn dinh dưỡng chính dưới 1 tuổi. Không ép bé ăn. Nếu bé có dị ứng hoặc sinh non, gợi ý hỏi bác sĩ.'
+    : '';
+
+  const systemPrompt = `Bạn là Montessori AI — trợ lý đồng hành của các mẹ bầu và mẹ nuôi con nhỏ trong ứng dụng Montessori AI.
+
+NHIỆM VỤ: Trả lời câu hỏi dưới đây ngắn gọn, rõ ràng, thân thiện — phù hợp đọc trên màn hình điện thoại.
+
+QUY TẮC BẮT BUỘC:
+1. Tối đa 200 từ cho toàn bộ câu trả lời.
+2. Cấu trúc cố định (sử dụng các phần rõ ràng, không dùng ký hiệu Markdown thô như ##, **, ---):
+   - Câu trả lời trực tiếp (1–3 câu ngắn)
+   - Gợi ý thực hành (2–4 gạch đầu dòng, mỗi gạch tối đa 1 dòng)
+   - Lưu ý an toàn (nếu cần, 1–2 câu)
+3. Không dùng ## hay ### làm tiêu đề — dùng văn xuôi hoặc chỉ dùng dấu gạch đầu dòng (•) cho danh sách.
+4. Không mở đầu bằng lời chúc hay lời xã giao dài. Trả lời trực tiếp.
+5. Không nhắc tên tài liệu hay nguồn — lồng ghép tự nhiên.
+6. Nếu không đủ thông tin trong tài liệu, sử dụng kiến thức chuyên môn nhưng nói thêm "Mẹ có thể hỏi thêm bác sĩ để được tư vấn cụ thể hơn."${safetyNote}
+
+TÀI LIỆU THAM KHẢO:
+${contextText}
+
+Bây giờ hãy trả lời câu hỏi sau theo đúng cấu trúc trên:`;
+
+  const communityModel = genAI.getGenerativeModel({
+    model: 'gemini-3-flash-preview',
+    generationConfig: {
+      temperature: 0.55,
+      topK: 30,
+      topP: 0.90,
+      maxOutputTokens: 600,  // ~200 words
+    },
+  });
+
+  const chat = communityModel.startChat({
+    history: [
+      {
+        role:  'user',
+        parts: [{ text: systemPrompt }],
+      },
+      {
+        role:  'model',
+        parts: [{ text: 'Đã hiểu. Mình sẽ trả lời ngắn gọn, rõ ràng, không dùng ký hiệu Markdown thô, tối đa 200 từ, trả lời trực tiếp trước.' }],
+      },
+      ...history,
+    ],
+  });
+
+  return await retryWithBackoff(async () => {
+    const result = await chat.sendMessage(userQuestion);
+    return result.response.text();
+  });
+}

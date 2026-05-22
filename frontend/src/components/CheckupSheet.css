@@ -1,0 +1,1013 @@
+/* ══ CheckupSheet.css — Premium iOS Bottom Sheet for "Ghi nhận khám thai" ══ */
+
+/* ─── OVERLAY ─────────────────────────────────────────────── */
+.checkup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(15, 30, 20, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: overlayIn 0.28s ease;
+}
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── SHEET ────────────────────────────────────────────────── */
+.checkup-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 910;
+  background: #FEFEFE;
+  border-radius: 28px 28px 0 0;
+  max-height: 92dvh;
+  max-height: 92vh; /* fallback */
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 -8px 40px rgba(47, 107, 79, 0.12),
+    0 -2px 12px rgba(0, 0, 0, 0.06);
+  /* Slide-up animation */
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform 0.36s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.28s ease;
+  /* Safe area for home bar */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.checkup-sheet--open {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Desktop: constrain width */
+@media (min-width: 640px) {
+  .checkup-sheet {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(100%);
+    width: 100%;
+    max-width: 520px;
+    border-radius: 24px 24px 0 0;
+  }
+  .checkup-sheet--open {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ─── DRAG HANDLE ───────────────────────────────────────────── */
+.checkup-drag-handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.10);
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+
+/* ─── HEADER ────────────────────────────────────────────────── */
+.checkup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(92, 158, 122, 0.07);
+}
+.checkup-header-text {
+  flex: 1;
+  min-width: 0;
+}
+.checkup-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1A2E22;
+  margin: 0 0 4px;
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
+.checkup-subtitle {
+  font-size: 13px;
+  color: #6B8C78;
+  margin: 0;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.checkup-close-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: #F0F4F1;
+  color: #5F7A6A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 12px;
+  margin-top: 2px;
+  transition: all 0.15s;
+}
+.checkup-close-btn:hover {
+  background: #E0EDEA;
+  color: #2F6B4F;
+}
+
+/* ─── SCROLLABLE CONTENT ─────────────────────────────────────── */
+.checkup-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 20px 22px 8px;
+}
+.checkup-scroll::-webkit-scrollbar { display: none; }
+
+/* ─── SKELETON ───────────────────────────────────────────────── */
+.checkup-skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-skel {
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f0ece6 25%, #e8e3dd 50%, #f0ece6 75%);
+  background-size: 200% 100%;
+  animation: cs-shimmer 1.4s ease-in-out infinite;
+}
+.cs-skel-label  { height: 14px; width: 100px; border-radius: 7px; }
+.cs-skel-input  { height: 48px; margin-top: 6px; }
+.cs-skel-textarea { height: 110px; margin-top: 6px; }
+@keyframes cs-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ─── ERROR BOX ──────────────────────────────────────────────── */
+.checkup-error-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #FFF9F5;
+  border: 1.5px solid rgba(196, 122, 58, 0.2);
+  border-radius: 16px;
+  padding: 16px;
+  color: #7A4A2A;
+  margin-bottom: 16px;
+}
+.checkup-error-title {
+  font-size: 14px; font-weight: 700; margin: 0 0 3px;
+}
+.checkup-error-sub {
+  font-size: 12px; color: #9A6A4A; margin: 0;
+}
+.checkup-retry-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1.5px solid rgba(196, 122, 58, 0.3);
+  background: white; border-radius: 10px;
+  padding: 7px 14px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px; font-weight: 700;
+  color: #7A4A2A; cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.checkup-retry-btn:hover { background: #FFF0E8; }
+
+/* ─── FORM ───────────────────────────────────────────────────── */
+.checkup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cs-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.cs-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5F7A6A;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cs-label-optional {
+  font-size: 11px;
+  font-weight: 500;
+  color: #9AAE9E;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Input with icon */
+.cs-input-icon-wrap {
+  position: relative;
+}
+.cs-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 42px 0 16px;
+  border: 2px solid rgba(92, 158, 122, 0.15);
+  border-radius: 14px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1A2E22;
+  background: #F7FAF8;
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.cs-input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+  padding: 4px;
+}
+.cs-input:focus {
+  border-color: #5FAF82;
+  background: #fff;
+  box-shadow: 0 0 0 3.5px rgba(95, 175, 130, 0.12);
+}
+.cs-input--warn {
+  border-color: rgba(196, 122, 58, 0.4);
+  background: #FFFAF5;
+}
+.cs-input--warn:focus {
+  border-color: #C47A3A;
+  box-shadow: 0 0 0 3.5px rgba(196, 122, 58, 0.1);
+}
+.cs-input-icon-right {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+/* Date warning */
+.cs-date-warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #C47A3A;
+  margin: 0;
+  padding: 6px 0 0;
+}
+
+/* Textarea */
+.cs-textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid rgba(92, 158, 122, 0.15);
+  border-radius: 14px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1A2E22;
+  background: #F7FAF8;
+  outline: none;
+  resize: none;
+  line-height: 1.65;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  min-height: 120px;
+  /* Better mobile typing */
+  -webkit-appearance: none;
+}
+.cs-textarea:focus {
+  border-color: #5FAF82;
+  background: #fff;
+  box-shadow: 0 0 0 3.5px rgba(95, 175, 130, 0.12);
+}
+.cs-textarea::placeholder {
+  color: #9AADA2;
+  font-weight: 500;
+}
+
+/* ─── QUICK CHIPS ────────────────────────────────────────────── */
+.cs-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-top: 2px;
+}
+.cs-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 13px;
+  border: 1.5px solid rgba(92, 158, 122, 0.22);
+  border-radius: 20px;
+  background: rgba(95, 175, 130, 0.07);
+  color: #2F6B4F;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1;
+}
+.cs-chip:hover {
+  background: rgba(95, 175, 130, 0.16);
+  border-color: rgba(92, 158, 122, 0.4);
+  transform: translateY(-1px);
+}
+.cs-chip:active {
+  transform: scale(0.97);
+}
+
+/* ─── REMINDER TOGGLE ────────────────────────────────────────── */
+.cs-reminder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F0FAF5;
+  border: 1.5px solid rgba(95, 175, 130, 0.18);
+  border-radius: 16px;
+  padding: 14px 16px;
+  gap: 12px;
+  animation: csSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes csSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cs-reminder-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #2F6B4F;
+  flex: 1;
+  min-width: 0;
+}
+.cs-reminder-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1A2E22;
+  margin: 0 0 2px;
+}
+.cs-reminder-sub {
+  font-size: 12px;
+  color: #5F7A6A;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* iOS-style toggle */
+.cs-toggle {
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
+  border: none;
+  background: #D0D8D4;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.22s ease;
+  padding: 0;
+}
+.cs-toggle--on {
+  background: #5FAF82;
+}
+.cs-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cs-toggle--on .cs-toggle-thumb {
+  transform: translateX(20px);
+}
+
+/* ─── VALIDATION / SAVE ERROR ────────────────────────────────── */
+.cs-validation-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #FFF8EE;
+  border: 1.5px solid rgba(196, 149, 58, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7A5A2A;
+  line-height: 1.5;
+  animation: csSlideUp 0.2s ease;
+}
+.cs-save-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #FFF8EE;
+  border: 1.5px solid rgba(196, 149, 58, 0.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7A5A2A;
+  line-height: 1.5;
+}
+.cs-retry-inline {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1.5px solid rgba(196, 149, 58, 0.3);
+  background: white; border-radius: 8px;
+  padding: 4px 10px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px; font-weight: 700;
+  color: #7A5A2A; cursor: pointer;
+  transition: all 0.15s;
+  margin-left: auto;
+}
+.cs-retry-inline:hover { background: #FFF0D8; }
+
+/* ─── FOOTER / SAVE BUTTON ───────────────────────────────────── */
+.checkup-footer {
+  padding: 14px 22px 18px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(92, 158, 122, 0.07);
+  background: #FEFEFE;
+}
+.checkup-save-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 16px 24px;
+  border: none;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #5FAF82, #2F6B4F);
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: -0.2px;
+  box-shadow: 0 4px 18px rgba(47, 107, 79, 0.28);
+  transition: all 0.2s;
+}
+.checkup-save-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 26px rgba(47, 107, 79, 0.34);
+}
+.checkup-save-btn:disabled {
+  background: #C4D8C8;
+  color: #8FAE9A;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+/* Spinner inside button */
+.cs-btn-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: cs-spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes cs-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── TOAST ──────────────────────────────────────────────────── */
+.checkup-toast {
+  position: fixed;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 950;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #1A2E22;
+  color: #C8F0D8;
+  padding: 12px 20px;
+  border-radius: 30px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.checkup-toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ─── DATE TRIGGER & CLEAR DATE BUTTONS ───────────────────────── */
+.cs-date-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 2px solid rgba(92, 158, 122, 0.15);
+  border-radius: 14px;
+  background: #F7FAF8;
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1A2E22;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+.cs-date-trigger-btn:hover {
+  border-color: #5FAF82;
+  background: #FFFFFF;
+}
+.cs-date-trigger-btn.cs-input--warn {
+  border-color: rgba(196, 122, 58, 0.4);
+  background: #FFFAF5;
+  color: #7A4A2A;
+}
+.cs-clear-date-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: #F0F4F1;
+  color: #5F7A6A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cs-clear-date-btn:hover {
+  background: #E0EDEA;
+  color: #2F6B4F;
+}
+
+/* ─── METRIC CHIPS ───────────────────────────────────────────── */
+.cs-metric-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cs-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1.5px solid rgba(92, 158, 122, 0.15);
+  border-radius: 20px;
+  background: #F7FAF8;
+  color: #5F7A6A;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cs-metric-chip:hover {
+  background: rgba(95, 175, 130, 0.08);
+  border-color: rgba(92, 158, 122, 0.35);
+  color: #2F6B4F;
+}
+.cs-metric-chip--active {
+  background: rgba(95, 175, 130, 0.12);
+  border-color: #5FAF82;
+  color: #2F6B4F;
+}
+
+/* ─── EXPLAIN TRIGGER ────────────────────────────────────────── */
+.cs-explain-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 4px 0 10px;
+}
+.cs-explain-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: #5FAF82;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.cs-explain-btn:hover {
+  background: rgba(95, 175, 130, 0.08);
+}
+
+/* ─── STRUCTURED METRICS INPUTS GRID ─────────────────────────── */
+.cs-metrics-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  background: #F7FAF8;
+  border: 1.5px solid rgba(92, 158, 122, 0.08);
+  border-radius: 18px;
+  padding: 16px;
+  margin-top: 10px;
+  animation: csSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (max-width: 480px) {
+  .cs-metrics-inputs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.cs-metric-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-metric-field-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5F7A6A;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.cs-metric-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.cs-metric-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 54px 0 12px;
+  border: 2px solid rgba(92, 158, 122, 0.15);
+  border-radius: 12px;
+  background: #FFFFFF;
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1A2E22;
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+.cs-metric-input:focus {
+  border-color: #5FAF82;
+  box-shadow: 0 0 0 3px rgba(95, 175, 130, 0.1);
+}
+.cs-metric-unit {
+  position: absolute;
+  right: 32px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #8C9F92;
+  pointer-events: none;
+}
+.cs-metric-clear {
+  position: absolute;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  color: #8C9F92;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.cs-metric-clear:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #1A2E22;
+}
+
+/* ─── CUSTOM CALENDAR MODAL ──────────────────────────────────── */
+.custom-calendar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: rgba(15, 30, 20, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: overlayIn 0.24s ease;
+}
+.custom-calendar-box {
+  width: 100%;
+  max-width: 340px;
+  background: #FFFFFF;
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(95, 175, 130, 0.15);
+  animation: csScaleIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-sizing: border-box;
+}
+@keyframes csScaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.calendar-header-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.calendar-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: #F0F4F1;
+  color: #2F6B4F;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.calendar-nav-btn:hover {
+  background: #E0EDEA;
+}
+.calendar-month-year {
+  font-size: 15px;
+  font-weight: 800;
+  color: #1A2E22;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 8px;
+  text-align: center;
+}
+.weekday-cell {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8C9F92;
+  text-transform: uppercase;
+}
+
+.calendar-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 6px;
+  column-gap: 6px;
+  margin-bottom: 16px;
+}
+.day-cell {
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1A2E22;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+}
+.day-cell:hover:not(:disabled) {
+  background: #F0F4F1;
+}
+.day-cell:disabled {
+  color: #D2DAD5;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+.day-other-month {
+  color: #8C9F92;
+  opacity: 0.5;
+}
+.day-selected {
+  background: #5FAF82 !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 10px rgba(95, 175, 130, 0.3);
+}
+.day-today {
+  border: 1.5px solid #5FAF82;
+  color: #2F6B4F;
+  font-weight: 800;
+}
+
+.calendar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding-top: 12px;
+}
+.calendar-action-btn {
+  border: none;
+  background: transparent;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.calendar-action-today {
+  color: #5FAF82;
+}
+.calendar-action-today:hover {
+  background: rgba(95, 175, 130, 0.08);
+}
+.calendar-actions-right {
+  display: flex;
+  gap: 8px;
+}
+.calendar-action-cancel {
+  color: #5F7A6A;
+}
+.calendar-action-cancel:hover {
+  background: #F0F4F1;
+}
+.calendar-action-confirm {
+  background: #5FAF82;
+  color: #FFFFFF;
+}
+.calendar-action-confirm:hover {
+  background: #2F6B4F;
+  box-shadow: 0 2px 6px rgba(47, 107, 79, 0.2);
+}
+
+/* ─── MODAL OVERLAYS & DIALOGS ───────────────────────────────── */
+.cs-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  background: rgba(15, 30, 20, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: overlayIn 0.24s ease;
+}
+.cs-modal-box {
+  width: 100%;
+  max-width: 480px;
+  background: #FFFFFF;
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(95, 175, 130, 0.15);
+  animation: csScaleIn 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  box-sizing: border-box;
+}
+.cs-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.cs-modal-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1A2E22;
+  margin: 0;
+}
+.cs-modal-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: #F0F4F1;
+  color: #5F7A6A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cs-modal-close:hover {
+  background: #E0EDEA;
+}
+.cs-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* ─── EXPLANATION TABLE ──────────────────────────────────────── */
+.cs-explain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: #2F3E34;
+  line-height: 1.5;
+}
+.cs-explain-table th {
+  background: rgba(95, 175, 130, 0.08);
+  color: #2F6B4F;
+  font-weight: 800;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid rgba(95, 175, 130, 0.15);
+}
+.cs-explain-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.cs-explain-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ─── CONFIRM CLOSE BOX ──────────────────────────────────────── */
+.cs-confirm-box {
+  width: 100%;
+  max-width: 320px;
+  background: #FFFFFF;
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border: 1.5px solid rgba(196, 122, 58, 0.15);
+  animation: csScaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: center;
+  box-sizing: border-box;
+}
+.cs-confirm-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1A2E22;
+  margin: 0 0 8px;
+}
+.cs-confirm-text {
+  font-size: 13px;
+  color: #5F7A6A;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+.cs-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cs-confirm-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cs-confirm-btn--secondary {
+  background: #F0F4F1;
+  color: #2F6B4F;
+}
+.cs-confirm-btn--secondary:hover {
+  background: #E0EDEA;
+}
+.cs-confirm-btn--danger {
+  background: #FFF0ED;
+  color: #C24A3F;
+}
+.cs-confirm-btn--danger:hover {
+  background: #FFE4DF;
+}
+
