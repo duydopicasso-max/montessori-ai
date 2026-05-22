@@ -3919,6 +3919,34 @@ ${logsDesc}`;
         document.body
       )}
 
+
+      {/* ── DATE PICKERS (visit date & next appointment) ── */}
+      {showVisitDateCalendar && createPortal(
+        <AppDatePicker
+          value={visitDate}
+          onConfirm={(dateStr) => {
+            setVisitDate(dateStr);
+            setShowVisitDateCalendar(false);
+          }}
+          onCancel={() => setShowVisitDateCalendar(false)}
+          dateType="visitDate"
+        />,
+        document.body
+      )}
+
+      {showNextApptDateCalendar && createPortal(
+        <AppDatePicker
+          value={nextApptDate}
+          onConfirm={(dateStr) => {
+            setNextApptDate(dateStr);
+            setShowNextApptDateCalendar(false);
+          }}
+          onCancel={() => setShowNextApptDateCalendar(false)}
+          dateType="nextAppointmentDate"
+        />,
+        document.body
+      )}
+
     </div>
   );
 }
@@ -4006,31 +4034,6 @@ function MessageBubble({ message, profile }) {
         </div>
       )}
 
-      {showVisitDateCalendar && createPortal(
-        <AppDatePicker
-          value={visitDate}
-          onConfirm={(dateStr) => {
-            setVisitDate(dateStr);
-            setShowVisitDateCalendar(false);
-          }}
-          onCancel={() => setShowVisitDateCalendar(false)}
-          dateType="visitDate"
-        />,
-        document.body
-      )}
-
-      {showNextApptDateCalendar && createPortal(
-        <AppDatePicker
-          value={nextApptDate}
-          onConfirm={(dateStr) => {
-            setNextApptDate(dateStr);
-            setShowNextApptDateCalendar(false);
-          }}
-          onCancel={() => setShowNextApptDateCalendar(false)}
-          dateType="nextAppointmentDate"
-        />,
-        document.body
-      )}
     </div>
   );
 }
