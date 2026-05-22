@@ -777,11 +777,15 @@ ${logsDesc}`;
 
     try {
       const ctx = getDynamicContext();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       const res = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: `${ctx}\n\nHỏi: ${question || '(Gửi ảnh)'}`, sessionId, history }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       const aiMsg = { id: uuidv4(), role: 'assistant', content: data.answer, status: 'delivered', timestamp: new Date() };
@@ -791,8 +795,11 @@ ${logsDesc}`;
         aiMsg,
       ]);
       setHistory(prev => [...prev, { userMessage: question, aiMessage: data.answer }]);
-    } catch {
-      setMessages(prev => [...prev, { id: uuidv4(), role: 'error', content: '❌ Lỗi kết nối. Vui lòng thử lại.', status: 'failed', timestamp: new Date() }]);
+    } catch (err) {
+      const errMsg = err?.name === 'AbortError'
+        ? '⏳ Trợ lý AI đang bận, mẹ thử lại sau nhé.'
+        : '❌ Lỗi kết nối. Vui lòng thử lại.';
+      setMessages(prev => [...prev, { id: uuidv4(), role: 'error', content: errMsg, status: 'failed', timestamp: new Date() }]);
     } finally {
       setIsLoading(false);
     }
