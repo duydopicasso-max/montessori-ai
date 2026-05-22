@@ -415,11 +415,6 @@ export default function GrowthScreen({ profile, setActiveTab }) {
     } catch (e) {
       console.error("Error saving checkup in background:", e);
     }
-
-    // Immediately switch to the Assistant tab (màn hình chính - Trợ lý)
-    if (setActiveTab) {
-      setActiveTab('chat');
-    }
   };
 
   /* ── Delete pregnancy visit (5s delayed delete with undo) ── */
