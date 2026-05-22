@@ -226,13 +226,16 @@ export default function GrowthScreen({ profile, setActiveTab }) {
   };
 
   const handleConfirmDiscardProfile = () => {
+    setTempBabyName(pregnancyData?.babyName || '');
+    setTempEdd(pregnancyData?.edd || '');
     setShowConfirmCloseProfile(false);
     profileOverlayStateRef.current.isDirty = false;
+    profileOverlayStateRef.current.saving = false;
     if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
+      window._overlayStack.pop('growth-profile-edit');
       window.history.back();
-    } else {
-      setShowEditProfileModal(false);
     }
+    setShowEditProfileModal(false);
   };
   
   const pendingDeletesRef = useRef({});
@@ -496,10 +499,10 @@ export default function GrowthScreen({ profile, setActiveTab }) {
     profileOverlayStateRef.current.isDirty = false;
     profileOverlayStateRef.current.saving = false;
     if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
+      window._overlayStack.pop('growth-profile-edit');
       window.history.back();
-    } else {
-      setShowEditProfileModal(false);
     }
+    setShowEditProfileModal(false);
     try {
       const pregRef = doc(db, 'users', userId, 'tracking', 'pregnancy');
       await setDoc(pregRef, {
