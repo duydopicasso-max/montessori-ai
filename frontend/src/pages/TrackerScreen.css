@@ -917,3 +917,28 @@
   background: rgba(92, 158, 122, 0.2);
   border-radius: 4px;
 }
+
+/* Premium Date Trigger Button */
+.cs-date-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(92, 158, 122, 0.18);
+  border-radius: 10px;
+  background: #FAFAF8;
+  color: #2E3E33;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: left;
+}
+
+.cs-date-trigger-btn:hover {
+  border-color: #5C9E7A;
+  background: #FFFFFF;
+}
+

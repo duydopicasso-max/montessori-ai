@@ -18,9 +18,9 @@ import { db } from '../firebase.js';
 import {
   getWHOData, getAgeInMonths, calcBMI, assessNutrition, getPctOfMedian
 } from '../data/whoData.js';
-import './GrowthScreen.css';
 import CheckupSheet from '../components/CheckupSheet.jsx';
-import DatePicker from '../components/DatePicker.jsx';
+import AppDatePicker from '../components/AppDatePicker.jsx';
+import './GrowthScreen.css';
 import {
   PencilIcon, CalendarIcon, WeightIcon,
   RulerIcon, HeadCircleIcon, PlusIcon
@@ -182,6 +182,8 @@ export default function GrowthScreen({ profile }) {
   const [tempBabyName, setTempBabyName] = useState('');
   const [tempEdd, setTempEdd] = useState('');
   const [showEddCalendar, setShowEddCalendar] = useState(false);
+  const [showDobCalendar, setShowDobCalendar] = useState(false);
+  const [showMeasureDateCalendar, setShowMeasureDateCalendar] = useState(false);
   const [showRecalcModal, setShowRecalcModal] = useState(false);
   const [showConfirmCloseProfile, setShowConfirmCloseProfile] = useState(false);
 
@@ -238,7 +240,7 @@ export default function GrowthScreen({ profile }) {
 
   /* ── Body overflow scroll lock effect for active modals ── */
   useEffect(() => {
-    const isModalOpen = showDeleteConfirm || showEditProfileModal || showEddCalendar || showRecalcModal;
+    const isModalOpen = showDeleteConfirm || showEditProfileModal || showEddCalendar || showDobCalendar || showMeasureDateCalendar || showRecalcModal;
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
       document.body.classList.add('cs-modal-open');
@@ -253,7 +255,7 @@ export default function GrowthScreen({ profile }) {
       document.body.classList.remove('cs-modal-open');
       document.body.classList.remove('overlay-open');
     };
-  }, [showDeleteConfirm, showEditProfileModal, showEddCalendar, showRecalcModal]);
+  }, [showDeleteConfirm, showEditProfileModal, showEddCalendar, showDobCalendar, showMeasureDateCalendar, showRecalcModal]);
 
   /* ── Resolved baby ── */
   const rawBaby  = babies[selectedBaby] || {};
@@ -559,6 +561,10 @@ export default function GrowthScreen({ profile }) {
 
   /* ── Inline edit ── */
   const startEdit = (field) => {
+    if (field === 'dob') {
+      setShowDobCalendar(true);
+      return;
+    }
     setEditField(field);
     setEditVal(field === 'name' ? (baby.name || '') : (baby.dob || ''));
   };
@@ -574,6 +580,23 @@ export default function GrowthScreen({ profile }) {
       await updateDoc(doc(db, 'users', userId), { babies: newBabies });
     } catch (e) { console.error('Save failed', e); }
   };
+  const handleDobSelect = async (dateStr) => {
+    setShowDobCalendar(false);
+    try {
+      const newBabies = [...babies];
+      newBabies[selectedBaby] = { ...newBabies[selectedBaby], dob: dateStr };
+      await updateDoc(doc(db, 'users', userId), { babies: newBabies });
+      setBabyOverrides(prev => ({
+        ...prev,
+        [selectedBaby]: { ...(prev[selectedBaby] || {}), dob: dateStr }
+      }));
+      // Force reload from database to ensure everything is in sync
+      loadData();
+    } catch (e) {
+      console.error('Save DOB failed', e);
+    }
+  };
+
 
   /* ── Chart data builder (WHO baby growth) ── */
   const buildChartData = (type) => {
@@ -805,14 +828,40 @@ export default function GrowthScreen({ profile }) {
           document.body
         )}
 
-        {/* ── DATE PICKER: Chọn ngày dự sinh ── */}
-        {showEddCalendar && (
-          <DatePicker
+        {/* ── CUSTOM CALENDAR IN GROWTH SCREEN ── */}
+        {showEddCalendar && createPortal(
+          <AppDatePicker
             value={tempEdd}
-            onChange={(dateStr) => setTempEdd(dateStr)}
-            onClose={() => setShowEddCalendar(false)}
-          />
+            onConfirm={(dateStr) => setTempEdd(dateStr)}
+            onCancel={() => setShowEddCalendar(false)}
+            dateType="dueDate"
+          />,
+          document.body
         )}
+
+        {showDobCalendar && createPortal(
+          <AppDatePicker
+            value={dob}
+            onConfirm={handleDobSelect}
+            onCancel={() => setShowDobCalendar(false)}
+            dateType="birthDate"
+          />,
+          document.body
+        )}
+
+        {showMeasureDateCalendar && createPortal(
+          <AppDatePicker
+            value={measureForm.date}
+            onConfirm={(dateStr) => {
+              setMeasureForm(f => ({ ...f, date: dateStr }));
+              setShowMeasureDateCalendar(false);
+            }}
+            onCancel={() => setShowMeasureDateCalendar(false)}
+            dateType="birthDate"
+          />,
+          document.body
+        )}
+
 
         {/* ── CUSTOM RECALCULATION MODAL ── */}
         {showRecalcModal && createPortal(
@@ -1342,19 +1391,11 @@ function ParentView({
           {/* DOB */}
           <div className="info-row">
             <span className="info-label">Ngày sinh</span>
-            {editField === 'dob' ? (
-              <div className="edit-inline">
-                <input type="date" autoFocus className="edit-input" value={editVal}
-                  onChange={e => setEditVal(e.target.value)} />
-                <button className="edit-save" onClick={saveEdit}><CheckIcon /></button>
-                <button className="edit-cancel" onClick={() => setEditField(null)}><CloseIcon /></button>
-              </div>
-            ) : (
-              <span className="info-value" style={{ cursor: 'pointer' }} onClick={() => startEdit('dob')}>
-                {fmtDate(dob) || <span className="info-hint">Chưa cập nhật</span>}
-              </span>
-            )}
+            <span className="info-value" style={{ cursor: 'pointer' }} onClick={() => startEdit('dob')}>
+              {fmtDate(dob) || <span className="info-hint">Chưa cập nhật</span>}
+            </span>
           </div>
+
 
           <div className="info-row">
             <span className="info-label">Tuổi</span>
@@ -1429,8 +1470,14 @@ function ParentView({
           <div className="form-grid-2">
             <div className="form-group">
               <label><CalendarIcon size={13} /> Ngày đo</label>
-              <input type="date" value={measureForm.date}
-                onChange={e => setMeasureForm(f => ({ ...f, date: e.target.value }))} />
+              <button
+                type="button"
+                className="cs-date-trigger-btn"
+                style={{ padding: '11px 14px', borderRadius: '12px' }}
+                onClick={() => setShowMeasureDateCalendar(true)}
+              >
+                {fmtDisplay(measureForm.date) || 'Chọn ngày'}
+              </button>
             </div>
             <div className="form-group">
               <label><WeightIcon size={13} /> Cân nặng (kg)</label>

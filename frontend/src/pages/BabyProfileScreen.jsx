@@ -3,6 +3,7 @@ import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, or
 import { db } from '../firebase.js';
 import { getAgeInMonths } from '../data/whoData.js';
 import './BabyProfileScreen.css';
+import AppDatePicker from '../components/AppDatePicker.jsx';
 import { ClipboardIcon, PencilIcon, CalendarIcon } from '../icons.jsx';
 
 /* ── Gợi ý trò chơi theo nhóm tuổi ── */
@@ -133,6 +134,7 @@ function MedicalTab({ userId, babyId }) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const fileRef = useRef();
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], disease: '', medicine: '', dosage: '', duration: '', symptoms: '', recovery: '', images: [] });
 
@@ -191,7 +193,16 @@ function MedicalTab({ userId, babyId }) {
       {showForm && (
         <div className="form-card">
           <div className="form-grid-2">
-            <div className="form-group"><label>📅 Ngày khám</label><input type="date" value={form.date} onChange={e => setForm(f=>({...f,date:e.target.value}))} /></div>
+            <div className="form-group">
+              <label>📅 Ngày khám</label>
+              <button
+                type="button"
+                className="cs-date-trigger-btn"
+                onClick={() => setShowDatePicker(true)}
+              >
+                <span>{form.date ? form.date.split('-').reverse().join('/') : 'Chọn ngày khám'}</span>
+              </button>
+            </div>
             <div className="form-group"><label>🦠 Tên bệnh</label><input placeholder="Sốt, ho, tiêu chảy..." value={form.disease} onChange={e => setForm(f=>({...f,disease:e.target.value}))} /></div>
             <div className="form-group"><label>💊 Tên thuốc</label><input placeholder="Paracetamol, Amoxicillin..." value={form.medicine} onChange={e => setForm(f=>({...f,medicine:e.target.value}))} /></div>
             <div className="form-group"><label>📏 Liều dùng</label><input placeholder="5ml x 3 lần/ngày" value={form.dosage} onChange={e => setForm(f=>({...f,dosage:e.target.value}))} /></div>
@@ -206,6 +217,18 @@ function MedicalTab({ userId, babyId }) {
             </div>
           </div>
           <div className="form-group full-width"><label>📝 Triệu chứng</label><textarea rows={2} placeholder="Mô tả chi tiết triệu chứng..." value={form.symptoms} onChange={e => setForm(f=>({...f,symptoms:e.target.value}))} /></div>
+
+          {showDatePicker && (
+            <AppDatePicker
+              value={form.date}
+              onConfirm={(dateStr) => {
+                setForm(f => ({ ...f, date: dateStr }));
+                setShowDatePicker(false);
+              }}
+              onCancel={() => setShowDatePicker(false)}
+              dateType="visitDate"
+            />
+          )}
           
           <div className="form-group full-width">
             <label>📸 Đính kèm ảnh (Đơn thuốc / Vỏ thuốc)</label>

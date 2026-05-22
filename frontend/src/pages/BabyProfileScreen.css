@@ -221,3 +221,28 @@
   cursor: pointer; transition: transform 0.2s;
 }
 .record-attached-img:hover { transform: scale(1.05); }
+
+/* Premium Date Trigger Button */
+.cs-date-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--cream-dark);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-base);
+  text-align: left;
+}
+
+.cs-date-trigger-btn:hover {
+  border-color: var(--sage);
+  background: white;
+}
+

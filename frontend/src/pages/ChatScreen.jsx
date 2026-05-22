@@ -11,6 +11,7 @@ import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, u
 import { db } from '../firebase.js';
 import { calculateDetailedAge, getHandbookForAge } from '../data/handbookData.js';
 import { LeafIcon, SparkleIcon } from '../icons.jsx';
+import AppDatePicker from '../components/AppDatePicker.jsx';
 import './ChatScreen.css';
 
 const API_BASE      = import.meta.env.VITE_API_URL || '/api';
@@ -378,6 +379,8 @@ export default function ChatScreen({ profile, setActiveTab }) {
   const [nextApptDate, setNextApptDate] = useState('');
   const [visitDate, setVisitDate] = useState(getTodayLocalyyyymmdd());
   const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [showVisitDateCalendar, setShowVisitDateCalendar] = useState(false);
+  const [showNextApptDateCalendar, setShowNextApptDateCalendar] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [isClinicLoading, setIsClinicLoading] = useState(false);
   const [isSavingClinic, setIsSavingClinic] = useState(false);
@@ -3507,7 +3510,12 @@ ${logsDesc}`;
                       {/* Ngày khám */}
                       <div className="clinic-input-group">
                         <label className="clinic-label">Ngày khám</label>
-                        <div className="clinic-date-input-wrapper">
+                        <button
+                          type="button"
+                          className="clinic-date-input-wrapper"
+                          disabled={isSavingClinic}
+                          onClick={() => setShowVisitDateCalendar(true)}
+                        >
                           <div className="clinic-custom-date-display">
                             <div className="clinic-date-icon-text">
                               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -3515,14 +3523,7 @@ ${logsDesc}`;
                             </div>
                             <span className="clinic-date-chevron">▼</span>
                           </div>
-                          <input
-                            type="date"
-                            value={visitDate}
-                            disabled={isSavingClinic}
-                            onChange={(e) => setVisitDate(e.target.value)}
-                            className="clinic-native-date-input"
-                          />
-                        </div>
+                        </button>
                       </div>
 
                       {/* Nội dung kết quả khám */}
@@ -3600,7 +3601,12 @@ ${logsDesc}`;
                       {/* Ngày hẹn khám tiếp theo */}
                       <div className="clinic-input-group">
                         <label className="clinic-label">Ngày hẹn khám tiếp theo</label>
-                        <div className="clinic-date-input-wrapper">
+                        <button
+                          type="button"
+                          className="clinic-date-input-wrapper"
+                          disabled={isSavingClinic}
+                          onClick={() => setShowNextApptDateCalendar(true)}
+                        >
                           <div className="clinic-custom-date-display">
                             <div className="clinic-date-icon-text">
                               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -3610,14 +3616,7 @@ ${logsDesc}`;
                             </div>
                             <span className="clinic-date-chevron">▼</span>
                           </div>
-                          <input
-                            type="date"
-                            value={nextApptDate}
-                            disabled={isSavingClinic}
-                            onChange={(e) => setNextApptDate(e.target.value)}
-                            className="clinic-native-date-input"
-                          />
-                        </div>
+                        </button>
                       </div>
 
                       {/* Reminder Toggle Card */}
@@ -3940,6 +3939,32 @@ function MessageBubble({ message, profile }) {
         <div className="img-lightbox" onClick={() => setExpanded(null)}>
           <img src={expanded} alt="expanded" />
         </div>
+      )}
+
+      {showVisitDateCalendar && createPortal(
+        <AppDatePicker
+          value={visitDate}
+          onConfirm={(dateStr) => {
+            setVisitDate(dateStr);
+            setShowVisitDateCalendar(false);
+          }}
+          onCancel={() => setShowVisitDateCalendar(false)}
+          dateType="visitDate"
+        />,
+        document.body
+      )}
+
+      {showNextApptDateCalendar && createPortal(
+        <AppDatePicker
+          value={nextApptDate}
+          onConfirm={(dateStr) => {
+            setNextApptDate(dateStr);
+            setShowNextApptDateCalendar(false);
+          }}
+          onCancel={() => setShowNextApptDateCalendar(false)}
+          dateType="nextAppointmentDate"
+        />,
+        document.body
       )}
     </div>
   );

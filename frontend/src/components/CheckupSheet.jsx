@@ -5,7 +5,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import DatePicker from './DatePicker.jsx';
+import AppDatePicker from './AppDatePicker.jsx';
 import './CheckupSheet.css';
 
 /* ── Icons ── */
@@ -93,10 +93,6 @@ const isDateInPast = (iso) => {
   return new Date(iso) < new Date(todayISO());
 };
 
-/* ── CustomCalendar: backward-compat re-export wrapping DatePicker ── */
-export function CustomCalendar(props) {
-  return <DatePicker {...props} />;
-}
 
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
@@ -1163,13 +1159,14 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         )}
       </div>
 
-      {/* ── DATE PICKER MODAL ── */}
+      {/* ── CUSTOM CALENDAR MODAL ── */}
       {calendarTarget && (
-        <DatePicker
+        <AppDatePicker
           value={calendarTarget === 'visitDate' ? visitDate : nextAppointment}
           minDate={calendarTarget === 'nextAppointment' ? todayISO() : null}
-          onChange={handleCalendarChange}
-          onClose={() => setCalendarTarget(null)}
+          onConfirm={handleCalendarChange}
+          onCancel={() => setCalendarTarget(null)}
+          dateType={calendarTarget === 'visitDate' ? 'visitDate' : 'nextAppointmentDate'}
         />
       )}
 

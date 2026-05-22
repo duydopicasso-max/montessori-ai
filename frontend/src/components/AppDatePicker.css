@@ -1,0 +1,335 @@
+/* ═══════════════════════════════════════════════════════════
+   UNIFIED PREMIUM DATEPICKER COMPONENT STYLESHEET
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --adp-sage: #5FAF82;
+  --adp-forest: #2F6B4F;
+  --adp-warm-white: #FFFFFF;
+  --adp-dark-green: #1A2E22;
+  --adp-light-grey: #8C9F92;
+  --adp-disabled: #D2DAD5;
+  --adp-bg-soft: #F0F4F1;
+  --adp-bg-hover: #E0EDEA;
+  --adp-shadow: 0 10px 40px rgba(15, 30, 20, 0.15);
+  --adp-border: rgba(95, 175, 130, 0.15);
+  
+  /* Warning Pastel Colors */
+  --adp-warning-bg: #FAF5EC;
+  --adp-warning-border: #F3E5D0;
+  --adp-warning-text: #B27B3F;
+}
+
+.app-datepicker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999; /* Ensure it is above standard sheets */
+  background: rgba(10, 20, 15, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: adpFadeIn 0.24s cubic-bezier(0.25, 0.8, 0.25, 1);
+  touch-action: auto;
+}
+
+.app-datepicker-box {
+  width: 100%;
+  max-width: 335px;
+  background: var(--adp-warm-white);
+  border-radius: 28px;
+  padding: 22px;
+  box-shadow: var(--adp-shadow);
+  border: 1px solid var(--adp-border);
+  animation: adpScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes adpFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes adpScaleIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Modal Title */
+.app-datepicker-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--adp-dark-green);
+  text-align: center;
+  margin-bottom: 18px;
+  letter-spacing: -0.2px;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* Month Navigation */
+.app-datepicker-header-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  background: var(--adp-bg-soft);
+  border-radius: 16px;
+  padding: 4px;
+}
+
+.app-datepicker-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--adp-forest);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.app-datepicker-nav-btn:hover {
+  background: var(--adp-bg-hover);
+  color: var(--adp-dark-green);
+}
+
+.app-datepicker-nav-btn:active {
+  transform: scale(0.9);
+}
+
+.app-datepicker-month-year {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--adp-dark-green);
+  letter-spacing: -0.1px;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* Week Days Grid */
+.app-datepicker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.app-datepicker-weekday-cell {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--adp-light-grey);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 0;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* Days Grid */
+.app-datepicker-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.app-datepicker-day-cell {
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--adp-dark-green);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s cubic-bezier(0.25, 0.8, 0.25, 1);
+  padding: 0;
+  min-height: 38px;
+  min-width: 38px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-datepicker-day-cell:hover:not(:disabled) {
+  background: var(--adp-bg-soft);
+  transform: translateY(-1px);
+}
+
+.app-datepicker-day-cell:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.app-datepicker-day-cell:disabled {
+  color: var(--adp-disabled);
+  cursor: not-allowed;
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.app-datepicker-day-other-month {
+  color: var(--adp-light-grey);
+  opacity: 0.4;
+}
+
+.app-datepicker-day-selected {
+  background: var(--adp-sage) !important;
+  color: var(--adp-warm-white) !important;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(95, 175, 130, 0.35);
+  transform: scale(1.05);
+}
+
+.app-datepicker-day-today {
+  border: 1.8px solid var(--adp-sage);
+  color: var(--adp-forest);
+  font-weight: 800;
+}
+
+/* warning banner within calendar box */
+.app-datepicker-warning-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--adp-warning-bg);
+  border: 1px solid var(--adp-warning-border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  animation: adpSlideDown 0.24s ease-out;
+}
+
+@keyframes adpSlideDown {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.app-datepicker-warning-banner .warning-icon {
+  color: var(--adp-warning-text);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.app-datepicker-warning-banner .warning-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--adp-warning-text);
+  line-height: 1.4;
+  text-align: left;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* Actions Footer */
+.app-datepicker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(95, 175, 130, 0.08);
+  padding-top: 14px;
+  margin-top: auto;
+}
+
+.app-datepicker-action-btn {
+  border: none;
+  background: transparent;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13.5px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 8px 14px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-datepicker-action-btn:active {
+  transform: scale(0.95);
+}
+
+.app-datepicker-action-today {
+  color: var(--adp-sage);
+}
+
+.app-datepicker-action-today:hover:not(:disabled) {
+  background: rgba(95, 175, 130, 0.08);
+}
+
+.app-datepicker-action-today:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.app-datepicker-actions-right {
+  display: flex;
+  gap: 8px;
+}
+
+.app-datepicker-action-cancel {
+  color: var(--adp-light-grey);
+}
+
+.app-datepicker-action-cancel:hover {
+  background: var(--adp-bg-soft);
+  color: var(--adp-dark-green);
+}
+
+.app-datepicker-action-confirm {
+  background: var(--adp-sage);
+  color: var(--adp-warm-white);
+  box-shadow: 0 4px 12px rgba(95, 175, 130, 0.2);
+}
+
+.app-datepicker-action-confirm:hover:not(:disabled) {
+  background: var(--adp-forest);
+  box-shadow: 0 6px 16px rgba(47, 107, 79, 0.3);
+}
+
+.app-datepicker-action-confirm:disabled {
+  background: var(--adp-bg-soft);
+  color: var(--adp-disabled);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Responsive constraints on micro devices like iPhone SE (320px width) */
+@media (max-width: 340px) {
+  .app-datepicker-box {
+    padding: 16px;
+    border-radius: 20px;
+  }
+  .app-datepicker-day-cell {
+    min-height: 34px;
+    min-width: 34px;
+    font-size: 13px;
+  }
+  .app-datepicker-title {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+  .app-datepicker-header-nav {
+    margin-bottom: 12px;
+  }
+  .app-datepicker-action-btn {
+    padding: 6px 10px;
+    font-size: 12.5px;
+  }
+}
+
+/* Respect Safe Area */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .app-datepicker-overlay {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}

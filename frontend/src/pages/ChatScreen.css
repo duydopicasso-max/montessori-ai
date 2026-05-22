@@ -3647,6 +3647,10 @@
   display: flex;
   align-items: center;
   transition: all 0.2s ease;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
 }
 
 .clinic-date-input-wrapper:hover {

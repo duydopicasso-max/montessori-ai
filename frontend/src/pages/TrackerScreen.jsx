@@ -5,10 +5,12 @@
  * Tích hợp Web Audio API phát tiếng chuông Kalimba êm ái khi lưu thành công.
  */
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { calculateDetailedAge } from '../data/handbookData.js';
 import './TrackerScreen.css';
+import AppDatePicker from '../components/AppDatePicker.jsx';
 
 // Chuẩn tiêm chủng quốc gia (tháng tuổi, tên vắc xin, mô tả bệnh phòng ngừa)
 const VACCINE_SCHEDULE = [
@@ -88,6 +90,7 @@ export default function TrackerScreen({ profile }) {
   const [customReminderTime, setCustomReminderTime] = useState('08:00');
   const [customReminderDate, setCustomReminderDate] = useState(new Date().toISOString().split('T')[0]);
   const [customReminderTarget, setCustomReminderTarget] = useState('baby'); // baby, mom
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Đăng ký realtime subscriptions tới Firestore
   useEffect(() => {
@@ -711,11 +714,13 @@ export default function TrackerScreen({ profile }) {
                 <div className="form-grid-inputs">
                   <div>
                     <label>Ngày</label>
-                    <input 
-                      type="date" 
-                      value={customReminderDate}
-                      onChange={e => setCustomReminderDate(e.target.value)}
-                    />
+                    <button
+                      type="button"
+                      className="cs-date-trigger-btn"
+                      onClick={() => setShowDatePicker(true)}
+                    >
+                      <span>{customReminderDate ? customReminderDate.split('-').reverse().join('/') : 'Chọn ngày'}</span>
+                    </button>
                   </div>
                   <div>
                     <label>Giờ</label>
@@ -1018,11 +1023,13 @@ export default function TrackerScreen({ profile }) {
                 <div className="form-grid-inputs">
                   <div>
                     <label>Ngày uống / Lịch hẹn</label>
-                    <input 
-                      type="date" 
-                      value={customReminderDate}
-                      onChange={e => setCustomReminderDate(e.target.value)}
-                    />
+                    <button
+                      type="button"
+                      className="cs-date-trigger-btn"
+                      onClick={() => setShowDatePicker(true)}
+                    >
+                      <span>{customReminderDate ? customReminderDate.split('-').reverse().join('/') : 'Chọn ngày'}</span>
+                    </button>
                   </div>
                   <div>
                     <label>Giờ nhắc</label>
@@ -1152,6 +1159,19 @@ export default function TrackerScreen({ profile }) {
         </div>
 
       </div>
+
+      {showDatePicker && createPortal(
+        <AppDatePicker
+          value={customReminderDate}
+          onConfirm={(dateStr) => {
+            setCustomReminderDate(dateStr);
+            setShowDatePicker(false);
+          }}
+          onCancel={() => setShowDatePicker(false)}
+          dateType="nextAppointmentDate"
+        />,
+        document.body
+      )}
 
     </div>
   );

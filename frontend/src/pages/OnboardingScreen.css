@@ -268,8 +268,33 @@
   font-weight: 600;
 }
 
+.cs-date-trigger-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid var(--cream-dark);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-base) var(--ease-smooth);
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.cs-date-trigger-btn:hover {
+  border-color: var(--sage);
+  background: var(--warm-white);
+}
+
 @media (max-width: 480px) {
   .onboarding-card { padding: 28px 20px 36px; }
   .metrics-grid   { grid-template-columns: 1fr; }
   .big-choice-grid { grid-template-columns: 1fr; }
 }
+

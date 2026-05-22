@@ -1,9 +1,19 @@
 /* ─── Onboarding Screen — Multi-step Registration ─────────── */
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase.js';
+import AppDatePicker from '../components/AppDatePicker.jsx';
 import './OnboardingScreen.css';
+
+const fmtDisplay = (iso) => {
+  if (!iso) return '';
+  try {
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+  } catch { return iso; }
+};
 
 /* ── Step names ── */
 const STEPS = ['login', 'mom', 'status', 'babies', 'review'];
@@ -20,6 +30,8 @@ export default function OnboardingScreen({ onComplete }) {
   const [babies, setBabies]       = useState([createEmptyBaby()]);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
+  const [showDueDateCalendar, setShowDueDateCalendar] = useState(false);
+  const [activeDobCalendarIdx, setActiveDobCalendarIdx] = useState(null);
 
   function createEmptyBaby(label = 'Bé') {
     return {
@@ -219,9 +231,13 @@ export default function OnboardingScreen({ onComplete }) {
                 </div>
                 <div className="input-group">
                   <label className="input-label">Ngày sinh dự kiến</label>
-                  <input type="date" className="text-input" 
-                    value={pregnancyInfo.dueDate}
-                    onChange={e => setPregnancyInfo(p => ({ ...p, dueDate: e.target.value }))} />
+                  <button
+                    type="button"
+                    className="cs-date-trigger-btn"
+                    onClick={() => setShowDueDateCalendar(true)}
+                  >
+                    <span style={{ fontSize: '15px' }}>📅</span> {fmtDisplay(pregnancyInfo.dueDate) || 'Chọn ngày sinh dự kiến'}
+                  </button>
                 </div>
               </div>
             )}
@@ -252,8 +268,13 @@ export default function OnboardingScreen({ onComplete }) {
                       </div>
                       <div className="input-group">
                         <label className="input-label">Ngày sinh</label>
-                        <input type="date" className="text-input"
-                          value={baby.dob} onChange={e => updateBaby(idx, 'dob', e.target.value)} />
+                        <button
+                          type="button"
+                          className="cs-date-trigger-btn"
+                          onClick={() => setActiveDobCalendarIdx(idx)}
+                        >
+                          <span style={{ fontSize: '15px' }}>📅</span> {fmtDisplay(baby.dob) || 'Chọn ngày sinh của bé'}
+                        </button>
                       </div>
                       <div className="metrics-grid">
                         <div className="metric-group">
@@ -355,6 +376,32 @@ export default function OnboardingScreen({ onComplete }) {
           </div>
         )}
       </div>
+
+      {showDueDateCalendar && createPortal(
+        <AppDatePicker
+          value={pregnancyInfo.dueDate}
+          onConfirm={(dateStr) => {
+            setPregnancyInfo(p => ({ ...p, dueDate: dateStr }));
+            setShowDueDateCalendar(false);
+          }}
+          onCancel={() => setShowDueDateCalendar(false)}
+          dateType="dueDate"
+        />,
+        document.body
+      )}
+
+      {activeDobCalendarIdx !== null && createPortal(
+        <AppDatePicker
+          value={babies[activeDobCalendarIdx]?.dob || ''}
+          onConfirm={(dateStr) => {
+            updateBaby(activeDobCalendarIdx, 'dob', dateStr);
+            setActiveDobCalendarIdx(null);
+          }}
+          onCancel={() => setActiveDobCalendarIdx(null)}
+          dateType="birthDate"
+        />,
+        document.body
+      )}
     </div>
   );
 }
