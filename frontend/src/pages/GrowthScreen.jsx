@@ -149,7 +149,7 @@ const removePendingFromLocalStorage = (visitId) => {
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
-export default function GrowthScreen({ profile }) {
+export default function GrowthScreen({ profile, setActiveTab }) {
   const userStatus = profile?.status || 'parent';
   const userId     = profile?.user?.uid;
   const babies     = profile?.babies || [];
@@ -397,13 +397,25 @@ export default function GrowthScreen({ profile }) {
       updatedAt:            serverTimestamp(),
     };
 
-    if (editingVisit?.id) {
-      await updateDoc(doc(db, 'users', userId, 'pregnancyVisits', editingVisit.id), entry);
-      setLogs(prev => prev.map(item => item.id === editingVisit.id ? { ...item, ...entry, updatedAt: new Date() } : item).sort((a, b) => b.date.localeCompare(a.date)));
-    } else {
-      entry.createdAt = serverTimestamp();
-      const docRef = await addDoc(collection(db, 'users', userId, 'pregnancyVisits'), entry);
-      setLogs(prev => [{ id: docRef.id, ...entry, createdAt: new Date() }, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
+    // Save asynchronously in the background
+    try {
+      if (editingVisit?.id) {
+        updateDoc(doc(db, 'users', userId, 'pregnancyVisits', editingVisit.id), entry)
+          .catch(err => console.error("Error updating pregnancy visit:", err));
+        setLogs(prev => prev.map(item => item.id === editingVisit.id ? { ...item, ...entry, updatedAt: new Date() } : item).sort((a, b) => b.date.localeCompare(a.date)));
+      } else {
+        entry.createdAt = serverTimestamp();
+        addDoc(collection(db, 'users', userId, 'pregnancyVisits'), entry).then(docRef => {
+          setLogs(prev => [{ id: docRef.id, ...entry, createdAt: new Date() }, ...prev].sort((a, b) => b.date.localeCompare(a.date)));
+        }).catch(err => console.error("Error creating pregnancy visit:", err));
+      }
+    } catch (e) {
+      console.error("Error saving checkup in background:", e);
+    }
+
+    // Immediately switch to the Assistant tab (màn hình chính - Trợ lý)
+    if (setActiveTab) {
+      setActiveTab('chat');
     }
   };
 

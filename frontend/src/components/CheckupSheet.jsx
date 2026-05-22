@@ -641,7 +641,12 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         gestationalAgeSource: source,
         eddSnapshotAtVisit:   edd || null,
       };
-      await onSave(entry);
+      // Save asynchronously in the background
+      try {
+        onSave(entry);
+      } catch (e) {
+        console.error("Error in onSave checkup:", e);
+      }
 
       if (nextAppointment && enableReminder) {
         showToast('Đã lưu · App sẽ nhắc mẹ trước lịch khám 1 ngày');
@@ -649,15 +654,15 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         showToast(existingVisit ? 'Đã cập nhật ghi nhận khám thai' : 'Đã lưu ghi nhận khám thai');
       }
 
-      setTimeout(() => {
-        overlayStateRef.current.isDirty = false;
-        overlayStateRef.current.saving = false;
-        if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
-          window.history.back();
-        } else {
-          onClose();
-        }
-      }, 1200);
+      // Close the sheet immediately
+      overlayStateRef.current.isDirty = false;
+      overlayStateRef.current.saving = false;
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
+        window._overlayStack.pop('checkup-sheet');
+        window.history.back();
+      } else {
+        onClose();
+      }
     } catch (e) {
       console.error(e);
       setSaveError(true);

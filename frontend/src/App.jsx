@@ -290,7 +290,7 @@ export default function App() {
       <main className="main-content">
         {activeTab === 'chat'      && <ChatScreen    profile={{ ...sharedProfile, displayName: `Mẹ ${momName}`, role: 'Mẹ' }} setActiveTab={setActiveTab} />}
         {activeTab === 'tracker'   && <TrackerScreen profile={sharedProfile} />}
-        {activeTab === 'growth'    && <GrowthScreen  profile={sharedProfile} />}
+        {activeTab === 'growth'    && <GrowthScreen  profile={sharedProfile} setActiveTab={setActiveTab} />}
         {activeTab === 'community' && <CommunityScreen profile={sharedProfile} />}
         {activeTab === 'baby'      && <BabyProfileScreen profile={sharedProfile} />}
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}

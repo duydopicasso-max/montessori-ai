@@ -984,17 +984,19 @@ ${logsDesc}`;
       createdAt: serverTimestamp()
     };
 
-    try {
-      await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
-      triggerChime();
-      showToast("Đã lưu cân nặng hôm nay");
-      handleCleanCloseSheet('preg_weight');
-    } catch (err) {
-      console.error(err);
-      setSaveWeightError(true);
-    } finally {
-      setIsSavingWeight(false);
-    }
+    // Save in background
+    addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
+      .then(() => {
+        triggerChime();
+        showToast("Đã lưu cân nặng hôm nay");
+      })
+      .catch(err => {
+        console.error("Error background saving weight:", err);
+      });
+
+    // Close sheet immediately
+    handleCleanCloseSheet('preg_weight');
+    setIsSavingWeight(false);
   };
 
   const handleSavePrePregWeight = async () => {
@@ -1117,25 +1119,27 @@ ${logsDesc}`;
       createdAt: serverTimestamp()
     };
 
-    try {
-      const todayLog = activityLogs.find(l => l.type === 'preg_reminders' && l.date === todayStr);
-      if (todayLog) {
-        await updateDoc(doc(db, 'users', userId, 'babies', babyId, 'activityLogs', todayLog.id), {
+    const todayLog = activityLogs.find(l => l.type === 'preg_reminders' && l.date === todayStr);
+    const savePromise = todayLog
+      ? updateDoc(doc(db, 'users', userId, 'babies', babyId, 'activityLogs', todayLog.id), {
           ...logData,
           createdAt: todayLog.createdAt || serverTimestamp()
-        });
-      } else {
-        await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
-      }
-      triggerChime();
-      handleCleanCloseSheet('preg_reminders');
-      showToast("Đã lưu ghi nhận hôm nay");
-    } catch (err) {
-      console.error(err);
-      setSaveVitaminsError(true);
-    } finally {
-      setIsSavingVitamins(false);
-    }
+        })
+      : addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
+
+    // Save in background
+    savePromise
+      .then(() => {
+        triggerChime();
+        showToast("Đã lưu ghi nhận hôm nay");
+      })
+      .catch(err => {
+        console.error("Error background saving vitamins/water:", err);
+      });
+
+    // Close sheet immediately
+    handleCleanCloseSheet('preg_reminders');
+    setIsSavingVitamins(false);
   };
 
   const getVitaminStatusText = () => {
@@ -1242,25 +1246,25 @@ ${logsDesc}`;
       }
     };
 
-    try {
-      await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
-      triggerChime();
-      
-      if (nextApptDate && reminderEnabled) {
-        showToast("Đã lưu ghi nhận khám thai · App sẽ nhắc mẹ trước 1 ngày");
-      } else {
-        showToast("Đã lưu ghi nhận khám thai");
-      }
+    // Save in background
+    addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
+      .then(() => {
+        triggerChime();
+        if (nextApptDate && reminderEnabled) {
+          showToast("Đã lưu ghi nhận khám thai · App sẽ nhắc mẹ trước 1 ngày");
+        } else {
+          showToast("Đã lưu ghi nhận khám thai");
+        }
+      })
+      .catch(err => {
+        console.error("Error background saving clinic visit:", err);
+      });
 
-      handleCleanCloseSheet('preg_clinic');
-      setClinicNote('');
-      setNextApptDate('');
-    } catch (err) {
-      console.error(err);
-      setSaveClinicError(true);
-    } finally {
-      setIsSavingClinic(false);
-    }
+    // Close sheet immediately
+    handleCleanCloseSheet('preg_clinic');
+    setClinicNote('');
+    setNextApptDate('');
+    setIsSavingClinic(false);
   };
 
   const [activeChipLabel, setActiveChipLabel] = useState(null);
@@ -1385,22 +1389,22 @@ ${logsDesc}`;
       createdAt: serverTimestamp()
     };
 
-    try {
-      await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
-      triggerChime();
-      showToast("Đã lưu cảm xúc hôm nay");
-      handleCleanCloseSheet('preg_emotion');
-      
-      // Reset states
-      setSelectedEmotions([]);
-      setEmotionIntensity('Vừa');
-      setEmotionNote('');
-    } catch (err) {
-      console.error("Error saving pregnancy emotion log:", err);
-      setSaveEmotionError(true);
-    } finally {
-      setIsSavingEmotion(false);
-    }
+    // Save in background
+    addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
+      .then(() => {
+        triggerChime();
+        showToast("Đã lưu cảm xúc hôm nay");
+      })
+      .catch(err => {
+        console.error("Error background saving pregnancy emotion log:", err);
+      });
+
+    // Close and reset states immediately
+    handleCleanCloseSheet('preg_emotion');
+    setSelectedEmotions([]);
+    setEmotionIntensity('Vừa');
+    setEmotionNote('');
+    setIsSavingEmotion(false);
   };
 
   // Overdue status transition
