@@ -844,7 +844,10 @@ export default function GrowthScreen({ profile, setActiveTab }) {
         {showEddCalendar && createPortal(
           <AppDatePicker
             value={tempEdd}
-            onConfirm={(dateStr) => setTempEdd(dateStr)}
+            onConfirm={(dateStr) => {
+              setTempEdd(dateStr);
+              setShowEddCalendar(false);
+            }}
             onCancel={() => setShowEddCalendar(false)}
             dateType="dueDate"
           />,
