@@ -187,10 +187,12 @@ export default function GrowthScreen({ profile, setActiveTab }) {
   const [showRecalcModal, setShowRecalcModal] = useState(false);
   const [showConfirmCloseProfile, setShowConfirmCloseProfile] = useState(false);
 
+  const forceCleanRef = useRef(false);
+
   const profileOverlayStateRef = useRef({ isDirty: false, saving: false });
   profileOverlayStateRef.current = {
-    isDirty: tempBabyName !== (pregnancyData?.babyName || '') || tempEdd !== (pregnancyData?.edd || ''),
-    saving: loading
+    isDirty: forceCleanRef.current ? false : (tempBabyName !== (pregnancyData?.babyName || '') || tempEdd !== (pregnancyData?.edd || '')),
+    saving: forceCleanRef.current ? false : loading
   };
 
   useEffect(() => {
@@ -226,6 +228,7 @@ export default function GrowthScreen({ profile, setActiveTab }) {
   };
 
   const handleConfirmDiscardProfile = () => {
+    forceCleanRef.current = true;
     setTempBabyName(pregnancyData?.babyName || '');
     setTempEdd(pregnancyData?.edd || '');
     setShowConfirmCloseProfile(false);
@@ -489,8 +492,10 @@ export default function GrowthScreen({ profile, setActiveTab }) {
 
   const handleProfileUpdate = async (shouldRecalculate) => {
     if (!userId) return;
-    setLoading(true);
+
+    // ── Optimistic close: đóng modal NGAY LẬP TỨC, không chờ Firestore ──
     setShowRecalcModal(false);
+    forceCleanRef.current = true;
     profileOverlayStateRef.current.isDirty = false;
     profileOverlayStateRef.current.saving = false;
     if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
@@ -498,13 +503,51 @@ export default function GrowthScreen({ profile, setActiveTab }) {
       window.history.back();
     }
     setShowEditProfileModal(false);
-    try {
-      const pregRef = doc(db, 'users', userId, 'tracking', 'pregnancy');
-      await setDoc(pregRef, {
+
+    // ── Optimistic UI update: cập nhật state local ngay lập tức ──
+    setPregnancyData(prev => ({
+      ...prev,
+      babyName: tempBabyName,
+      edd: tempEdd
+    }));
+
+    // ── Background save: lưu song song lên Firestore mà không block UI ──
+    const pregRef = doc(db, 'users', userId, 'tracking', 'pregnancy');
+    const userRef = doc(db, 'users', userId);
+
+    const writePromises = [
+      setDoc(pregRef, {
         babyName: tempBabyName,
         edd: tempEdd,
         lastUpdatedAt: serverTimestamp()
-      }, { merge: true });
+      }, { merge: true }),
+      setDoc(userRef, {
+        pregnancyInfo: {
+          dueDate: tempEdd,
+          babyName: tempBabyName
+        }
+      }, { merge: true })
+    ];
+
+    // 3. Đồng bộ subcollection babies nếu có
+    if (babies && babies.length > 0) {
+      const currentBaby = babies[selectedBaby] || babies[0];
+      const resolvedBabyId = (currentBaby.id || currentBaby.name || 'baby-0')
+        .toLowerCase().replace(/\s+/g, '-');
+      if (resolvedBabyId) {
+        const babyRef = doc(db, 'users', userId, 'babies', resolvedBabyId);
+        writePromises.push(setDoc(babyRef, {
+          name: tempBabyName,
+          pregnancyInfo: {
+            dueDate: tempEdd,
+            babyName: tempBabyName
+          }
+        }, { merge: true }));
+      }
+    }
+
+    try {
+      await Promise.all(writePromises);
 
       if (shouldRecalculate) {
         const batch = writeBatch(db);
@@ -562,9 +605,13 @@ export default function GrowthScreen({ profile, setActiveTab }) {
       }
     } catch (e) {
       console.error("Failed to update profile or recalculate:", e);
+      // Nhẹ nhàng thông báo lỗi mà không khóa màn hình
+      setToastMsg('Chưa lưu được thay đổi, mẹ kiểm tra kết nối mạng nhé 🌿');
+      setToastVisible(true);
+      setTimeout(() => setToastVisible(false), 3500);
     } finally {
-      setLoading(false);
-      // Force reload from database to ensure everything is in sync
+      forceCleanRef.current = false;
+      // Reload nhẹ để đồng bộ dữ liệu
       loadData();
     }
   };
@@ -716,8 +763,10 @@ export default function GrowthScreen({ profile, setActiveTab }) {
             }}
             onDeleteCheckup={handleDeleteClick}
             onOpenEditProfile={() => {
-              setTempBabyName(pregnancyData?.babyName || '');
-              setTempEdd(pregnancyData?.edd || '');
+              const fallbackBabyName = babies[selectedBaby]?.name || profile?.childName || 'Bé yêu';
+              const fallbackEdd = babies[selectedBaby]?.pregnancyInfo?.dueDate || profile?.pregnancyInfo?.dueDate || '';
+              setTempBabyName(pregnancyData?.babyName || fallbackBabyName);
+              setTempEdd(pregnancyData?.edd || fallbackEdd);
               setShowEditProfileModal(true);
             }}
           />
@@ -878,7 +927,7 @@ export default function GrowthScreen({ profile, setActiveTab }) {
 
         {/* ── CUSTOM RECALCULATION MODAL ── */}
         {showRecalcModal && createPortal(
-          <div className="cs-modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowRecalcModal(false)}>
+          <div className="cs-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowRecalcModal(false)}>
             <div className="cs-confirm-box" style={{ maxWidth: '360px' }} onClick={e => e.stopPropagation()}>
               <h3 className="cs-confirm-title">Cập nhật ngày dự sinh?</h3>
               <p className="cs-confirm-text">
