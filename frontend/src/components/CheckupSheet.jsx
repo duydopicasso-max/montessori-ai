@@ -375,6 +375,34 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
     );
   };
 
+  // Set the overlayStateRef
+  const overlayStateRef = useRef({ isDirty: false, saving: false });
+  overlayStateRef.current = { isDirty: isDirty(), saving };
+
+  useEffect(() => {
+    if (open && window._overlayStack) {
+      window._overlayStack.push(
+        'checkup-sheet',
+        () => {
+          if (overlayStateRef.current.saving) return 'saving';
+          if (overlayStateRef.current.isDirty) return 'dirty';
+          return 'clean';
+        },
+        () => {
+          onClose();
+        },
+        () => {
+          setShowConfirmClose(true);
+        }
+      );
+    }
+    return () => {
+      if (window._overlayStack) {
+        window._overlayStack.pop('checkup-sheet');
+      }
+    };
+  }, [open]);
+
   /* ── On open: prefill from existingVisit or reset ── */
   useEffect(() => {
     if (!open) return;
@@ -504,6 +532,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     document.body.classList.add('cs-modal-open');
+    document.body.classList.add('overlay-open');
 
     let startY = 0;
 
@@ -595,16 +624,26 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
     return () => {
       document.body.style.overflow = originalOverflow;
       document.body.classList.remove('cs-modal-open');
+      document.body.classList.remove('overlay-open');
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
     };
   }, [open, showExplanation, calendarTarget, showConfirmClose]);
 
   const handleAttemptClose = () => {
-    if (isDirty()) {
-      setShowConfirmClose(true);
+    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
+      window.history.back();
     } else {
       onClose();
+    }
+  };
+
+  const handleFocusCapture = (e) => {
+    const target = e.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 250);
     }
   };
 
@@ -740,7 +779,15 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         showToast(existingVisit ? 'Đã cập nhật ghi nhận khám thai' : 'Đã lưu ghi nhận khám thai');
       }
 
-      setTimeout(() => onClose(), 1200);
+      setTimeout(() => {
+        overlayStateRef.current.isDirty = false;
+        overlayStateRef.current.saving = false;
+        if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
+          window.history.back();
+        } else {
+          onClose();
+        }
+      }, 1200);
     } catch (e) {
       console.error(e);
       setSaveError(true);
@@ -798,7 +845,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         </div>
 
         {/* Scrollable content */}
-        <div className="checkup-scroll">
+        <div className="checkup-scroll" onFocusCapture={handleFocusCapture}>
 
           {/* ── LOAD ERROR ── */}
           {loadError && (
@@ -1341,19 +1388,24 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
 
       {/* ── CONFIRM CLOSE DIALOG ── */}
       {showConfirmClose && (
-        <div className="cs-modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowConfirmClose(false)}>
-          <div className="cs-confirm-box" onClick={e => e.stopPropagation()}>
-            <h3 className="cs-confirm-title">Bỏ ghi nhận khám thai?</h3>
-            <p className="cs-confirm-text">Mẹ có muốn bỏ ghi nhận đang nhập không? Các thay đổi sẽ không được lưu.</p>
-            <div className="cs-confirm-actions">
-              <button type="button" className="cs-confirm-btn cs-confirm-btn--secondary" onClick={() => setShowConfirmClose(false)}>
-                Tiếp tục nhập
-              </button>
-              <button type="button" className="cs-confirm-btn cs-confirm-btn--danger" onClick={() => {
+        <div className="ios-confirm-overlay" onClick={() => setShowConfirmClose(false)}>
+          <div className="ios-confirm-card" onClick={e => e.stopPropagation()}>
+            <h3 className="ios-confirm-title">Bỏ ghi nhận khám thai?</h3>
+            <p className="ios-confirm-message">Mẹ có muốn bỏ ghi nhận đang nhập không? Các thay đổi sẽ không được lưu.</p>
+            <div className="ios-confirm-buttons">
+              <button type="button" className="ios-confirm-btn danger" onClick={() => {
                 setShowConfirmClose(false);
-                onClose();
+                overlayStateRef.current.isDirty = false;
+                if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
+                  window.history.back();
+                } else {
+                  onClose();
+                }
               }}>
                 Bỏ ghi nhận
+              </button>
+              <button type="button" className="ios-confirm-btn" onClick={() => setShowConfirmClose(false)}>
+                Tiếp tục nhập
               </button>
             </div>
           </div>

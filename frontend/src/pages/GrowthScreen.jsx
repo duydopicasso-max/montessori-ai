@@ -182,6 +182,55 @@ export default function GrowthScreen({ profile }) {
   const [tempEdd, setTempEdd] = useState('');
   const [showEddCalendar, setShowEddCalendar] = useState(false);
   const [showRecalcModal, setShowRecalcModal] = useState(false);
+  const [showConfirmCloseProfile, setShowConfirmCloseProfile] = useState(false);
+
+  const profileOverlayStateRef = useRef({ isDirty: false, saving: false });
+  profileOverlayStateRef.current = {
+    isDirty: tempBabyName !== (pregnancyData?.babyName || '') || tempEdd !== (pregnancyData?.edd || ''),
+    saving: loading
+  };
+
+  useEffect(() => {
+    if (showEditProfileModal && window._overlayStack) {
+      window._overlayStack.push(
+        'growth-profile-edit',
+        () => {
+          if (profileOverlayStateRef.current.saving) return 'saving';
+          if (profileOverlayStateRef.current.isDirty) return 'dirty';
+          return 'clean';
+        },
+        () => {
+          setShowEditProfileModal(false);
+        },
+        () => {
+          setShowConfirmCloseProfile(true);
+        }
+      );
+    }
+    return () => {
+      if (window._overlayStack) {
+        window._overlayStack.pop('growth-profile-edit');
+      }
+    };
+  }, [showEditProfileModal]);
+
+  const handleAttemptCloseProfile = () => {
+    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
+      window.history.back();
+    } else {
+      setShowEditProfileModal(false);
+    }
+  };
+
+  const handleConfirmDiscardProfile = () => {
+    setShowConfirmCloseProfile(false);
+    profileOverlayStateRef.current.isDirty = false;
+    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
+      window.history.back();
+    } else {
+      setShowEditProfileModal(false);
+    }
+  };
   
   const pendingDeletesRef = useRef({});
   const latestDeletedIdRef = useRef(null);
@@ -192,13 +241,16 @@ export default function GrowthScreen({ profile }) {
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
       document.body.classList.add('cs-modal-open');
+      document.body.classList.add('overlay-open');
     } else {
       document.body.style.overflow = '';
       document.body.classList.remove('cs-modal-open');
+      document.body.classList.remove('overlay-open');
     }
     return () => {
       document.body.style.overflow = '';
       document.body.classList.remove('cs-modal-open');
+      document.body.classList.remove('overlay-open');
     };
   }, [showDeleteConfirm, showEditProfileModal, showEddCalendar, showRecalcModal]);
 
@@ -426,7 +478,13 @@ export default function GrowthScreen({ profile }) {
     if (!userId) return;
     setLoading(true);
     setShowRecalcModal(false);
-    setShowEditProfileModal(false);
+    profileOverlayStateRef.current.isDirty = false;
+    profileOverlayStateRef.current.saving = false;
+    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
+      window.history.back();
+    } else {
+      setShowEditProfileModal(false);
+    }
     try {
       const pregRef = doc(db, 'users', userId, 'tracking', 'pregnancy');
       await setDoc(pregRef, {
@@ -664,15 +722,22 @@ export default function GrowthScreen({ profile }) {
 
         {/* ── CUSTOM EDIT PROFILE MODAL ── */}
         {showEditProfileModal && createPortal(
-          <div className="cs-modal-overlay" onClick={() => setShowEditProfileModal(false)}>
+          <div className="cs-modal-overlay" onClick={handleAttemptCloseProfile}>
             <div className="cs-modal-box" onClick={e => e.stopPropagation()}>
               <div className="cs-modal-header">
                 <h3 className="cs-modal-title">Chỉnh sửa hồ sơ thai kỳ</h3>
-                <button type="button" className="cs-modal-close" onClick={() => setShowEditProfileModal(false)}>
+                <button type="button" className="cs-modal-close" onClick={handleAttemptCloseProfile}>
                   <CloseIcon size={16} />
                 </button>
               </div>
-              <div className="cs-modal-body">
+              <div className="cs-modal-body" onFocusCapture={(e) => {
+                const target = e.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                  setTimeout(() => {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }, 250);
+                }
+              }}>
                 <div className="cs-field-group" style={{ marginBottom: '16px' }}>
                   <label className="cs-label">Tên bé yêu (ở nhà)</label>
                   <input
@@ -701,7 +766,7 @@ export default function GrowthScreen({ profile }) {
                     type="button"
                     className="outline-btn"
                     style={{ flex: 1 }}
-                    onClick={() => setShowEditProfileModal(false)}
+                    onClick={handleAttemptCloseProfile}
                   >
                     Hủy
                   </button>
@@ -714,6 +779,25 @@ export default function GrowthScreen({ profile }) {
                     Lưu thay đổi
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* ── PROFILE CONFIRM CLOSE DIALOG ── */}
+        {showConfirmCloseProfile && createPortal(
+          <div className="ios-confirm-overlay" onClick={() => setShowConfirmCloseProfile(false)}>
+            <div className="ios-confirm-card" onClick={e => e.stopPropagation()}>
+              <h3 className="ios-confirm-title">Bỏ thay đổi?</h3>
+              <p className="ios-confirm-message">Mẹ có muốn bỏ các thay đổi đang nhập không?</p>
+              <div className="ios-confirm-buttons">
+                <button type="button" className="ios-confirm-btn danger" onClick={handleConfirmDiscardProfile}>
+                  Bỏ thay đổi
+                </button>
+                <button type="button" className="ios-confirm-btn" onClick={() => setShowConfirmCloseProfile(false)}>
+                  Tiếp tục nhập
+                </button>
               </div>
             </div>
           </div>,

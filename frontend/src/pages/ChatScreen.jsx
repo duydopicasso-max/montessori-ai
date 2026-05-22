@@ -4,6 +4,7 @@
  * 💬 Chat AI integrated in slide-up modal (no FAB overlay)
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
 import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
@@ -827,7 +828,7 @@ ${logsDesc}`;
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'nutritionLogs'), logData);
       triggerChime();
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('nutrition');
       // Reset
       setBreastLeftSec(0); setBreastRightSec(0); setBreastDirectTimerActive(false); setSolidDetails('');
     } catch (err) {
@@ -853,7 +854,7 @@ ${logsDesc}`;
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('sleep');
       setSleepActive(false); setSleepSecs(0); setSleepStartStr('');
     } catch (err) {
       console.error(err);
@@ -879,7 +880,7 @@ ${logsDesc}`;
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('diaper');
     } catch (err) {
       console.error(err);
     }
@@ -903,7 +904,7 @@ ${logsDesc}`;
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('growth');
     } catch (err) {
       console.error(err);
     }
@@ -928,7 +929,7 @@ ${logsDesc}`;
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('kick');
       setKickActive(false); setKickCount(0); setKickSecs(0);
     } catch (err) {
       console.error(err);
@@ -953,7 +954,7 @@ ${logsDesc}`;
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('contractions');
       setContraActive(false); setContraCount(0); setContraSecs(0);
     } catch (err) {
       console.error(err);
@@ -984,7 +985,7 @@ ${logsDesc}`;
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
       showToast("Đã lưu cân nặng hôm nay");
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('preg_weight');
     } catch (err) {
       console.error(err);
       setSaveWeightError(true);
@@ -1027,18 +1028,28 @@ ${logsDesc}`;
     }, 3000);
   };
 
+  // --- BOTTOM SHEET & CHAT DRAWER UX REFINEMENTS ---
+  const [confirmCloseTarget, setConfirmCloseTarget] = useState(null);
+  const pregWeightInitialRef = useRef(58.5);
+  const pregRemindersInitialRef = useRef({ vitaminsLogged: { Folic: false, Iron: false, Calcium: false, DHA: false }, waterCount: 0 });
+  const chatOverlayStateRef = useRef({ isDirty: false, saving: false });
+
   useEffect(() => {
     if (activeBottomSheet === 'preg_reminders') {
       const todayStr = new Date().toISOString().split('T')[0];
       const todayLog = activityLogs.find(l => l.type === 'preg_reminders' && l.date === todayStr);
       if (todayLog) {
-        setVitaminsLogged({
+        const loadedVits = {
           Folic: todayLog.vitaminsLogged?.Folic || false,
           Iron: todayLog.vitaminsLogged?.Iron || false,
           Calcium: todayLog.vitaminsLogged?.Calcium || false,
           DHA: todayLog.vitaminsLogged?.DHA || false
-        });
-        setWaterCount(todayLog.waterCount !== undefined ? todayLog.waterCount : 0);
+        };
+        const loadedWater = todayLog.waterCount !== undefined ? todayLog.waterCount : 0;
+        setVitaminsLogged(loadedVits);
+        setWaterCount(loadedWater);
+        pregRemindersInitialRef.current = { vitaminsLogged: loadedVits, waterCount: loadedWater };
+
         setWaterTarget(todayLog.waterTarget !== undefined ? todayLog.waterTarget : 8);
         if (todayLog.configuredVitamins) {
           setConfiguredVitamins(todayLog.configuredVitamins);
@@ -1046,8 +1057,11 @@ ${logsDesc}`;
           setConfiguredVitamins(['Folic', 'Iron', 'Calcium', 'DHA']);
         }
       } else {
-        setVitaminsLogged({ Folic: false, Iron: false, Calcium: false, DHA: false });
+        const defaultVits = { Folic: false, Iron: false, Calcium: false, DHA: false };
+        setVitaminsLogged(defaultVits);
         setWaterCount(0);
+        pregRemindersInitialRef.current = { vitaminsLogged: defaultVits, waterCount: 0 };
+
         setWaterTarget(8);
         setConfiguredVitamins(['Folic', 'Iron', 'Calcium', 'DHA']);
       }
@@ -1057,12 +1071,15 @@ ${logsDesc}`;
       const todayLog = activityLogs.find(l => l.type === 'preg_weight' && l.date === todayStr);
       if (todayLog) {
         setPregWeight(todayLog.weightKg);
+        pregWeightInitialRef.current = todayLog.weightKg;
       } else {
         const wLogs = activityLogs.filter(l => l.type === 'preg_weight');
         if (wLogs.length > 0) {
           setPregWeight(wLogs[0].weightKg);
+          pregWeightInitialRef.current = wLogs[0].weightKg;
         } else {
           setPregWeight(58.5);
+          pregWeightInitialRef.current = 58.5;
         }
       }
       setSaveWeightError(false);
@@ -1108,7 +1125,7 @@ ${logsDesc}`;
         await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       }
       triggerChime();
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('preg_reminders');
       showToast("Đã lưu ghi nhận hôm nay");
     } catch (err) {
       console.error(err);
@@ -1232,7 +1249,7 @@ ${logsDesc}`;
         showToast("Đã lưu ghi nhận khám thai");
       }
 
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('preg_clinic');
       setClinicNote('');
       setNextApptDate('');
     } catch (err) {
@@ -1369,7 +1386,7 @@ ${logsDesc}`;
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
       showToast("Đã lưu cảm xúc hôm nay");
-      setActiveBottomSheet(null);
+      handleCleanCloseSheet('preg_emotion');
       
       // Reset states
       setSelectedEmotions([]);
@@ -2181,6 +2198,249 @@ ${logsDesc}`;
     }
   };
 
+  // --- DIRTY CHECK MATRIX FOR THE 10 TRACKERS ---
+  const isSheetDirty = (sheetId) => {
+    if (sheetId === 'nutrition') {
+      return (
+        breastDirectTimerActive ||
+        breastLeftSec > 0 ||
+        breastRightSec > 0 ||
+        solidDetails !== '' ||
+        nutriMl !== 150 ||
+        nutriSuaMe !== true ||
+        pumpLeftMl !== 60 ||
+        pumpRightMl !== 60 ||
+        nutriTab !== 'breast_direct'
+      );
+    }
+    if (sheetId === 'sleep') {
+      return sleepActive || sleepSecs > 0 || sleepTag !== 'Tự ngủ';
+    }
+    if (sheetId === 'diaper') {
+      return diaperType !== 'pee' || diaperColor !== 'yellow' || diaperDesc !== 'Bình thường';
+    }
+    if (sheetId === 'growth') {
+      return growthWeight !== 7.5 || growthHeight !== 68.2;
+    }
+    if (sheetId === 'kick') {
+      return kickActive || kickSecs > 0 || kickCount > 0;
+    }
+    if (sheetId === 'contractions') {
+      return contraActive || contraSecs > 0 || contraCount > 0;
+    }
+    if (sheetId === 'preg_weight') {
+      const initialW = pregWeightInitialRef.current !== undefined ? pregWeightInitialRef.current : 58.5;
+      return Number(pregWeight) !== Number(initialW) || prePregInputValue !== (profile?.prePregnancyWeight || '');
+    }
+    if (sheetId === 'preg_reminders') {
+      const initialVits = pregRemindersInitialRef.current?.vitaminsLogged || { Folic: false, Iron: false, Calcium: false, DHA: false };
+      const initialWater = pregRemindersInitialRef.current?.waterCount !== undefined ? pregRemindersInitialRef.current.waterCount : 0;
+      const vitsChanged = Object.keys(vitaminsLogged).some(k => vitaminsLogged[k] !== initialVits[k]);
+      return vitsChanged || waterCount !== initialWater;
+    }
+    if (sheetId === 'preg_clinic') {
+      return clinicNote !== '' || nextApptDate !== '' || visitDate !== getTodayLocalyyyymmdd();
+    }
+    if (sheetId === 'preg_emotion') {
+      return selectedEmotions.length > 0 || emotionNote !== '' || emotionIntensity !== 'Vừa';
+    }
+    return false;
+  };
+
+  // Keep state ref updated
+  useEffect(() => {
+    chatOverlayStateRef.current = {
+      isDirty: activeBottomSheet ? isSheetDirty(activeBottomSheet) : (isChatOpen ? (input !== '' || pendingImgs.length > 0) : false),
+      saving: isSavingWeight || isSavingPrePreg || isSavingVitamins || isSavingClinic || isSavingEmotion
+    };
+  });
+
+  // History stack registration for activeBottomSheet
+  useEffect(() => {
+    if (activeBottomSheet && window._overlayStack) {
+      const sheetId = activeBottomSheet;
+      window._overlayStack.push(
+        sheetId,
+        () => {
+          if (chatOverlayStateRef.current.saving) return 'saving';
+          if (isSheetDirty(sheetId)) return 'dirty';
+          return 'clean';
+        },
+        () => {
+          setActiveBottomSheet(null);
+        },
+        () => {
+          setConfirmCloseTarget(sheetId);
+        }
+      );
+    }
+    return () => {
+      if (activeBottomSheet && window._overlayStack) {
+        window._overlayStack.pop(activeBottomSheet);
+      }
+    };
+  }, [activeBottomSheet]);
+
+  // History stack registration for isChatOpen
+  useEffect(() => {
+    if (isChatOpen && window._overlayStack) {
+      window._overlayStack.push(
+        'chat-assistant',
+        () => {
+          if (chatOverlayStateRef.current.saving) return 'saving';
+          if (input !== '' || pendingImgs.length > 0) return 'dirty';
+          return 'clean';
+        },
+        () => {
+          setIsChatOpen(false);
+        },
+        () => {
+          setConfirmCloseTarget('chat-assistant');
+        }
+      );
+    }
+    return () => {
+      if (isChatOpen && window._overlayStack) {
+        window._overlayStack.pop('chat-assistant');
+      }
+    };
+  }, [isChatOpen]);
+
+  // Attempt close handlers
+  const handleAttemptCloseSheet = () => {
+    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === activeBottomSheet)) {
+      window.history.back();
+    } else {
+      setActiveBottomSheet(null);
+    }
+  };
+
+  const handleAttemptCloseChat = () => {
+    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'chat-assistant')) {
+      window.history.back();
+    } else {
+      setIsChatOpen(false);
+    }
+  };
+
+  const handleCleanCloseSheet = (sheetId) => {
+    chatOverlayStateRef.current.isDirty = false;
+    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === sheetId)) {
+      window.history.back();
+    } else {
+      setActiveBottomSheet(null);
+    }
+  };
+
+  const handleConfirmDiscard = () => {
+    const target = confirmCloseTarget;
+    setConfirmCloseTarget(null);
+    
+    if (target === 'chat-assistant') {
+      setInput('');
+      setPendingImgs([]);
+      chatOverlayStateRef.current.isDirty = false;
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'chat-assistant')) {
+        window.history.back();
+      } else {
+        setIsChatOpen(false);
+      }
+    } else if (target) {
+      chatOverlayStateRef.current.isDirty = false;
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === target)) {
+        window.history.back();
+      } else {
+        setActiveBottomSheet(null);
+      }
+    }
+  };
+
+  // Keyboard helper visual viewport listeners
+  const [viewportStyle, setViewportStyle] = useState({});
+  const [chatViewportStyle, setChatViewportStyle] = useState({});
+
+  useEffect(() => {
+    if (!activeBottomSheet || !window.visualViewport) {
+      setViewportStyle({});
+      return;
+    }
+    const handleResize = () => {
+      const vv = window.visualViewport;
+      if (window.innerWidth < 640) {
+        const bottomOffset = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
+        setViewportStyle({
+          bottom: `${bottomOffset}px`,
+          maxHeight: `${vv.height * 0.9}px`
+        });
+      } else {
+        setViewportStyle({});
+      }
+    };
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+    handleResize();
+    return () => {
+      window.visualViewport.removeEventListener('resize', handleResize);
+      window.visualViewport.removeEventListener('scroll', handleResize);
+    };
+  }, [activeBottomSheet]);
+
+  useEffect(() => {
+    if (!isChatOpen || !window.visualViewport) {
+      setChatViewportStyle({});
+      return;
+    }
+    const handleResize = () => {
+      const vv = window.visualViewport;
+      if (window.innerWidth < 640) {
+        const bottomOffset = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
+        setChatViewportStyle({
+          bottom: `${bottomOffset}px`,
+          maxHeight: `${vv.height * 0.9}px`
+        });
+      } else {
+        setChatViewportStyle({});
+      }
+    };
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+    handleResize();
+    return () => {
+      window.visualViewport.removeEventListener('resize', handleResize);
+      window.visualViewport.removeEventListener('scroll', handleResize);
+    };
+  }, [isChatOpen]);
+
+  // Focus centering auto-scroll
+  const handleFocusCapture = (e) => {
+    const target = e.target;
+    if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 250);
+    }
+  };
+
+  // Body scroll lock + overlay-open class effect
+  // overlay-open class hides bottom-nav via CSS in App.css (iOS WebKit z-index fix)
+  useEffect(() => {
+    const isModalOpen = !!activeBottomSheet || isChatOpen || !!confirmCloseTarget;
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('cs-modal-open');
+      document.body.classList.add('overlay-open');
+    } else {
+      document.body.style.overflow = '';
+      document.body.classList.remove('cs-modal-open');
+      document.body.classList.remove('overlay-open');
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('cs-modal-open');
+      document.body.classList.remove('overlay-open');
+    };
+  }, [activeBottomSheet, isChatOpen, confirmCloseTarget]);
+
   const suggestionData = getMontessoriSuggestion();
 
   return (
@@ -2444,9 +2704,9 @@ ${logsDesc}`;
 
       {/* ──────────────────────────────────────────────────────── */}
       {/* 💬 MONTESSORI AI CHAT SLIDE-UP MODAL (90% HEIGHT) */}
-      {isChatOpen && (
-        <div className="chat-slide-up-modal-overlay" onClick={() => setIsChatOpen(false)}>
-          <div className="chat-slide-up-content-panel animate-slide-up" onClick={e => e.stopPropagation()}>
+      {isChatOpen && createPortal(
+        <div className="chat-slide-up-modal-overlay" onClick={handleAttemptCloseChat}>
+          <div className="chat-slide-up-content-panel animate-slide-up" onClick={e => e.stopPropagation()} style={chatViewportStyle} onFocusCapture={handleFocusCapture}>
             
             {/* Chat Header inside sliding panel */}
             <header className="chat-sliding-header">
@@ -2464,7 +2724,7 @@ ${logsDesc}`;
                 {messages.length > 0 && (
                   <button className="clear-chat-sliding-btn" onClick={clearChat} title="Xóa cuộc trò chuyện">🗑️</button>
                 )}
-                <button className="close-sliding-modal-btn" onClick={() => setIsChatOpen(false)}>✕</button>
+                <button className="close-sliding-modal-btn" onClick={handleAttemptCloseChat}>✕</button>
               </div>
             </header>
 
@@ -2544,14 +2804,15 @@ ${logsDesc}`;
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ──────────────────────────────────────────────────────── */}
       {/* 📥 4 INPUT TRACKER BOTTOM SHEETS (70% HEIGHT) */}
-      {activeBottomSheet && (
-        <div className="bottom-sheet-backdrop-overlay" onClick={() => setActiveBottomSheet(null)}>
-          <div className="bottom-sheet-content-panel animate-slide-up" onClick={e => e.stopPropagation()}>
+      {activeBottomSheet && createPortal(
+        <div className="bottom-sheet-backdrop-overlay" onClick={handleAttemptCloseSheet}>
+          <div className="bottom-sheet-content-panel animate-slide-up" onClick={e => e.stopPropagation()} style={viewportStyle} onFocusCapture={handleFocusCapture}>
             
             {/* Sliding Header top notch bar */}
             <div className="sheet-drag-handle-pill" />
@@ -3563,7 +3824,27 @@ ${logsDesc}`;
             )}
 
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── IOS-STYLE CONFIRM CLOSE DIALOG ── */}
+      {confirmCloseTarget && createPortal(
+        <div className="ios-confirm-overlay" onClick={() => setConfirmCloseTarget(null)}>
+          <div className="ios-confirm-card" onClick={e => e.stopPropagation()}>
+            <h3 className="ios-confirm-title">Bỏ thay đổi?</h3>
+            <p className="ios-confirm-message">Mẹ có muốn bỏ các thay đổi đang nhập không?</p>
+            <div className="ios-confirm-buttons">
+              <button type="button" className="ios-confirm-btn danger" onClick={handleConfirmDiscard}>
+                Bỏ thay đổi
+              </button>
+              <button type="button" className="ios-confirm-btn" onClick={() => setConfirmCloseTarget(null)}>
+                Tiếp tục nhập
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
     </div>

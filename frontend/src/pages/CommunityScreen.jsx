@@ -624,6 +624,16 @@ function CreateRoomSheet({ onClose, currentUser }) {
   const [saving, setSaving]   = useState(false);
   const [nameError, setNameError] = useState('');
 
+  // Lock body scroll + hide bottom-nav on iOS when sheet is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('overlay-open');
+    return () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('overlay-open');
+    };
+  }, []);
+
   const handleCreate = async () => {
     if (!name.trim()) { setNameError('Tên phòng không được để trống.'); return; }
     if (name.trim().length < 3) { setNameError('Tên phòng cần ít nhất 3 ký tự.'); return; }
@@ -1300,10 +1310,20 @@ function Avatar({ name, photo, size }) {
 
 /* ── Member Profile Sheet (preserved) ── */
 function MemberProfileSheet({ profile, onClose, currentUser, onStartPrivateChat }) {
-  const [status, setStatus]             = useState('none');
+  const [status, setStatus] = useState('none');
+  const [loading, setLoading] = useState(!profile.isAnon);
   const [existingChat, setExistingChat] = useState(null);
-  const [loading, setLoading]           = useState(!profile.isAnon);
   const [sendingRequest, setSendingRequest] = useState(false);
+
+  // Lock body scroll + hide bottom-nav on iOS when sheet is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('overlay-open');
+    return () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('overlay-open');
+    };
+  }, []);
 
   useEffect(() => {
     if (profile.isAnon) return;
@@ -1404,6 +1424,16 @@ function MemberProfileSheet({ profile, onClose, currentUser, onStartPrivateChat 
 
 /* ── Community Rules Sheet ── */
 function CommunityRulesSheet({ onClose, roomType }) {
+  // Lock body scroll + hide bottom-nav on iOS when sheet is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('overlay-open');
+    return () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('overlay-open');
+    };
+  }, []);
+
   const rules = [
     'Tôn trọng & Cảm thông: Không phán xét phương pháp nuôi dạy con của mẹ khác.',
     'Thông tin an toàn: Không chia sẻ đơn thuốc bừa bãi, không tuyên truyền sai lệch.',

@@ -59,6 +59,74 @@ export default function App() {
   const [profile, setProfile]     = useState(null);
   const [loading, setLoading]     = useState(true);
 
+  // Initialize Global History Stack Overlay Coordinator (LIFO)
+  useEffect(() => {
+    if (!window._overlayStack) {
+      window._overlayStack = {
+        stack: [],
+        push(id, checkClose, onClose, onDiscardConfirmRequired) {
+          if (this.stack.some(item => item.id === id)) return;
+          this.stack.push({ id, checkClose, onClose, onDiscardConfirmRequired });
+          window.history.pushState({ overlayId: id }, '');
+        },
+        pop(id) {
+          const idx = this.stack.findIndex(item => item.id === id);
+          if (idx !== -1) {
+            this.stack.splice(idx, 1);
+          }
+        }
+      };
+
+      const showGlobalToast = (message) => {
+        const existingToast = document.querySelector('.premium-global-toast');
+        if (existingToast) {
+          existingToast.remove();
+        }
+        const toast = document.createElement('div');
+        toast.className = 'premium-global-toast';
+        toast.innerHTML = `
+          <div class="premium-global-toast-content">
+            <span class="premium-global-toast-icon">⚠️</span>
+            <span>${message}</span>
+          </div>
+        `;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => {
+          toast.classList.add('visible');
+        });
+        setTimeout(() => {
+          toast.classList.remove('visible');
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      };
+
+      const handlePopState = (event) => {
+        const stack = window._overlayStack.stack;
+        if (!stack || stack.length === 0) return;
+
+        const topOverlay = stack[stack.length - 1];
+        const decision = topOverlay.checkClose();
+
+        if (decision === 'saving') {
+          showGlobalToast("Đang lưu dữ liệu, mẹ chờ một chút nhé.");
+          window.history.pushState({ overlayId: topOverlay.id }, '');
+        } else if (decision === 'dirty') {
+          topOverlay.onDiscardConfirmRequired();
+          window.history.pushState({ overlayId: topOverlay.id }, '');
+        } else {
+          stack.pop();
+          topOverlay.onClose();
+        }
+      };
+
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, []);
+
   useEffect(() => {
     let profileUnsub = null;
     let babiesUnsub = null;

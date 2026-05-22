@@ -4,11 +4,12 @@
 .checkup-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: 99990;
   background: rgba(15, 30, 20, 0.35);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   animation: overlayIn 0.28s ease;
+  touch-action: none;
 }
 @keyframes overlayIn {
   from { opacity: 0; }
@@ -21,7 +22,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 2010;
+  z-index: 99991;
   background: #FEFEFE;
   border-radius: 28px 28px 0 0;
   max-height: 92dvh;
@@ -497,7 +498,7 @@
   bottom: 110px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  z-index: 2100;
+  z-index: 99995;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -713,7 +714,7 @@
 .custom-calendar-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2050;
+  z-index: 99992;
   background: rgba(15, 30, 20, 0.4);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -722,6 +723,7 @@
   justify-content: center;
   padding: 16px;
   animation: overlayIn 0.24s ease;
+  touch-action: none;
 }
 .custom-calendar-box {
   width: 100%;
@@ -874,7 +876,7 @@
 .cs-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2080;
+  z-index: 99993;
   background: rgba(15, 30, 20, 0.4);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -883,6 +885,7 @@
   justify-content: center;
   padding: 16px;
   animation: overlayIn 0.24s ease;
+  touch-action: none;
 }
 .cs-modal-box {
   width: 100%;

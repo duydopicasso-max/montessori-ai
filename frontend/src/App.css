@@ -116,6 +116,14 @@
   z-index: 100;
   padding: 0 16px calc(var(--safe-bottom) + 16px);
   pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+/* ── Hide bottom-nav when any overlay is open (iOS scroll fix) ── */
+body.overlay-open .bottom-nav {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 .bottom-nav-inner {
   display: flex;
