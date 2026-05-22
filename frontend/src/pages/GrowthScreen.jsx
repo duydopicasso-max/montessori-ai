@@ -5,6 +5,7 @@
  * - Skeleton loading, rich empty states, full data isolation
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ComposedChart, Area, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer
@@ -184,6 +185,22 @@ export default function GrowthScreen({ profile }) {
   
   const pendingDeletesRef = useRef({});
   const latestDeletedIdRef = useRef(null);
+
+  /* ── Body overflow scroll lock effect for active modals ── */
+  useEffect(() => {
+    const isModalOpen = showDeleteConfirm || showEditProfileModal || showEddCalendar || showRecalcModal;
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('cs-modal-open');
+    } else {
+      document.body.style.overflow = '';
+      document.body.classList.remove('cs-modal-open');
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('cs-modal-open');
+    };
+  }, [showDeleteConfirm, showEditProfileModal, showEddCalendar, showRecalcModal]);
 
   /* ── Resolved baby ── */
   const rawBaby  = babies[selectedBaby] || {};
@@ -627,7 +644,7 @@ export default function GrowthScreen({ profile }) {
         />
 
         {/* ── CUSTOM DELETE CONFIRM MODAL ── */}
-        {showDeleteConfirm && (
+        {showDeleteConfirm && createPortal(
           <div className="cs-modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowDeleteConfirm(false)}>
             <div className="cs-confirm-box" onClick={e => e.stopPropagation()}>
               <h3 className="cs-confirm-title">Xóa ghi nhận khám thai?</h3>
@@ -641,11 +658,12 @@ export default function GrowthScreen({ profile }) {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ── CUSTOM EDIT PROFILE MODAL ── */}
-        {showEditProfileModal && (
+        {showEditProfileModal && createPortal(
           <div className="cs-modal-overlay" onClick={() => setShowEditProfileModal(false)}>
             <div className="cs-modal-box" onClick={e => e.stopPropagation()}>
               <div className="cs-modal-header">
@@ -698,20 +716,22 @@ export default function GrowthScreen({ profile }) {
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ── CUSTOM CALENDAR IN GROWTH SCREEN ── */}
-        {showEddCalendar && (
+        {showEddCalendar && createPortal(
           <CustomCalendar
             value={tempEdd}
             onChange={(dateStr) => setTempEdd(dateStr)}
             onClose={() => setShowEddCalendar(false)}
-          />
+          />,
+          document.body
         )}
 
         {/* ── CUSTOM RECALCULATION MODAL ── */}
-        {showRecalcModal && (
+        {showRecalcModal && createPortal(
           <div className="cs-modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowRecalcModal(false)}>
             <div className="cs-confirm-box" style={{ maxWidth: '360px' }} onClick={e => e.stopPropagation()}>
               <h3 className="cs-confirm-title">Cập nhật ngày dự sinh?</h3>
@@ -736,7 +756,8 @@ export default function GrowthScreen({ profile }) {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ── FLOATING UNDO TOAST ── */}

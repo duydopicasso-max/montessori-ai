@@ -4,6 +4,7 @@
  * All states: loading, saving, error, validation, success toast, reminder toggle
  */
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import './CheckupSheet.css';
 
 /* ── Icons ── */
@@ -464,15 +465,140 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
     return () => window.removeEventListener('keydown', handler);
   }, [open, showExplanation, calendarTarget, showConfirmClose, visitDate, notes, nextAppointment, enableReminder, motherWeight, bpd, fl, ac, hc, crl, efw, fetalHeartRate]);
 
-  /* ── Prevent body scroll when open ── */
+  /* ── Visual Viewport keyboard helper for mobile ── */
+  const [viewportStyle, setViewportStyle] = useState({});
+
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
+    if (!open || !window.visualViewport) return;
+
+    const handleResize = () => {
+      const vv = window.visualViewport;
+      const width = window.innerWidth;
+      
+      if (width < 640) {
+        const bottomOffset = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
+        setViewportStyle({
+          bottom: `${bottomOffset}px`,
+          maxHeight: `${vv.height * 0.9}px`
+        });
+      } else {
+        setViewportStyle({});
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+    handleResize();
+
+    return () => {
+      window.visualViewport.removeEventListener('resize', handleResize);
+      window.visualViewport.removeEventListener('scroll', handleResize);
+    };
   }, [open]);
+
+  /* ── Prevent body scroll and handle touch lock when open ── */
+  useEffect(() => {
+    if (!open) return;
+
+    // Lock body scroll and apply pointer isolation
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('cs-modal-open');
+
+    let startY = 0;
+
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 1) {
+        startY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      // Don't prevent default if there are multiple touches or if event is not cancelable
+      if (e.touches.length !== 1 || !e.cancelable) return;
+
+      const hasActiveSubModal = showExplanation || !!calendarTarget || showConfirmClose;
+
+      // Find the nearest target in the DOM tree that matches our classes
+      let target = e.target;
+      let interactiveElement = null;
+
+      while (target && target !== document.body) {
+        if (hasActiveSubModal) {
+          // If sub-modal is open, only allow scrolling inside the sub-modal's scrollable body
+          if (target.classList.contains('cs-modal-body')) {
+            interactiveElement = target;
+            break;
+          }
+        } else {
+          // If no sub-modal, allow scrolling inside checkup sheet body/fields
+          const isMatch = 
+            target.classList.contains('checkup-scroll') || 
+            target.classList.contains('cs-modal-body') ||
+            target.classList.contains('cs-textarea');
+
+          if (isMatch) {
+            interactiveElement = target;
+            break;
+          }
+        }
+        target = target.parentElement;
+      }
+
+      if (!interactiveElement) {
+        // Not touching any active interactive container, block scroll
+        e.preventDefault();
+        return;
+      }
+
+      // If they touched a textarea, but it's not scrollable, fall back to checkup-scroll
+      if (!hasActiveSubModal && interactiveElement.classList.contains('cs-textarea')) {
+        const { scrollHeight, clientHeight } = interactiveElement;
+        if (scrollHeight <= clientHeight) {
+          let p = interactiveElement.parentElement;
+          while (p && p !== document.body) {
+            if (p.classList.contains('checkup-scroll')) {
+              interactiveElement = p;
+              break;
+            }
+            p = p.parentElement;
+          }
+        }
+      }
+
+      // Now we have the active scrollable container
+      const { scrollTop, scrollHeight, clientHeight } = interactiveElement;
+      
+      // If the container is not scrollable, block scroll
+      if (scrollHeight <= clientHeight) {
+        e.preventDefault();
+        return;
+      }
+
+      const currentY = e.touches[0].clientY;
+      const deltaY = currentY - startY;
+
+      // Prevent boundary scroll chaining with 1.5px sub-pixel layout tolerance
+      const isAtTop = scrollTop <= 1.5;
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 1.5;
+
+      if (deltaY > 0 && isAtTop) {
+        e.preventDefault();
+      } else if (deltaY < 0 && isAtBottom) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.classList.remove('cs-modal-open');
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [open, showExplanation, calendarTarget, showConfirmClose]);
 
   const handleAttemptClose = () => {
     if (isDirty()) {
@@ -639,7 +765,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <>
       {/* ── OVERLAY ── */}
       <div
@@ -655,6 +781,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         role="dialog"
         aria-modal="true"
         aria-label="Ghi nhận khám thai"
+        style={viewportStyle}
       >
         {/* Drag handle */}
         <div className="checkup-drag-handle" />
@@ -1238,6 +1365,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         <CheckIcon size={14} />
         {toastMsg}
       </div>
-    </>
+    </>,
+    document.body
   );
 }

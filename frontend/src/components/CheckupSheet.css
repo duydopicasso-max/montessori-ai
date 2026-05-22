@@ -4,7 +4,7 @@
 .checkup-overlay {
   position: fixed;
   inset: 0;
-  z-index: 900;
+  z-index: 2000;
   background: rgba(15, 30, 20, 0.35);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -21,7 +21,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 910;
+  z-index: 2010;
   background: #FEFEFE;
   border-radius: 28px 28px 0 0;
   max-height: 92dvh;
@@ -497,7 +497,7 @@
   bottom: 110px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  z-index: 950;
+  z-index: 2100;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -713,7 +713,7 @@
 .custom-calendar-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1050;
+  z-index: 2050;
   background: rgba(15, 30, 20, 0.4);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -874,7 +874,7 @@
 .cs-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1080;
+  z-index: 2080;
   background: rgba(15, 30, 20, 0.4);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -1010,4 +1010,25 @@
 .cs-confirm-btn--danger:hover {
   background: #FFE4DF;
 }
+
+/* ─── SCROLL LOCK & POINTER ISOLATION ─── */
+body.cs-modal-open {
+  overflow: hidden !important;
+  touch-action: none;
+}
+body.cs-modal-open #root {
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.checkup-overlay,
+.checkup-sheet,
+.custom-calendar-overlay,
+.cs-modal-overlay,
+.cs-confirm-box,
+.cs-modal-box,
+.checkup-toast {
+  pointer-events: auto !important;
+}
+
 
