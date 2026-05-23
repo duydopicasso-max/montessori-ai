@@ -4474,3 +4474,87 @@
     transform: translateY(0);
   }
 }
+
+/* ─── TWIN PREGNANCY STYLES ─────────────────────────────────── */
+
+/* Twin overview selector (Tổng quan / Bé A / Bé B) */
+.twin-overview-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 6px;
+  flex-wrap: wrap;
+}
+
+.twin-tab-chip {
+  padding: 7px 16px;
+  border-radius: 100px;
+  border: 1.5px solid rgba(47, 107, 79, 0.25);
+  background: rgba(255, 255, 255, 0.9);
+  color: #4A5D54;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.twin-tab-chip.active {
+  background: linear-gradient(135deg, #2F6B4F 0%, #4A9B6E 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(47, 107, 79, 0.25);
+}
+
+.twin-tab-chip:hover:not(.active) {
+  background: rgba(47, 107, 79, 0.08);
+  border-color: rgba(47, 107, 79, 0.4);
+}
+
+.twin-tab-viewing-hint {
+  font-size: 12px;
+  color: #4A9B6E;
+  font-weight: 600;
+  margin-left: 4px;
+  background: rgba(74, 155, 110, 0.1);
+  padding: 4px 10px;
+  border-radius: 100px;
+}
+
+/* Twin kick notice banner */
+.twin-kick-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: linear-gradient(135deg, #FFF8E7 0%, #FFF3D0 100%);
+  border: 1px solid rgba(212, 163, 44, 0.3);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 0 0 16px 0;
+}
+
+.twin-kick-notice-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.twin-kick-notice-text {
+  font-size: 13px;
+  color: #6B5300;
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Tracker card twin hint (cân nặng của mẹ) */
+.tracker-card-twin-hint {
+  display: block;
+  font-size: 11px;
+  color: #7A8F86;
+  font-weight: 500;
+  margin-top: -2px;
+  margin-bottom: 4px;
+  font-style: italic;
+}

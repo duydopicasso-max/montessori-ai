@@ -1032,3 +1032,45 @@ body.cs-modal-open {
 }
 
 
+
+/* ─── TWIN BABY TABS IN CHECKUP SHEET ─────────────────────── */
+.cs-twin-baby-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 10px;
+  flex-wrap: wrap;
+}
+
+.cs-twin-baby-tab {
+  padding: 8px 20px;
+  border-radius: 100px;
+  border: 2px solid rgba(95, 175, 130, 0.35);
+  background: #fff;
+  color: #4A6B56;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  letter-spacing: 0.3px;
+}
+
+.cs-twin-baby-tab.active {
+  background: linear-gradient(135deg, #2F6B4F 0%, #5FAF82 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(47, 107, 79, 0.3);
+}
+
+.cs-twin-baby-tab:hover:not(.active) {
+  background: rgba(95, 175, 130, 0.1);
+  border-color: #5FAF82;
+}
+
+.cs-twin-tab-hint {
+  font-size: 12px;
+  color: #7DA08C;
+  font-weight: 500;
+  font-style: italic;
+}

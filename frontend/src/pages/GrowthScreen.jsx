@@ -150,7 +150,8 @@ const removePendingFromLocalStorage = (visitId) => {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
 export default function GrowthScreen({ profile, setActiveTab, pendingAction, onConsumePendingAction }) {
-  const userStatus = profile?.status || 'parent';
+  const userStatus = profile?.status || 'born';
+  const isTwin     = (profile?.numBabies || 1) >= 2;
   const userId     = profile?.user?.uid;
   const babies     = profile?.babies || [];
 
@@ -398,18 +399,25 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       nextAppointment:      checkupEntry.nextAppointment || null,
       reminder:             checkupEntry.reminder || false,
       motherWeight:         checkupEntry.motherWeight !== undefined ? checkupEntry.motherWeight : null,
-      bpd:                  checkupEntry.bpd !== undefined ? checkupEntry.bpd : null,
-      fl:                   checkupEntry.fl !== undefined ? checkupEntry.fl : null,
-      ac:                   checkupEntry.ac !== undefined ? checkupEntry.ac : null,
-      hc:                   checkupEntry.hc !== undefined ? checkupEntry.hc : null,
-      crl:                  checkupEntry.crl !== undefined ? checkupEntry.crl : null,
-      efw:                  checkupEntry.efw !== undefined ? checkupEntry.efw : null,
-      fetalHeartRate:       checkupEntry.fetalHeartRate !== undefined ? checkupEntry.fetalHeartRate : null,
       gestationalAgeDays:   checkupEntry.gestationalAgeDays !== undefined ? checkupEntry.gestationalAgeDays : null,
       gestationalWeek:      checkupEntry.gestationalWeek !== undefined ? checkupEntry.gestationalWeek : null,
       gestationalDay:       checkupEntry.gestationalDay !== undefined ? checkupEntry.gestationalDay : null,
       gestationalAgeSource: checkupEntry.gestationalAgeSource || 'edd',
       eddSnapshotAtVisit:   checkupEntry.eddSnapshotAtVisit || null,
+      // Twin: save babyA/babyB sub-objects; single: flat fields
+      ...(checkupEntry.isTwin ? {
+        isTwin: true,
+        babyA: checkupEntry.babyA || {},
+        babyB: checkupEntry.babyB || {},
+      } : {
+        bpd:           checkupEntry.bpd !== undefined ? checkupEntry.bpd : null,
+        fl:            checkupEntry.fl !== undefined ? checkupEntry.fl : null,
+        ac:            checkupEntry.ac !== undefined ? checkupEntry.ac : null,
+        hc:            checkupEntry.hc !== undefined ? checkupEntry.hc : null,
+        crl:           checkupEntry.crl !== undefined ? checkupEntry.crl : null,
+        efw:           checkupEntry.efw !== undefined ? checkupEntry.efw : null,
+        fetalHeartRate: checkupEntry.fetalHeartRate !== undefined ? checkupEntry.fetalHeartRate : null,
+      }),
       updatedAt:            serverTimestamp(),
     };
 
@@ -794,6 +802,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
           onSave={handleSaveCheckup}
           existingVisit={editingVisit}
           edd={pregnancyData?.edd}
+          isTwin={isTwin}
         />
 
         {/* ── CUSTOM DELETE CONFIRM MODAL ── */}

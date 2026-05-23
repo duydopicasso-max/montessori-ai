@@ -345,7 +345,11 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   const babyId = (baby.name || 'baby-0').toLowerCase().replace(/\s+/g, '-');
   const dob = baby?.dob || '';
   const pregnancyInfo = profile?.pregnancyInfo || baby?.pregnancyInfo;
-  
+  const isTwin = (profile?.numBabies || 1) >= 2;
+
+  // Twin view tab state (only relevant when isTwin)
+  const [twinViewTab, setTwinViewTab] = useState('Tổng quan');
+
   // Real-time local baby/mom logs
   const [nutritionLogs, setNutritionLogs] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
@@ -1506,8 +1510,8 @@ ${logsDesc}`;
 
   const getLastPregWeightText = () => {
     const wLogs = activityLogs.filter(l => l.type === 'preg_weight');
-    if (wLogs.length === 0) return 'Cân nặng: -- kg';
-    return `Cân nặng: ${wLogs[0].weightKg} kg`;
+    if (wLogs.length === 0) return 'Cân nặng của mẹ: -- kg';
+    return `Cân nặng của mẹ: ${wLogs[0].weightKg} kg`;
   };
 
   const getLastClinicText = () => {
@@ -1670,12 +1674,12 @@ ${logsDesc}`;
     (pregWeeks >= 40 || (daysRemaining !== null && daysRemaining <= 0));
 
   const momNameUpper = `XIN CHÀO, ${(profile?.momName || 'Mẹ').toUpperCase()}`;
-  const headerBabyName = status === 'pregnant' 
-    ? (profile?.babyName || pregnancyInfo?.babyName || 'Bé yêu') 
+  const headerBabyName = status === 'pregnant'
+    ? (isTwin ? 'hai bé' : (profile?.babyName || pregnancyInfo?.babyName || 'Bé yêu'))
     : (baby?.name || 'Bé yêu');
-  
-  const headerAgeBadge = status === 'pregnant' 
-    ? `Tuần thai ${pregWeeks}` 
+
+  const headerAgeBadge = status === 'pregnant'
+    ? (isTwin ? `Tuần thai ${pregWeeks} · Thai đôi` : `Tuần thai ${pregWeeks}`)
     : getAgeString();
   
   const getHeaderAvatar = () => {
@@ -1739,6 +1743,7 @@ ${logsDesc}`;
               <PregWeightIcon />
             </div>
             <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
+            {isTwin && <span className="tracker-card-twin-hint">của mẹ, không phải thai nhi</span>}
             <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
             <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
               Cập nhật
@@ -2519,6 +2524,25 @@ ${logsDesc}`;
         </div>
       </header>
 
+      {/* 🌟 TWIN OVERVIEW SELECTOR */}
+      {isTwin && status === 'pregnant' && (
+        <div className="twin-overview-selector">
+          {['Tổng quan', 'Bé A', 'Bé B'].map(tab => (
+            <button
+              key={tab}
+              type="button"
+              className={`twin-tab-chip${twinViewTab === tab ? ' active' : ''}`}
+              onClick={() => setTwinViewTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+          {twinViewTab !== 'Tổng quan' && (
+            <span className="twin-tab-viewing-hint">Đang xem: {twinViewTab}</span>
+          )}
+        </div>
+      )}
+
       {/* 🎉 INTERACTIVE OVERDUE TRANSITION CARD */}
       {showTransitionCard && (
         <div className="pregnancy-overdue-transition-card animate-float-slow" style={{
@@ -2588,32 +2612,36 @@ ${logsDesc}`;
           </div>
           <div className="pregnancy-avocado-text-wrap">
             <h4 className="avocado-growth-banner">
-              {fruitInfo && fruitInfo.fruitName 
-                ? `Tuần ${pregWeeks}: ${headerBabyName} đang lớn bằng ${fruitInfo.fruitName} ${fruitInfo.fruit}`
-                : `Tuần ${pregWeeks}: ${headerBabyName} đang lớn lên từng ngày`
+              {isTwin
+                ? `Tuần ${pregWeeks}: hai bé đang lớn dần mỗi ngày 👶👶`
+                : (fruitInfo && fruitInfo.fruitName
+                    ? `Tuần ${pregWeeks}: ${headerBabyName} đang lớn bằng ${fruitInfo.fruitName} ${fruitInfo.fruit}`
+                    : `Tuần ${pregWeeks}: ${headerBabyName} đang lớn lên từng ngày`)
               }
             </h4>
             <p className="avocado-growth-sub">
-              {fruitInfo && fruitInfo.desc 
-                ? fruitInfo.desc 
-                : 'Bé yêu đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.'
+              {isTwin
+                ? 'Hai bé đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.'
+                : (fruitInfo && fruitInfo.desc
+                    ? fruitInfo.desc
+                    : 'Bé yêu đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.')
               }
             </p>
             {daysRemaining !== null ? (
               <span className="pregnancy-countdown-pill">
-                {daysRemaining > 0 
-                  ? `Còn khoảng ${daysRemaining} ngày nữa là gặp ${headerBabyName}!` 
-                  : `${headerBabyName} đã sẵn sàng chào đời!`}
+                {daysRemaining > 0
+                  ? `Còn khoảng ${daysRemaining} ngày nữa là gặp ${isTwin ? 'hai bé' : headerBabyName}!`
+                  : `${isTwin ? 'Hai bé' : headerBabyName} đã sẵn sàng chào đời!`}
               </span>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
                 <span style={{ fontSize: '12px', color: '#4A6B56', fontWeight: '500' }}>
                   Thêm ngày dự sinh để tính ngày gặp bé chính xác hơn.
                 </span>
-                <button 
+                <button
                   type="button"
                   className="pregnancy-add-due-date-btn"
-                  onClick={() => setActiveTab('baby')}
+                  onClick={() => setActiveTab('growth')}
                   style={{
                     background: 'transparent',
                     color: '#2F6B4F',
@@ -3107,6 +3135,12 @@ ${logsDesc}`;
             {activeBottomSheet === 'kick' && (
               <div className="tracker-sheet-viewport">
                 <h3 className="tracker-sheet-title">Đếm cử động thai (Kick)</h3>
+                {isTwin && (
+                  <div className="twin-kick-notice">
+                    <span className="twin-kick-notice-icon">💡</span>
+                    <p className="twin-kick-notice-text">Với thai đôi, mẹ có thể ghi nhận cảm nhận chung. Nếu phân biệt được vị trí từng bé, mẹ có thể ghi chú thêm sau khi lưu.</p>
+                  </div>
+                )}
                 <div className="pregnancy-timer-box text-center">
                   <h4 className="preg-timer-display">⏳ {Math.floor(kickSecs / 60)}m {kickSecs % 60}s</h4>
                   <div className="huge-kick-counter-glow-number">

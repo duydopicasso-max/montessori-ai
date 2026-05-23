@@ -97,7 +97,7 @@ const isDateInPast = (iso) => {
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
-export default function CheckupSheet({ open, onClose, onSave, existingVisit = null, edd = null }) {
+export default function CheckupSheet({ open, onClose, onSave, existingVisit = null, edd = null, isTwin = false }) {
   const textareaRef = useRef(null);
   const sheetRef    = useRef(null);
 
@@ -107,8 +107,28 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
   const [nextAppointment, setNextAppointment] = useState('');
   const [enableReminder, setEnableReminder]   = useState(true);
 
+  // Twin: active baby tab for metric input
+  const [activeBabyTab, setActiveBabyTab] = useState('A');
+
   // Ultrasound indicators & Fetal Heart Rate
   const [motherWeight, setMotherWeight]       = useState('');
+  // Baby A metrics
+  const [bpdA, setBpdA]                       = useState('');
+  const [flA, setFlA]                         = useState('');
+  const [acA, setAcA]                         = useState('');
+  const [hcA, setHcA]                         = useState('');
+  const [crlA, setCrlA]                       = useState('');
+  const [efwA, setEfwA]                       = useState('');
+  const [fetalHeartRateA, setFetalHeartRateA] = useState('');
+  // Baby B metrics
+  const [bpdB, setBpdB]                       = useState('');
+  const [flB, setFlB]                         = useState('');
+  const [acB, setAcB]                         = useState('');
+  const [hcB, setHcB]                         = useState('');
+  const [crlB, setCrlB]                       = useState('');
+  const [efwB, setEfwB]                       = useState('');
+  const [fetalHeartRateB, setFetalHeartRateB] = useState('');
+  // Single-baby metrics (when !isTwin)
   const [bpd, setBpd]                         = useState('');
   const [fl, setFl]                           = useState('');
   const [ac, setAc]                           = useState('');
@@ -121,17 +141,22 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
   const [activeMetrics, setActiveMetrics]     = useState({
     motherWeight: false, bpd: false, fl: false, ac: false, hc: false, crl: false, efw: false, fetalHeartRate: false
   });
+  const [activeMetricsA, setActiveMetricsA]   = useState({
+    bpd: false, fl: false, ac: false, hc: false, crl: false, efw: false, fetalHeartRate: false
+  });
+  const [activeMetricsB, setActiveMetricsB]   = useState({
+    bpd: false, fl: false, ac: false, hc: false, crl: false, efw: false, fetalHeartRate: false
+  });
 
   // Input refs for auto focus
   const inputRefs = {
     motherWeight: useRef(null),
-    bpd: useRef(null),
-    fl: useRef(null),
-    ac: useRef(null),
-    hc: useRef(null),
-    crl: useRef(null),
-    efw: useRef(null),
-    fetalHeartRate: useRef(null)
+    bpd: useRef(null), fl: useRef(null), ac: useRef(null),
+    hc: useRef(null), crl: useRef(null), efw: useRef(null), fetalHeartRate: useRef(null),
+    bpdA: useRef(null), flA: useRef(null), acA: useRef(null),
+    hcA: useRef(null), crlA: useRef(null), efwA: useRef(null), fetalHeartRateA: useRef(null),
+    bpdB: useRef(null), flB: useRef(null), acB: useRef(null),
+    hcB: useRef(null), crlB: useRef(null), efwB: useRef(null), fetalHeartRateB: useRef(null),
   };
 
   // UI states
@@ -582,7 +607,10 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
 
   /* ── Validate ── */
   const validate = () => {
-    const hasAnyMetric = motherWeight || bpd || fl || ac || hc || crl || efw || fetalHeartRate;
+    const hasAnyMetric = isTwin
+      ? (motherWeight || bpdA || flA || acA || hcA || crlA || efwA || fetalHeartRateA ||
+         bpdB || flB || acB || hcB || crlB || efwB || fetalHeartRateB)
+      : (motherWeight || bpd || fl || ac || hc || crl || efw || fetalHeartRate);
     if (!notes.trim() && !nextAppointment && !hasAnyMetric) {
       setValidationMsg('Mẹ hãy thêm ít nhất một thông tin (chỉ số siêu âm, ghi chú hoặc ngày hẹn tiếp theo) trước khi lưu nhé.');
       return false;
@@ -628,18 +656,40 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         nextAppointment: nextAppointment || null,
         reminder:        nextAppointment ? enableReminder : false,
         motherWeight:    motherWeight ? parseFloat(motherWeight) : null,
-        bpd:             bpd ? parseFloat(bpd) : null,
-        fl:              fl ? parseFloat(fl) : null,
-        ac:              ac ? parseFloat(ac) : null,
-        hc:              hc ? parseFloat(hc) : null,
-        crl:             crl ? parseFloat(crl) : null,
-        efw:             efw ? parseFloat(efw) : null,
-        fetalHeartRate:  fetalHeartRate ? parseFloat(fetalHeartRate) : null,
         gestationalAgeDays: finalAgeDays,
         gestationalWeek:    finalWeek,
         gestationalDay:     finalDay,
         gestationalAgeSource: source,
         eddSnapshotAtVisit:   edd || null,
+        ...(isTwin ? {
+          isTwin: true,
+          babyA: {
+            bpd: bpdA ? parseFloat(bpdA) : null,
+            fl:  flA  ? parseFloat(flA)  : null,
+            ac:  acA  ? parseFloat(acA)  : null,
+            hc:  hcA  ? parseFloat(hcA)  : null,
+            crl: crlA ? parseFloat(crlA) : null,
+            efw: efwA ? parseFloat(efwA) : null,
+            fetalHeartRate: fetalHeartRateA ? parseFloat(fetalHeartRateA) : null,
+          },
+          babyB: {
+            bpd: bpdB ? parseFloat(bpdB) : null,
+            fl:  flB  ? parseFloat(flB)  : null,
+            ac:  acB  ? parseFloat(acB)  : null,
+            hc:  hcB  ? parseFloat(hcB)  : null,
+            crl: crlB ? parseFloat(crlB) : null,
+            efw: efwB ? parseFloat(efwB) : null,
+            fetalHeartRate: fetalHeartRateB ? parseFloat(fetalHeartRateB) : null,
+          },
+        } : {
+          bpd: bpd ? parseFloat(bpd) : null,
+          fl:  fl  ? parseFloat(fl)  : null,
+          ac:  ac  ? parseFloat(ac)  : null,
+          hc:  hc  ? parseFloat(hc)  : null,
+          crl: crl ? parseFloat(crl) : null,
+          efw: efw ? parseFloat(efw) : null,
+          fetalHeartRate: fetalHeartRate ? parseFloat(fetalHeartRate) : null,
+        }),
       };
       // Save asynchronously in the background
       try {
@@ -812,92 +862,97 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
                         <span className="cs-selector-label">Ngày</span>
                         <select
                           className="cs-select"
-                          value={gestationalDay}
-                          onChange={e => {
-                            setGestationalDay(e.target.value);
-                            if (validationMsg) setValidationMsg('');
-                          }}
-                        >
-                          <option value="">--</option>
-                          {Array.from({ length: 7 }, (_, i) => i).map(d => (
-                            <option key={d} value={d}>{d}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Field: Các chỉ số siêu âm (Grid Chips) */}
+                                       {/* Field: Chỉ số siêu âm (Grid Chips) */}
               <div className="cs-field-group">
-                <label className="cs-label">Chỉ số siêu âm & Sức khỏe</label>
-                <div className="cs-metric-chips-row">
+                <label className="cs-label">Chỉ số siêu âm &amp; Sức khỏe</label>
+
+                {/* Cân nặng mẹ — common for both single and twin */}
+                <div style={{ marginBottom: '10px' }}>
                   <button
                     type="button"
                     className={`cs-metric-chip ${activeMetrics.motherWeight ? 'cs-metric-chip--active' : ''}`}
-                    onClick={() => handleMetricChipClick('motherWeight')}
+                    onClick={() => {
+                      setActiveMetrics(prev => ({ ...prev, motherWeight: true }));
+                      setTimeout(() => { if (inputRefs.motherWeight.current) inputRefs.motherWeight.current.focus(); }, 50);
+                    }}
                   >
                     {activeMetrics.motherWeight ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
                     Cân nặng mẹ
                   </button>
-                  <button
-                    type="button"
-                    className={`cs-metric-chip ${activeMetrics.bpd ? 'cs-metric-chip--active' : ''}`}
-                    onClick={() => handleMetricChipClick('bpd')}
-                  >
-                    {activeMetrics.bpd ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
-                    BPD
-                  </button>
-                  <button
-                    type="button"
-                    className={`cs-metric-chip ${activeMetrics.fl ? 'cs-metric-chip--active' : ''}`}
-                    onClick={() => handleMetricChipClick('fl')}
-                  >
-                    {activeMetrics.fl ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
-                    FL
-                  </button>
-                  <button
-                    type="button"
-                    className={`cs-metric-chip ${activeMetrics.ac ? 'cs-metric-chip--active' : ''}`}
-                    onClick={() => handleMetricChipClick('ac')}
-                  >
-                    {activeMetrics.ac ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
-                    AC
-                  </button>
-                  <button
-                    type="button"
-                    className={`cs-metric-chip ${activeMetrics.hc ? 'cs-metric-chip--active' : ''}`}
-                    onClick={() => handleMetricChipClick('hc')}
-                  >
-                    {activeMetrics.hc ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
-                    HC
-                  </button>
-                  <button
-                    type="button"
-                    className={`cs-metric-chip ${activeMetrics.crl ? 'cs-metric-chip--active' : ''}`}
-                    onClick={() => handleMetricChipClick('crl')}
-                  >
-                    {activeMetrics.crl ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
-                    CRL
-                  </button>
-                  <button
-                    type="button"
-                    className={`cs-metric-chip ${activeMetrics.efw ? 'cs-metric-chip--active' : ''}`}
-                    onClick={() => handleMetricChipClick('efw')}
-                  >
-                    {activeMetrics.efw ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
-                    EFW (Cân nặng bé)
-                  </button>
-                  <button
-                    type="button"
-                    className={`cs-metric-chip ${activeMetrics.fetalHeartRate ? 'cs-metric-chip--active' : ''}`}
-                    onClick={() => handleMetricChipClick('fetalHeartRate')}
-                  >
-                    {activeMetrics.fetalHeartRate ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
-                    Tim thai
-                  </button>
+                  {activeMetrics.motherWeight && (
+                    <div className="cs-metrics-inputs-grid" style={{ marginTop: '8px' }}>
+                      <div className="cs-metric-field">
+                        <label className="cs-metric-field-label">Cân nặng mẹ</label>
+                        <div className="cs-metric-input-wrapper">
+                          <input ref={inputRefs.motherWeight} type="number" step="0.1" placeholder="--"
+                            className="cs-metric-input" value={motherWeight}
+                            onChange={e => setMotherWeight(e.target.value)} />
+                          <span className="cs-metric-unit">kg</span>
+                          <button type="button" className="cs-metric-clear"
+                            onClick={() => { setActiveMetrics(p => ({ ...p, motherWeight: false })); setMotherWeight(''); }}>&times;</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Twin tab selector */}
+                {isTwin && (
+                  <div className="cs-twin-baby-tabs">
+                    {['A', 'B'].map(baby => (
+                      <button
+                        key={baby}
+                        type="button"
+                        className={`cs-twin-baby-tab${activeBabyTab === baby ? ' active' : ''}`}
+                        onClick={() => setActiveBabyTab(baby)}
+                      >
+                        Bé {baby}
+                      </button>
+                    ))}
+                    <span className="cs-twin-tab-hint">Nhập chỉ số riêng từng bé</span>
+                  </div>
+                )}
+
+                {/* Metric chips for current baby tab (twin) or single */}
+                {isTwin ? (
+                  <div className="cs-metric-chips-row">
+                    {[{key:'bpd',label:'BPD'},{key:'fl',label:'FL'},{key:'ac',label:'AC'},
+                      {key:'hc',label:'HC'},{key:'crl',label:'CRL'},{key:'efw',label:'EFW'},
+                      {key:'fetalHeartRate',label:'Tim thai'}].map(({key, label}) => {
+                      const tabKey = key + (activeBabyTab === 'A' ? 'A' : 'B');
+                      const activeM = activeBabyTab === 'A' ? activeMetricsA : activeMetricsB;
+                      const setActiveM = activeBabyTab === 'A' ? setActiveMetricsA : setActiveMetricsB;
+                      return (
+                        <button key={key} type="button"
+                          className={`cs-metric-chip ${activeM[key] ? 'cs-metric-chip--active' : ''}`}
+                          onClick={() => {
+                            setActiveM(prev => ({ ...prev, [key]: true }));
+                            setTimeout(() => { if (inputRefs[tabKey]?.current) inputRefs[tabKey].current.focus(); }, 50);
+                          }}>
+                          {activeM[key] ? <CheckIcon size={10} /> : <PlusIcon size={10} />}
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="cs-metric-chips-row">
+                    <button type="button" className={`cs-metric-chip ${activeMetrics.bpd ? 'cs-metric-chip--active' : ''}`} onClick={() => handleMetricChipClick('bpd')}>
+                      {activeMetrics.bpd ? <CheckIcon size={10} /> : <PlusIcon size={10} />} BPD</button>
+                    <button type="button" className={`cs-metric-chip ${activeMetrics.fl ? 'cs-metric-chip--active' : ''}`} onClick={() => handleMetricChipClick('fl')}>
+                      {activeMetrics.fl ? <CheckIcon size={10} /> : <PlusIcon size={10} />} FL</button>
+                    <button type="button" className={`cs-metric-chip ${activeMetrics.ac ? 'cs-metric-chip--active' : ''}`} onClick={() => handleMetricChipClick('ac')}>
+                      {activeMetrics.ac ? <CheckIcon size={10} /> : <PlusIcon size={10} />} AC</button>
+                    <button type="button" className={`cs-metric-chip ${activeMetrics.hc ? 'cs-metric-chip--active' : ''}`} onClick={() => handleMetricChipClick('hc')}>
+                      {activeMetrics.hc ? <CheckIcon size={10} /> : <PlusIcon size={10} />} HC</button>
+                    <button type="button" className={`cs-metric-chip ${activeMetrics.crl ? 'cs-metric-chip--active' : ''}`} onClick={() => handleMetricChipClick('crl')}>
+                      {activeMetrics.crl ? <CheckIcon size={10} /> : <PlusIcon size={10} />} CRL</button>
+                    <button type="button" className={`cs-metric-chip ${activeMetrics.efw ? 'cs-metric-chip--active' : ''}`} onClick={() => handleMetricChipClick('efw')}>
+                      {activeMetrics.efw ? <CheckIcon size={10} /> : <PlusIcon size={10} />} EFW (Cân nặng bé)</button>
+                    <button type="button" className={`cs-metric-chip ${activeMetrics.fetalHeartRate ? 'cs-metric-chip--active' : ''}`} onClick={() => handleMetricChipClick('fetalHeartRate')}>
+                      {activeMetrics.fetalHeartRate ? <CheckIcon size={10} /> : <PlusIcon size={10} />} Tim thai</button>
+                  </div>
+                )}
 
                 <div className="cs-explain-row">
                   <button type="button" className="cs-explain-btn" onClick={() => setShowExplanation(true)}>
@@ -906,153 +961,65 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
                 </div>
 
                 {/* Structured Fields Input Grid */}
-                {isAnyMetricActive && (
-                  <div className="cs-metrics-inputs-grid">
-                    {activeMetrics.motherWeight && (
-                      <div className="cs-metric-field">
-                        <label className="cs-metric-field-label">Cân nặng mẹ</label>
-                        <div className="cs-metric-input-wrapper">
-                          <input
-                            ref={inputRefs.motherWeight}
-                            type="number"
-                            step="0.1"
-                            placeholder="--"
-                            className="cs-metric-input"
-                            value={motherWeight}
-                            onChange={e => setMotherWeight(e.target.value)}
-                          />
-                          <span className="cs-metric-unit">kg</span>
-                          <button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('motherWeight')}>&times;</button>
-                        </div>
+                {isTwin ? (
+                  // Twin input grids for active baby tab
+                  (() => {
+                    const activeM = activeBabyTab === 'A' ? activeMetricsA : activeMetricsB;
+                    const setActiveM = activeBabyTab === 'A' ? setActiveMetricsA : setActiveMetricsB;
+                    const vals = activeBabyTab === 'A'
+                      ? { bpd: bpdA, fl: flA, ac: acA, hc: hcA, crl: crlA, efw: efwA, fetalHeartRate: fetalHeartRateA }
+                      : { bpd: bpdB, fl: flB, ac: acB, hc: hcB, crl: crlB, efw: efwB, fetalHeartRate: fetalHeartRateB };
+                    const setters = activeBabyTab === 'A'
+                      ? { bpd: setBpdA, fl: setFlA, ac: setAcA, hc: setHcA, crl: setCrlA, efw: setEfwA, fetalHeartRate: setFetalHeartRateA }
+                      : { bpd: setBpdB, fl: setFlB, ac: setAcB, hc: setHcB, crl: setCrlB, efw: setEfwB, fetalHeartRate: setFetalHeartRateB };
+                    const suffix = activeBabyTab;
+                    const fields = [
+                      { key: 'bpd', label: 'BPD (Lưỡng đỉnh)', unit: 'mm' },
+                      { key: 'fl',  label: 'FL (Xương đùi)',     unit: 'mm' },
+                      { key: 'ac',  label: 'AC (Chu vi bụng)',  unit: 'mm' },
+                      { key: 'hc',  label: 'HC (Chu vi đầu)',    unit: 'mm' },
+                      { key: 'crl', label: 'CRL (Chiều dài mông)', unit: 'mm' },
+                      { key: 'efw', label: 'EFW (Cân nặng thai)', unit: 'g', step: '1' },
+                      { key: 'fetalHeartRate', label: 'Tim thai', unit: 'bpm', step: '1' },
+                    ];
+                    const isAnyActive = Object.values(activeM).some(v => v);
+                    if (!isAnyActive) return null;
+                    return (
+                      <div className="cs-metrics-inputs-grid">
+                        {fields.map(({ key, label, unit, step = '0.1' }) =>
+                          activeM[key] ? (
+                            <div key={key} className="cs-metric-field">
+                              <label className="cs-metric-field-label">{label}</label>
+                              <div className="cs-metric-input-wrapper">
+                                <input
+                                  ref={inputRefs[key + suffix]}
+                                  type="number" step={step} placeholder="--"
+                                  className="cs-metric-input"
+                                  value={vals[key]}
+                                  onChange={e => setters[key](e.target.value)}
+                                />
+                                <span className="cs-metric-unit">{unit}</span>
+                                <button type="button" className="cs-metric-clear"
+                                  onClick={() => { setActiveM(p => ({ ...p, [key]: false })); setters[key](''); }}>&times;</button>
+                              </div>
+                            </div>
+                          ) : null
+                        )}
                       </div>
-                    )}
-                    {activeMetrics.bpd && (
-                      <div className="cs-metric-field">
-                        <label className="cs-metric-field-label">BPD (Lưỡng đỉnh)</label>
-                        <div className="cs-metric-input-wrapper">
-                          <input
-                            ref={inputRefs.bpd}
-                            type="number"
-                            step="0.1"
-                            placeholder="--"
-                            className="cs-metric-input"
-                            value={bpd}
-                            onChange={e => setBpd(e.target.value)}
-                          />
-                          <span className="cs-metric-unit">mm</span>
-                          <button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('bpd')}>&times;</button>
-                        </div>
-                      </div>
-                    )}
-                    {activeMetrics.fl && (
-                      <div className="cs-metric-field">
-                        <label className="cs-metric-field-label">FL (Xương đùi)</label>
-                        <div className="cs-metric-input-wrapper">
-                          <input
-                            ref={inputRefs.fl}
-                            type="number"
-                            step="0.1"
-                            placeholder="--"
-                            className="cs-metric-input"
-                            value={fl}
-                            onChange={e => setFl(e.target.value)}
-                          />
-                          <span className="cs-metric-unit">mm</span>
-                          <button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('fl')}>&times;</button>
-                        </div>
-                      </div>
-                    )}
-                    {activeMetrics.ac && (
-                      <div className="cs-metric-field">
-                        <label className="cs-metric-field-label">AC (Chu vi bụng)</label>
-                        <div className="cs-metric-input-wrapper">
-                          <input
-                            ref={inputRefs.ac}
-                            type="number"
-                            step="0.1"
-                            placeholder="--"
-                            className="cs-metric-input"
-                            value={ac}
-                            onChange={e => setAc(e.target.value)}
-                          />
-                          <span className="cs-metric-unit">mm</span>
-                          <button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('ac')}>&times;</button>
-                        </div>
-                      </div>
-                    )}
-                    {activeMetrics.hc && (
-                      <div className="cs-metric-field">
-                        <label className="cs-metric-field-label">HC (Chu vi đầu)</label>
-                        <div className="cs-metric-input-wrapper">
-                          <input
-                            ref={inputRefs.hc}
-                            type="number"
-                            step="0.1"
-                            placeholder="--"
-                            className="cs-metric-input"
-                            value={hc}
-                            onChange={e => setHc(e.target.value)}
-                          />
-                          <span className="cs-metric-unit">mm</span>
-                          <button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('hc')}>&times;</button>
-                        </div>
-                      </div>
-                    )}
-                    {activeMetrics.crl && (
-                      <div className="cs-metric-field">
-                        <label className="cs-metric-field-label">CRL (Chiều dài mông)</label>
-                        <div className="cs-metric-input-wrapper">
-                          <input
-                            ref={inputRefs.crl}
-                            type="number"
-                            step="0.1"
-                            placeholder="--"
-                            className="cs-metric-input"
-                            value={crl}
-                            onChange={e => setCrl(e.target.value)}
-                          />
-                          <span className="cs-metric-unit">mm</span>
-                          <button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('crl')}>&times;</button>
-                        </div>
-                      </div>
-                    )}
-                    {activeMetrics.efw && (
-                      <div className="cs-metric-field">
-                        <label className="cs-metric-field-label">EFW (Cân nặng thai)</label>
-                        <div className="cs-metric-input-wrapper">
-                          <input
-                            ref={inputRefs.efw}
-                            type="number"
-                            step="1"
-                            placeholder="--"
-                            className="cs-metric-input"
-                            value={efw}
-                            onChange={e => setEfw(e.target.value)}
-                          />
-                          <span className="cs-metric-unit">g</span>
-                          <button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('efw')}>&times;</button>
-                        </div>
-                      </div>
-                    )}
-                    {activeMetrics.fetalHeartRate && (
-                      <div className="cs-metric-field">
-                        <label className="cs-metric-field-label">Tim thai</label>
-                        <div className="cs-metric-input-wrapper">
-                          <input
-                            ref={inputRefs.fetalHeartRate}
-                            type="number"
-                            step="1"
-                            placeholder="--"
-                            className="cs-metric-input"
-                            value={fetalHeartRate}
-                            onChange={e => setFetalHeartRate(e.target.value)}
-                          />
-                          <span className="cs-metric-unit">bpm</span>
-                          <button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('fetalHeartRate')}>&times;</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })()
+                ) : (
+                  isAnyMetricActive && (
+                    <div className="cs-metrics-inputs-grid">
+                      {activeMetrics.bpd && (<div className="cs-metric-field"><label className="cs-metric-field-label">BPD (Lưỡng đỉnh)</label><div className="cs-metric-input-wrapper"><input ref={inputRefs.bpd} type="number" step="0.1" placeholder="--" className="cs-metric-input" value={bpd} onChange={e => setBpd(e.target.value)} /><span className="cs-metric-unit">mm</span><button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('bpd')}>&times;</button></div></div>)}
+                      {activeMetrics.fl  && (<div className="cs-metric-field"><label className="cs-metric-field-label">FL (Xương đùi)</label><div className="cs-metric-input-wrapper"><input ref={inputRefs.fl} type="number" step="0.1" placeholder="--" className="cs-metric-input" value={fl} onChange={e => setFl(e.target.value)} /><span className="cs-metric-unit">mm</span><button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('fl')}>&times;</button></div></div>)}
+                      {activeMetrics.ac  && (<div className="cs-metric-field"><label className="cs-metric-field-label">AC (Chu vi bụng)</label><div className="cs-metric-input-wrapper"><input ref={inputRefs.ac} type="number" step="0.1" placeholder="--" className="cs-metric-input" value={ac} onChange={e => setAc(e.target.value)} /><span className="cs-metric-unit">mm</span><button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('ac')}>&times;</button></div></div>)}
+                      {activeMetrics.hc  && (<div className="cs-metric-field"><label className="cs-metric-field-label">HC (Chu vi đầu)</label><div className="cs-metric-input-wrapper"><input ref={inputRefs.hc} type="number" step="0.1" placeholder="--" className="cs-metric-input" value={hc} onChange={e => setHc(e.target.value)} /><span className="cs-metric-unit">mm</span><button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('hc')}>&times;</button></div></div>)}
+                      {activeMetrics.crl && (<div className="cs-metric-field"><label className="cs-metric-field-label">CRL (Chiều dài mông)</label><div className="cs-metric-input-wrapper"><input ref={inputRefs.crl} type="number" step="0.1" placeholder="--" className="cs-metric-input" value={crl} onChange={e => setCrl(e.target.value)} /><span className="cs-metric-unit">mm</span><button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('crl')}>&times;</button></div></div>)}
+                      {activeMetrics.efw && (<div className="cs-metric-field"><label className="cs-metric-field-label">EFW (Cân nặng thai)</label><div className="cs-metric-input-wrapper"><input ref={inputRefs.efw} type="number" step="1" placeholder="--" className="cs-metric-input" value={efw} onChange={e => setEfw(e.target.value)} /><span className="cs-metric-unit">g</span><button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('efw')}>&times;</button></div></div>)}
+                      {activeMetrics.fetalHeartRate && (<div className="cs-metric-field"><label className="cs-metric-field-label">Tim thai</label><div className="cs-metric-input-wrapper"><input ref={inputRefs.fetalHeartRate} type="number" step="1" placeholder="--" className="cs-metric-input" value={fetalHeartRate} onChange={e => setFetalHeartRate(e.target.value)} /><span className="cs-metric-unit">bpm</span><button type="button" className="cs-metric-clear" onClick={() => handleDeactivateMetric('fetalHeartRate')}>&times;</button></div></div>)}
+                    </div>
+                  )
                 )}
               </div>
 
