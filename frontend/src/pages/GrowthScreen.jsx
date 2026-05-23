@@ -519,6 +519,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     }
     try {
       await deleteDoc(doc(db, 'users', userId, 'pregnancyVisits', visitId));
+      setLogs(prev => prev.filter(item => item.id !== visitId));
     } catch (e) {
       console.error("Failed to delete checkup:", e);
     }
