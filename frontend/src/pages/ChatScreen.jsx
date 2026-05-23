@@ -568,6 +568,15 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   const [contraCount, setContraCount] = useState(0);
   const [contraSecs, setContraSecs] = useState(0);
   const contraTimerRef = useRef(null);
+  
+  // Advanced contraction tracking states
+  const [inContraction, setInContraction] = useState(false);
+  const [contractionCurrentSecs, setContractionCurrentSecs] = useState(0);
+  const [contractionList, setContractionList] = useState([]);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [isSavingContra, setIsSavingContra] = useState(false);
+  const [saveContraError, setSaveContraError] = useState(false);
+  const [currentContractionStartTime, setCurrentContractionStartTime] = useState(null);
 
   // G. Pregnancy Weight inputs
   const [pregWeight, setPregWeight] = useState(58.5);
@@ -665,6 +674,9 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
     if (contraActive) {
       contraTimerRef.current = setInterval(() => {
         setContraSecs(s => s + 1);
+        if (inContraction) {
+          setContractionCurrentSecs(c => c + 1);
+        }
       }, 1000);
     } else {
       if (contraTimerRef.current) {
@@ -675,7 +687,21 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
     return () => {
       if (contraTimerRef.current) clearInterval(contraTimerRef.current);
     };
-  }, [contraActive]);
+  }, [contraActive, inContraction]);
+
+  // Reset and initialize Contraction counter startedAt timestamp
+  useEffect(() => {
+    if (activeBottomSheet === 'contractions') {
+      setContraSecs(0);
+      setContraCount(0);
+      setContraActive(true); // Automatically starts running session
+      setInContraction(false);
+      setContractionCurrentSecs(0);
+      setContractionList([]);
+      setSessionStartTime(new Date().toISOString());
+      setSaveContraError(false);
+    }
+  }, [activeBottomSheet]);
 
   // Reset and initialize Kick counter startedAt timestamp
   useEffect(() => {
@@ -1031,10 +1057,80 @@ ${logsDesc}`;
     }
   };
 
+  // Advanced Contraction Tracker handlers
+  const handleContractionToggle = () => {
+    const now = new Date();
+    triggerChime();
+    if (!inContraction) {
+      // Start a new contraction
+      setInContraction(true);
+      setContractionCurrentSecs(0);
+      setCurrentContractionStartTime(now.toISOString());
+    } else {
+      // End the active contraction
+      setInContraction(false);
+      const startStr = currentContractionStartTime || now.toISOString();
+      const endStr = now.toISOString();
+      const duration = Math.max(1, Math.round((now - new Date(startStr)) / 1000));
+      
+      // Calculate interval since the end of the previous contraction (if any)
+      let interval = null;
+      if (contractionList.length > 0) {
+        const prevEndStr = contractionList[contractionList.length - 1].endTime;
+        interval = Math.max(0, Math.round((new Date(startStr) - new Date(prevEndStr)) / 1000));
+      }
+
+      const newItem = {
+        startTime: startStr,
+        endTime: endStr,
+        durationSeconds: duration,
+        intervalSeconds: interval
+      };
+
+      setContractionList(prev => [...prev, newItem]);
+      setContraCount(c => c + 1);
+    }
+  };
+
+  const handleUndoContra = () => {
+    if (contractionList.length > 0) {
+      setContractionList(prev => prev.slice(0, -1));
+      setContraCount(c => Math.max(0, c - 1));
+    }
+  };
+
+  const handleResetContraSession = () => {
+    if (contraCount > 0 || inContraction) {
+      if (window.confirm("Mẹ có chắc chắn muốn làm lại buổi theo dõi này không? Toàn bộ dữ liệu đang theo dõi sẽ bị xóa.")) {
+        setContraCount(0);
+        setContraSecs(0);
+        setInContraction(false);
+        setContractionCurrentSecs(0);
+        setContractionList([]);
+        setSessionStartTime(new Date().toISOString());
+        setSaveContraError(false);
+      }
+    } else {
+      setContraCount(0);
+      setContraSecs(0);
+      setInContraction(false);
+      setContractionCurrentSecs(0);
+      setContractionList([]);
+      setSessionStartTime(new Date().toISOString());
+      setSaveContraError(false);
+    }
+  };
+
   // Pregnancy Logs: Contractions
   const handleSaveContra = async () => {
-    if (!userId) return;
+    if (!userId || isSavingContra) return;
+    if (contraCount === 0) return; // Prevent saving empty sessions
+
+    setIsSavingContra(true);
+    setSaveContraError(false);
+
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    const { weeks } = getPregnancyWeekInfo();
     const durationMin = Math.round(contraSecs / 60) || 1;
 
     const logData = {
@@ -1042,17 +1138,32 @@ ${logsDesc}`;
       time: formattedTime,
       type: 'preg_contraction',
       contraCount,
-      note: `Đếm cơn gò: ${contraCount} lần trong ${durationMin} phút`,
+      startedAt: sessionStartTime || new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      sessionDurationSeconds: contraSecs,
+      contractions: contractionList,
+      pregnancyWeek: weeks || 0,
+      note: `Đã ghi nhận ${contraCount} cơn trong ${durationMin} phút`,
       createdAt: serverTimestamp()
     };
 
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
+      showToast("Đã lưu buổi theo dõi cơn gò");
       handleCleanCloseSheet('contractions');
-      setContraActive(false); setContraCount(0); setContraSecs(0);
+      setContraActive(false);
+      // Reset local tracking state to clean
+      setContraCount(0);
+      setContraSecs(0);
+      setInContraction(false);
+      setContractionCurrentSecs(0);
+      setContractionList([]);
     } catch (err) {
       console.error(err);
+      setSaveContraError(true);
+    } finally {
+      setIsSavingContra(false);
     }
   };
 
@@ -1524,9 +1635,9 @@ ${logsDesc}`;
   const getContractionsStatusText = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const todayContras = activityLogs.filter(l => l.type === 'preg_contraction' && l.date === todayStr);
-    if (todayContras.length === 0) return 'Chưa có ghi nhận hôm nay';
+    if (todayContras.length === 0) return 'Hôm nay: 0 cơn';
     const totalCount = todayContras.reduce((sum, log) => sum + (log.contraCount || 0), 0);
-    return `Hôm nay: ${totalCount} lần`;
+    return `Hôm nay: ${totalCount} cơn`;
   };
 
   const getLastPregWeightText = () => {
@@ -2313,7 +2424,7 @@ ${logsDesc}`;
   useEffect(() => {
     chatOverlayStateRef.current = {
       isDirty: activeBottomSheet ? isSheetDirty(activeBottomSheet) : (isChatOpen ? (input !== '' || pendingImgs.length > 0) : false),
-      saving: isSavingWeight || isSavingPrePreg || isSavingVitamins || isSavingClinic || isSavingEmotion || isSavingKick
+      saving: isSavingWeight || isSavingPrePreg || isSavingVitamins || isSavingClinic || isSavingEmotion || isSavingKick || isSavingContra
     };
   });
 
@@ -3391,33 +3502,174 @@ ${logsDesc}`;
             )}
 
             {/* 6. PREGNANCY: CONTRACTIONS BOTTOM SHEET */}
-            {activeBottomSheet === 'contractions' && (
-              <div className="tracker-sheet-viewport">
-                <h3 className="tracker-sheet-title">Đếm cơn gò tử cung</h3>
-                <div className="pregnancy-timer-box text-center">
-                  <h4 className="preg-timer-display">⏳ {Math.floor(contraSecs / 60)}m {contraSecs % 60}s</h4>
-                  <div className="huge-kick-counter-glow-number">
-                    {contraCount} <span className="k-unit">Cơn gò</span>
+            {activeBottomSheet === 'contractions' && (() => {
+              const formatDurationVi = (secs) => {
+                if (secs === null || secs === undefined) return '—';
+                if (secs < 60) return `${secs} giây`;
+                const m = Math.floor(secs / 60);
+                const s = secs % 60;
+                return s > 0 ? `${m} phút ${s} giây` : `${m} phút`;
+              };
+
+              const formatIntervalVi = (secs) => {
+                if (secs === null || secs === undefined) return '';
+                if (secs < 60) return ` cách cơn trước ${secs} giây`;
+                const m = Math.floor(secs / 60);
+                const s = secs % 60;
+                return s > 0 ? ` cách cơn trước ${m} phút ${s} giây` : ` cách cơn trước ${m} phút`;
+              };
+
+              const lastItem = contractionList.length > 0 ? contractionList[contractionList.length - 1] : null;
+
+              return (
+                <div className="tracker-sheet-viewport">
+                  <h3 className="tracker-sheet-title">Theo dõi cơn gò</h3>
+                  
+                  <div className="contra-session-time-bar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="contra-session-clock-icon">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    <span>Thời gian theo dõi: {Math.floor(contraSecs / 60)} phút {contraSecs % 60} giây</span>
                   </div>
-                  <div className="kick-interactive-triggers-row">
-                    <button type="button" className="kick-button-tap red-theme" onClick={() => { setContraCount(c => c + 1); if(!contraActive) setContraActive(true); triggerChime(); }}>
-                      💓 Bắt đầu gò! (+1)
+
+                  <p className="contra-subtitle">
+                    Bấm bắt đầu khi cơn gò xuất hiện và kết thúc khi cơn gò dịu lại.
+                  </p>
+
+                  {/* Bento Grid Metrics */}
+                  <div className="contra-grid-dashboard">
+                    <div className="contra-metric-card">
+                      <span className="contra-metric-label">Tổng số cơn</span>
+                      <div className="contra-metric-value-row">
+                        <span className="contra-metric-value">{contraCount}</span>
+                        <span className="contra-metric-unit"> cơn</span>
+                      </div>
+                    </div>
+                    <div className={`contra-metric-card${inContraction ? ' active-glow' : ''}`}>
+                      <span className="contra-metric-label">Cơn hiện tại</span>
+                      <div className="contra-metric-value-row">
+                        <span className="contra-metric-value">
+                          {inContraction ? `${contractionCurrentSecs}s` : '—'}
+                        </span>
+                        {inContraction && <span className="contra-metric-unit"> đang gò</span>}
+                      </div>
+                    </div>
+                    <div className="contra-metric-card">
+                      <span className="contra-metric-label">Cơn gần nhất</span>
+                      <div className="contra-metric-value-row">
+                        <span className="contra-metric-value">
+                          {lastItem ? `${lastItem.durationSeconds}s` : '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="contra-metric-card">
+                      <span className="contra-metric-label">Khoảng cách gần nhất</span>
+                      <div className="contra-metric-value-row">
+                        <span className="contra-metric-value" style={{ fontSize: lastItem && lastItem.intervalSeconds >= 60 ? '14px' : '18px' }}>
+                          {lastItem && lastItem.intervalSeconds !== null ? formatDurationVi(lastItem.intervalSeconds) : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Primary Trigger Button */}
+                  <div className="contra-primary-action-container">
+                    <button
+                      type="button"
+                      className={`contra-toggle-btn ${inContraction ? 'active' : 'idle'}`}
+                      onClick={handleContractionToggle}
+                      disabled={isSavingContra}
+                    >
+                      {inContraction ? 'Kết thúc cơn gò' : 'Bắt đầu cơn gò'}
                     </button>
                   </div>
-                  <div className="kick-timer-adjust-row">
-                    <button type="button" className="timer-flat-pill-btn" onClick={() => setContraActive(!contraActive)}>
-                      {contraActive ? '⏸️ Tạm dừng' : '▶️ Tiếp tục'}
+
+                  {/* Secondary Controllers */}
+                  <div className="contra-secondary-actions-row">
+                    <button
+                      type="button"
+                      className="contra-flat-btn"
+                      onClick={handleUndoContra}
+                      disabled={contractionList.length === 0 || isSavingContra}
+                    >
+                      Hoàn tác
                     </button>
-                    <button type="button" className="timer-flat-pill-btn reset" onClick={() => { setContraActive(false); setContraCount(0); setContraSecs(0); }}>
-                      🔄 Làm lại
+                    <button
+                      type="button"
+                      className="contra-flat-btn"
+                      onClick={handleResetContraSession}
+                      disabled={isSavingContra}
+                    >
+                      Làm lại
                     </button>
                   </div>
-                  <button className="submit-tracker-log-btn-full" onClick={handleSaveContra}>
-                    Lưu buổi ghi nhận
-                  </button>
+
+                  {/* Contractions Session History */}
+                  <div className="contra-history-section">
+                    <span className="contra-history-header">Lịch sử cơn gò</span>
+                    {contractionList.length === 0 ? (
+                      <p className="contra-history-empty">Chưa có cơn gò nào trong buổi này.</p>
+                    ) : (
+                      <div className="contra-history-list">
+                        {contractionList.map((item, idx) => (
+                          <div key={idx} className="contra-history-item">
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="contra-history-bullet-icon">
+                              <circle cx="12" cy="12" r="6" />
+                            </svg>
+                            <span className="contra-history-item-c">Cơn {idx + 1}</span>
+                            <span className="contra-history-item-d"> · {formatDurationVi(item.durationSeconds)}</span>
+                            {item.intervalSeconds !== null && (
+                              <span className="contra-history-item-i"> · {formatIntervalVi(item.intervalSeconds)}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Medical Safety Warnings Note */}
+                  <div className="contra-safety-card">
+                    <div className="contra-safety-icon-wrapper">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                      </svg>
+                    </div>
+                    <p className="contra-safety-text">
+                      Nếu cơn gò đều, đau nhiều, ra máu, vỡ ối, thai máy giảm hoặc mẹ chưa đủ 37 tuần mà có dấu hiệu chuyển dạ, hãy liên hệ bác sĩ/cơ sở y tế.
+                    </p>
+                  </div>
+
+                  {/* Sticky Save Footer */}
+                  <div className="contra-sticky-footer">
+                    {saveContraError && (
+                      <div className="contra-save-error-banner">
+                        Chưa thể lưu buổi ghi nhận. Mẹ thử lại sau một chút nhé.
+                      </div>
+                    )}
+                    {contraCount === 0 && (
+                      <p className="contra-empty-warning-tip">
+                        Mẹ hãy ghi nhận ít nhất 1 cơn gò trước khi lưu nhé.
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      className="submit-tracker-log-btn-full"
+                      onClick={handleSaveContra}
+                      disabled={contraCount === 0 || isSavingContra}
+                      style={{
+                        opacity: (contraCount === 0 || isSavingContra) ? 0.6 : 1,
+                        cursor: (contraCount === 0 || isSavingContra) ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isSavingContra ? 'Đang lưu...' : (saveContraError ? 'Thử lại' : 'Lưu buổi ghi nhận')}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 7. PREGNANCY: WEIGHT BOTTOM SHEET */}
             {activeBottomSheet === 'preg_weight' && (() => {
