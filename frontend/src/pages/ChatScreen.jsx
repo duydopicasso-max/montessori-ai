@@ -559,6 +559,9 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   const [kickCount, setKickCount] = useState(0);
   const [kickSecs, setKickSecs] = useState(0);
   const kickTimerRef = useRef(null);
+  const [kickStartTime, setKickStartTime] = useState(null);
+  const [isSavingKick, setIsSavingKick] = useState(false);
+  const [saveKickError, setSaveKickError] = useState(false);
 
   // F. Pregnancy Contractions inputs
   const [contraActive, setContraActive] = useState(false);
@@ -673,6 +676,17 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
       if (contraTimerRef.current) clearInterval(contraTimerRef.current);
     };
   }, [contraActive]);
+
+  // Reset and initialize Kick counter startedAt timestamp
+  useEffect(() => {
+    if (activeBottomSheet === 'kick') {
+      setKickSecs(0);
+      setKickCount(0);
+      setKickActive(false);
+      setKickStartTime(new Date().toISOString());
+      setSaveKickError(false);
+    }
+  }, [activeBottomSheet]);
 
   // Sound synthesis chime Kalimba on safe load
   const triggerChime = () => {
@@ -977,8 +991,13 @@ ${logsDesc}`;
   // Pregnancy Logs: Kick
   const handleSaveKick = async () => {
     if (!userId) return;
+    
+    setIsSavingKick(true);
+    setSaveKickError(false);
+
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     const durationMin = Math.round(kickSecs / 60) || 1;
+    const { weeks } = getPregnancyWeekInfo();
 
     const logData = {
       date: new Date().toISOString().split('T')[0],
@@ -986,17 +1005,29 @@ ${logsDesc}`;
       type: 'preg_kick',
       kickCount,
       kickDurationMin: durationMin,
-      note: `Đếm máy thai: ${kickCount} lần trong ${durationMin} phút`,
+      startedAt: kickStartTime || new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      durationSeconds: kickSecs,
+      notes: '',
+      pregnancyWeek: weeks || 0,
+      babyContext: isTwin ? 'twins' : 'singleton',
+      note: `Đã ghi nhận ${kickCount} lần trong ${durationMin} phút`,
       createdAt: serverTimestamp()
     };
 
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
+      showToast("Đã lưu buổi đếm thai máy");
       handleCleanCloseSheet('kick');
-      setKickActive(false); setKickCount(0); setKickSecs(0);
+      setKickActive(false); 
+      setKickCount(0); 
+      setKickSecs(0);
     } catch (err) {
       console.error(err);
+      setSaveKickError(true);
+    } finally {
+      setIsSavingKick(false);
     }
   };
 
@@ -2282,7 +2313,7 @@ ${logsDesc}`;
   useEffect(() => {
     chatOverlayStateRef.current = {
       isDirty: activeBottomSheet ? isSheetDirty(activeBottomSheet) : (isChatOpen ? (input !== '' || pendingImgs.length > 0) : false),
-      saving: isSavingWeight || isSavingPrePreg || isSavingVitamins || isSavingClinic || isSavingEmotion
+      saving: isSavingWeight || isSavingPrePreg || isSavingVitamins || isSavingClinic || isSavingEmotion || isSavingKick
     };
   });
 
@@ -3133,34 +3164,227 @@ ${logsDesc}`;
 
             {/* 5. PREGNANCY: KICK BOTTOM SHEET */}
             {activeBottomSheet === 'kick' && (
-              <div className="tracker-sheet-viewport">
-                <h3 className="tracker-sheet-title">Đếm cử động thai (Kick)</h3>
+              <div className="tracker-sheet-viewport" style={{ paddingBottom: '24px' }}>
+                <h3 className="tracker-sheet-title" style={{ marginBottom: '4px' }}>Đếm thai máy</h3>
+                <p className="tracker-sheet-subtitle" style={{ fontSize: '13.5px', color: '#7C8B80', margin: '0 0 16px 0' }}>
+                  Bấm mỗi khi mẹ cảm nhận bé cử động.
+                </p>
+
+                {/* Twin notice */}
                 {isTwin && (
-                  <div className="twin-kick-notice">
-                    <span className="twin-kick-notice-icon">💡</span>
-                    <p className="twin-kick-notice-text">Với đa thai, mẹ có thể ghi nhận cảm nhận chung. Nếu phân biệt được vị trí từng bé, mẹ có thể ghi chú thêm sau khi lưu.</p>
+                  <div className="twin-kick-notice" style={{
+                    backgroundColor: '#FEFDF2',
+                    border: '1px solid #F6E2A3',
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    gap: '8px',
+                    alignItems: 'flex-start'
+                  }}>
+                    <span style={{ fontSize: '15px' }}>💡</span>
+                    <p style={{ fontSize: '13px', color: '#7A6335', margin: 0, lineHeight: '1.4' }}>
+                      Với thai đôi, mẹ có thể ghi nhận cảm nhận chung. Nếu phân biệt được vị trí của từng bé, mẹ có thể ghi chú thêm.
+                    </p>
                   </div>
                 )}
-                <div className="pregnancy-timer-box text-center">
-                  <h4 className="preg-timer-display">⏳ {Math.floor(kickSecs / 60)}m {kickSecs % 60}s</h4>
-                  <div className="huge-kick-counter-glow-number">
-                    {kickCount} <span className="k-unit">Lần máy</span>
+
+                {/* Instruction card */}
+                <div className="kick-instruction-card" style={{
+                  backgroundColor: '#F4FAF6',
+                  border: '1px solid #E2EFE7',
+                  padding: '10px 12px',
+                  borderRadius: '12px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'center'
+                }}>
+                  <span style={{ fontSize: '14px', color: '#5FAF82' }}>💡</span>
+                  <p style={{ fontSize: '13px', color: '#4E6856', margin: 0, lineHeight: '1.4' }}>
+                    Mẹ hãy chọn lúc thư giãn và bấm mỗi khi cảm nhận bé cử động.
+                  </p>
+                </div>
+
+                <div className="pregnancy-timer-box text-center" style={{ marginTop: '16px' }}>
+                  {/* Timer & Count displays */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#F8F9FA',
+                    padding: '12px 16px',
+                    borderRadius: '16px',
+                    border: '1px solid #EEEEEE',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{ textAlign: 'left' }}>
+                      <span style={{ fontSize: '12.5px', color: '#777777', display: 'block', marginBottom: '2px' }}>Thời gian buổi đếm</span>
+                      <strong style={{ fontSize: '15px', color: '#333333' }}>
+                        {Math.floor(kickSecs / 60)} phút {kickSecs % 60} giây
+                      </strong>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '12.5px', color: '#777777', display: 'block', marginBottom: '2px' }}>Số lần thai máy</span>
+                      <strong style={{ fontSize: '15px', color: '#2E7D32' }}>
+                        {kickCount} lần
+                      </strong>
+                    </div>
                   </div>
-                  <div className="kick-interactive-triggers-row">
-                    <button type="button" className="kick-button-tap animate-pulse" onClick={() => { setKickCount(c => c + 1); if(!kickActive) setKickActive(true); triggerChime(); }}>
-                      🦶 Bé Đạp! (+1)
-                    </button>
-                  </div>
-                  <div className="kick-timer-adjust-row">
-                    <button type="button" className="timer-flat-pill-btn" onClick={() => setKickActive(!kickActive)}>
+
+                  {/* Main circular button */}
+                  <button
+                    type="button"
+                    className="kick-button-tap-modern animate-pulse-subtle"
+                    onClick={() => {
+                      setKickCount(c => c + 1);
+                      if (!kickActive) setKickActive(true);
+                      triggerChime();
+                    }}
+                    style={{
+                      width: '140px',
+                      height: '140px',
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle, #E8F5E9 0%, #C8E6C9 100%)',
+                      border: '2px solid #81C784',
+                      color: '#2E7D32',
+                      fontSize: '17px',
+                      fontFamily: 'inherit',
+                      fontWeight: '700',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: '0 4px 14px rgba(76, 175, 80, 0.15)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                      margin: '12px auto 20px auto',
+                      outline: 'none',
+                      userSelect: 'none',
+                      WebkitTapHighlightColor: 'transparent'
+                    }}
+                  >
+                    <span style={{ fontSize: '24px' }}>👶</span>
+                    <span>Bé máy (+1)</span>
+                  </button>
+
+                  {/* Action buttons row */}
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginBottom: '20px'
+                  }}>
+                    <button
+                      type="button"
+                      className="timer-flat-pill-btn"
+                      onClick={() => setKickActive(!kickActive)}
+                      style={{
+                        flex: 1,
+                        padding: '10px 8px',
+                        fontSize: '12.5px',
+                        borderRadius: '12px',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #DDDDDD',
+                        color: '#333333',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
                       {kickActive ? '⏸️ Tạm dừng' : '▶️ Tiếp tục'}
                     </button>
-                    <button type="button" className="timer-flat-pill-btn reset" onClick={() => { setKickActive(false); setKickCount(0); setKickSecs(0); }}>
+                    
+                    <button
+                      type="button"
+                      className="timer-flat-pill-btn"
+                      onClick={() => {
+                        setKickActive(false);
+                        setKickCount(0);
+                        setKickSecs(0);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '10px 8px',
+                        fontSize: '12.5px',
+                        borderRadius: '12px',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid #DDDDDD',
+                        color: '#333333',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
                       🔄 Đếm lại
                     </button>
+
+                    <button
+                      type="button"
+                      className="timer-flat-pill-btn"
+                      disabled={kickCount === 0}
+                      onClick={() => {
+                        if (kickCount > 0) setKickCount(c => c - 1);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '10px 8px',
+                        fontSize: '12.5px',
+                        borderRadius: '12px',
+                        backgroundColor: kickCount > 0 ? '#FFFFFF' : '#FAFAFA',
+                        border: kickCount > 0 ? '1px solid #DDDDDD' : '1px solid #EEEEEE',
+                        color: kickCount > 0 ? '#666666' : '#BBBBBB',
+                        fontWeight: '500',
+                        cursor: kickCount > 0 ? 'pointer' : 'not-allowed',
+                        opacity: kickCount > 0 ? 1 : 0.6
+                      }}
+                    >
+                      ↩️ Hoàn tác (-1)
+                    </button>
                   </div>
-                  <button className="submit-tracker-log-btn-full" onClick={handleSaveKick}>
-                    Lưu buổi đếm
+
+                  {/* Safety note card */}
+                  <div className="kick-safety-card" style={{
+                    backgroundColor: '#FFF8F8',
+                    border: '1px solid #FFEBEB',
+                    padding: '12px 14px',
+                    borderRadius: '16px',
+                    marginBottom: '24px',
+                    display: 'flex',
+                    gap: '8px',
+                    alignItems: 'flex-start',
+                    textAlign: 'left'
+                  }}>
+                    <span style={{ fontSize: '15px' }}>⚠️</span>
+                    <p style={{ fontSize: '12.5px', color: '#9E3A3A', margin: 0, lineHeight: '1.45' }}>
+                      Nếu mẹ cảm thấy thai máy giảm rõ rệt hoặc khác thường so với mọi ngày, hãy liên hệ bác sĩ/cơ sở y tế.
+                    </p>
+                  </div>
+
+                  {/* Save kick error banner */}
+                  {saveKickError && (
+                    <div className="emotion-alert-banner emotion-error-banner animate-fade-in" style={{ marginBottom: '16px' }}>
+                      <span>Chưa thể lưu buổi đếm. Mẹ thử lại sau một chút nhé.</span>
+                    </div>
+                  )}
+
+                  {/* Save button */}
+                  <button
+                    className="submit-tracker-log-btn-full"
+                    onClick={handleSaveKick}
+                    disabled={isSavingKick}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#5FAF82',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '14px',
+                      padding: '14px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      cursor: isSavingKick ? 'not-allowed' : 'pointer',
+                      opacity: isSavingKick ? 0.7 : 1,
+                      transition: 'all 0.25s ease'
+                    }}
+                  >
+                    {isSavingKick ? 'Đang lưu...' : saveKickError ? 'Thử lại' : 'Lưu buổi đếm'}
                   </button>
                 </div>
               </div>
