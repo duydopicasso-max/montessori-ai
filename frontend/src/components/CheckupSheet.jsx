@@ -1203,7 +1203,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
 
       {/* ── EXPLANATION MODAL ── */}
       {showExplanation && (
-        <div className="cs-modal-overlay" onClick={() => setShowExplanation(false)}>
+        <div className="cs-modal-overlay" style={{ zIndex: 99999 }} onClick={() => setShowExplanation(false)}>
           <div className="cs-modal-box" onClick={e => e.stopPropagation()}>
             <div className="cs-modal-header">
               <h3 className="cs-modal-title">Giải thích chỉ số siêu âm</h3>
