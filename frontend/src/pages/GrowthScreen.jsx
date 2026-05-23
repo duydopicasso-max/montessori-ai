@@ -565,7 +565,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     ];
 
     // 3. Đồng bộ subcollection babies nếu có
-    if (tempNumBabies >= 2 && babies.length < 2) {
+    if (tempNumBabies >= 2 && babies.length < tempNumBabies) {
       if (babies.length === 0) {
         const babyARef = doc(db, 'users', userId, 'babies', 'baby-a');
         writePromises.push(setDoc(babyARef, {
@@ -579,17 +579,32 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
           createdAt: serverTimestamp()
         }, { merge: true }));
       }
-      const babyBRef = doc(db, 'users', userId, 'babies', 'baby-b');
-      writePromises.push(setDoc(babyBRef, {
-        label: 'Bé B',
-        name: 'Bé B',
-        gender: '',
-        pregnancyInfo: {
-          dueDate: tempEdd,
-          babyName: 'Bé B'
-        },
-        createdAt: serverTimestamp()
-      }, { merge: true }));
+      if (babies.length < 2) {
+        const babyBRef = doc(db, 'users', userId, 'babies', 'baby-b');
+        writePromises.push(setDoc(babyBRef, {
+          label: 'Bé B',
+          name: 'Bé B',
+          gender: '',
+          pregnancyInfo: {
+            dueDate: tempEdd,
+            babyName: 'Bé B'
+          },
+          createdAt: serverTimestamp()
+        }, { merge: true }));
+      }
+      if (tempNumBabies === 3 && babies.length < 3) {
+        const babyCRef = doc(db, 'users', userId, 'babies', 'baby-c');
+        writePromises.push(setDoc(babyCRef, {
+          label: 'Bé C',
+          name: 'Bé C',
+          gender: '',
+          pregnancyInfo: {
+            dueDate: tempEdd,
+            babyName: 'Bé C'
+          },
+          createdAt: serverTimestamp()
+        }, { merge: true }));
+      }
     } else if (babies && babies.length > 0) {
       const currentBaby = babies[selectedBaby] || babies[0];
       const resolvedBabyId = (currentBaby.id || currentBaby.name || 'baby-0')
@@ -885,14 +900,16 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
                 }
               }}>
                 <div className="cs-field-group" style={{ marginBottom: '16px' }}>
-                  <label className="cs-label">Tên bé yêu (ở nhà)</label>
+                  <label className="cs-label">
+                    {tempNumBabies === 1 ? 'Tên bé yêu (ở nhà)' : tempNumBabies === 2 ? 'Tên hai bé (ở nhà)' : 'Tên ba bé (ở nhà)'}
+                  </label>
                   <input
                     type="text"
                     className="cs-input"
                     style={{ cursor: 'text' }}
                     value={tempBabyName}
                     onChange={e => setTempBabyName(e.target.value)}
-                    placeholder="Bé yêu"
+                    placeholder={tempNumBabies === 1 ? 'Bé yêu' : tempNumBabies === 2 ? 'Bé A, Bé B' : 'Bé A, Bé B, Bé C'}
                   />
                 </div>
                 <div className="cs-field-group" style={{ marginBottom: '16px' }}>
@@ -908,35 +925,46 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
                 </div>
                 <div className="cs-field-group">
                   <label className="cs-label">Số lượng bé</label>
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
-                    {[1, 2].map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        className={`cs-num-btn ${tempNumBabies === n ? 'active' : ''}`}
-                        onClick={() => setTempNumBabies(n)}
-                        style={{
-                          flex: 1,
-                          padding: '12px 16px',
-                          borderRadius: '12px',
-                          border: tempNumBabies === n ? '2px solid #5FAF82' : '1px solid #EAEAEA',
-                          backgroundColor: tempNumBabies === n ? '#F0F9F4' : '#F9F9F9',
-                          color: tempNumBabies === n ? '#388E3C' : '#555555',
-                          fontWeight: tempNumBabies === n ? '600' : '400',
-                          fontSize: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: tempNumBabies === n ? '0 2px 8px rgba(95, 175, 130, 0.15)' : 'none'
-                        }}
-                      >
-                        <span style={{ fontSize: '16px' }}>{n === 1 ? '👶' : '👶👶'}</span>
-                        {n === 1 ? '1 bé' : 'Thai đôi'}
-                      </button>
-                    ))}
+                  <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginTop: '6px',
+                    backgroundColor: '#F8F9FA',
+                    padding: '4px',
+                    borderRadius: '16px',
+                    border: '1px solid #EEEEEE'
+                  }}>
+                    {[
+                      { value: 1, label: '1 bé' },
+                      { value: 2, label: 'Thai đôi' },
+                      { value: 3, label: 'Thai ba' }
+                    ].map(opt => {
+                      const isSelected = tempNumBabies === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`cs-num-btn ${isSelected ? 'active' : ''}`}
+                          onClick={() => setTempNumBabies(opt.value)}
+                          style={{
+                            flex: 1,
+                            padding: '10px 12px',
+                            borderRadius: '12px',
+                            border: isSelected ? '1.5px solid #5FAF82' : '1px solid transparent',
+                            backgroundColor: isSelected ? '#F0F9F4' : 'transparent',
+                            color: isSelected ? '#2E7D32' : '#666666',
+                            fontWeight: isSelected ? '600' : '500',
+                            fontSize: '13.5px',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: isSelected ? '0 2px 8px rgba(95, 175, 130, 0.12)' : 'none'
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 

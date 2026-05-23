@@ -345,7 +345,10 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   const babyId = (baby.name || 'baby-0').toLowerCase().replace(/\s+/g, '-');
   const dob = baby?.dob || '';
   const pregnancyInfo = profile?.pregnancyInfo || baby?.pregnancyInfo;
-  const isTwin = (profile?.numBabies || 1) >= 2;
+  const babyCount = profile?.numBabies || 1;
+  const isTwin = babyCount >= 2;
+  const twinWording = babyCount === 2 ? 'hai bé' : babyCount === 3 ? 'ba bé' : 'các bé';
+  const twinBadgeText = babyCount === 2 ? 'Thai đôi' : babyCount === 3 ? 'Thai ba' : 'Đa thai';
 
   // Twin view tab state (only relevant when isTwin)
   const [twinViewTab, setTwinViewTab] = useState('Tổng quan');
@@ -1675,11 +1678,11 @@ ${logsDesc}`;
 
   const momNameUpper = `XIN CHÀO, ${(profile?.momName || 'Mẹ').toUpperCase()}`;
   const headerBabyName = status === 'pregnant'
-    ? (isTwin ? 'hai bé' : (profile?.babyName || pregnancyInfo?.babyName || 'Bé yêu'))
+    ? (isTwin ? twinWording : (profile?.babyName || pregnancyInfo?.babyName || 'Bé yêu'))
     : (baby?.name || 'Bé yêu');
 
   const headerAgeBadge = status === 'pregnant'
-    ? (isTwin ? `Tuần thai ${pregWeeks} · Thai đôi` : `Tuần thai ${pregWeeks}`)
+    ? (isTwin ? `Tuần thai ${pregWeeks} · ${twinBadgeText}` : `Tuần thai ${pregWeeks}`)
     : getAgeString();
   
   const getHeaderAvatar = () => {
@@ -2527,16 +2530,23 @@ ${logsDesc}`;
       {/* 🌟 TWIN OVERVIEW SELECTOR */}
       {isTwin && status === 'pregnant' && (
         <div className="twin-overview-selector">
-          {['Tổng quan', 'Bé A', 'Bé B'].map(tab => (
-            <button
-              key={tab}
-              type="button"
-              className={`twin-tab-chip${twinViewTab === tab ? ' active' : ''}`}
-              onClick={() => setTwinViewTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
+          {(() => {
+            const tabs = ['Tổng quan'];
+            const suffixes = ['A', 'B', 'C'];
+            for (let i = 0; i < Math.min(babyCount, 3); i++) {
+              tabs.push(`Bé ${suffixes[i]}`);
+            }
+            return tabs.map(tab => (
+              <button
+                key={tab}
+                type="button"
+                className={`twin-tab-chip${twinViewTab === tab ? ' active' : ''}`}
+                onClick={() => setTwinViewTab(tab)}
+              >
+                {tab}
+              </button>
+            ));
+          })()}
           {twinViewTab !== 'Tổng quan' && (
             <span className="twin-tab-viewing-hint">Đang xem: {twinViewTab}</span>
           )}
@@ -2613,7 +2623,7 @@ ${logsDesc}`;
           <div className="pregnancy-avocado-text-wrap">
             <h4 className="avocado-growth-banner">
               {isTwin
-                ? `Tuần ${pregWeeks}: hai bé đang lớn dần mỗi ngày 👶👶`
+                ? `Tuần ${pregWeeks}: ${twinWording} đang lớn dần mỗi ngày`
                 : (fruitInfo && fruitInfo.fruitName
                     ? `Tuần ${pregWeeks}: ${headerBabyName} đang lớn bằng ${fruitInfo.fruitName} ${fruitInfo.fruit}`
                     : `Tuần ${pregWeeks}: ${headerBabyName} đang lớn lên từng ngày`)
@@ -2621,7 +2631,7 @@ ${logsDesc}`;
             </h4>
             <p className="avocado-growth-sub">
               {isTwin
-                ? 'Hai bé đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.'
+                ? `${twinWording.charAt(0).toUpperCase() + twinWording.slice(1)} đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.`
                 : (fruitInfo && fruitInfo.desc
                     ? fruitInfo.desc
                     : 'Bé yêu đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.')
@@ -2630,8 +2640,8 @@ ${logsDesc}`;
             {daysRemaining !== null ? (
               <span className="pregnancy-countdown-pill">
                 {daysRemaining > 0
-                  ? `Còn khoảng ${daysRemaining} ngày nữa là gặp ${isTwin ? 'hai bé' : headerBabyName}!`
-                  : `${isTwin ? 'Hai bé' : headerBabyName} đã sẵn sàng chào đời!`}
+                  ? `Còn khoảng ${daysRemaining} ngày nữa là gặp ${isTwin ? twinWording : headerBabyName}!`
+                  : `${isTwin ? (twinWording.charAt(0).toUpperCase() + twinWording.slice(1)) : headerBabyName} đã sẵn sàng chào đời!`}
               </span>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
@@ -3141,7 +3151,7 @@ ${logsDesc}`;
                 {isTwin && (
                   <div className="twin-kick-notice">
                     <span className="twin-kick-notice-icon">💡</span>
-                    <p className="twin-kick-notice-text">Với thai đôi, mẹ có thể ghi nhận cảm nhận chung. Nếu phân biệt được vị trí từng bé, mẹ có thể ghi chú thêm sau khi lưu.</p>
+                    <p className="twin-kick-notice-text">Với đa thai, mẹ có thể ghi nhận cảm nhận chung. Nếu phân biệt được vị trí từng bé, mẹ có thể ghi chú thêm sau khi lưu.</p>
                   </div>
                 )}
                 <div className="pregnancy-timer-box text-center">
