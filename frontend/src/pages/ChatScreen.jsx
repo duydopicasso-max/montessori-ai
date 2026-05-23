@@ -1365,15 +1365,8 @@ ${logsDesc}`;
   const handleEmotionClick = (state) => {
     if (selectedEmotions.includes(state)) {
       setSelectedEmotions(selectedEmotions.filter(e => e !== state));
-      setShowMaxEmotionsWarning(false);
     } else {
-      if (selectedEmotions.length >= 3) {
-        setShowMaxEmotionsWarning(true);
-        setTimeout(() => setShowMaxEmotionsWarning(false), 3000);
-      } else {
-        setSelectedEmotions([...selectedEmotions, state]);
-        setShowMaxEmotionsWarning(false);
-      }
+      setSelectedEmotions([...selectedEmotions, state]);
     }
   };
 
@@ -1381,15 +1374,13 @@ ${logsDesc}`;
   const handleSavePregEmotion = async () => {
     if (!userId) return;
     
-    // Validation: if both emotions and notes are empty, show validation warning
+    // Validation: if both emotions and notes are empty, return silently
     if (selectedEmotions.length === 0 && !emotionNote.trim()) {
-      setShowEmotionValidationWarning(true);
       return;
     }
     
     setIsSavingEmotion(true);
     setSaveEmotionError(false);
-    setShowEmotionValidationWarning(false);
     
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     const aiSuggestionText = getEmotionAiSuggestion(selectedEmotions);
@@ -1416,12 +1407,8 @@ ${logsDesc}`;
       createdAt: serverTimestamp()
     };
 
-    // Save in background
+    // Save in background silently
     addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
-      .then(() => {
-        triggerChime();
-        showToast("Đã lưu cảm xúc hôm nay");
-      })
       .catch(err => {
         console.error("Error background saving pregnancy emotion log:", err);
       });
@@ -3801,7 +3788,6 @@ ${logsDesc}`;
             {activeBottomSheet === 'preg_emotion' && (
               <div className="tracker-sheet-viewport emotion-sheet-viewport">
                 <h3 className="tracker-sheet-title">Cảm xúc mẹ bầu hôm nay</h3>
-                <p className="tracker-sheet-subtitle">Mẹ có thể chọn tối đa 3 cảm xúc.</p>
                 
                 {isEmotionLoading ? (
                   <div className="emotion-skeleton-container">
@@ -3843,12 +3829,6 @@ ${logsDesc}`;
                           );
                         })}
                       </div>
-                      
-                      {showMaxEmotionsWarning && (
-                        <div className="emotion-alert-banner emotion-warning-banner animate-fade-in">
-                          <span>Mẹ chỉ nên chọn tối đa 3 cảm xúc tiêu biểu nhất nhé.</span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Intensity control */}
@@ -3908,18 +3888,6 @@ ${logsDesc}`;
                       />
                     </div>
 
-                    {/* Banners */}
-                    {showEmotionValidationWarning && (
-                      <div className="emotion-alert-banner emotion-validation-banner animate-fade-in">
-                        <span>Mẹ hãy chọn một cảm xúc hoặc viết vài dòng trước khi lưu nhé.</span>
-                      </div>
-                    )}
-                    {saveEmotionError && (
-                      <div className="emotion-alert-banner emotion-error-banner animate-fade-in">
-                        <span>Gặp lỗi khi lưu cảm xúc. Mẹ vui lòng thử lại nhé.</span>
-                      </div>
-                    )}
-
                     {/* Save button */}
                     <button
                       className="submit-tracker-log-btn-full"
@@ -3935,7 +3903,7 @@ ${logsDesc}`;
                       disabled={isSavingEmotion}
                       style={{ marginTop: '10px' }}
                     >
-                      {isSavingEmotion ? "Đang lưu..." : "Lưu cảm xúc hôm nay"}
+                      {isSavingEmotion ? "Đang lưu..." : "Lưu cảm xúc hiện tại"}
                     </button>
                   </div>
                 )}
