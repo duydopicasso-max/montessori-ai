@@ -151,7 +151,7 @@ const removePendingFromLocalStorage = (visitId) => {
    ═══════════════════════════════════════════════════════════ */
 export default function GrowthScreen({ profile, setActiveTab, pendingAction, onConsumePendingAction }) {
   const userStatus = profile?.status || 'born';
-  const isTwin     = (profile?.numBabies || 1) >= 2;
+  const isTwin     = (profile?.numBabies || pregnancyData?.babyCount || 1) >= 2;
   const userId     = profile?.user?.uid;
   const babies     = profile?.babies || [];
 
@@ -419,11 +419,12 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       gestationalDay:       checkupEntry.gestationalDay !== undefined ? checkupEntry.gestationalDay : null,
       gestationalAgeSource: checkupEntry.gestationalAgeSource || 'edd',
       eddSnapshotAtVisit:   checkupEntry.eddSnapshotAtVisit || null,
-      // Twin: save babyA/babyB sub-objects; single: flat fields
-      ...(checkupEntry.isTwin ? {
+      // Twin: save babyA/babyB and babyMetrics sub-objects; single: flat fields
+      ...((checkupEntry.isTwin || checkupEntry.babyMetrics || checkupEntry.babyA) ? {
         isTwin: true,
         babyA: checkupEntry.babyA || {},
         babyB: checkupEntry.babyB || {},
+        babyMetrics: checkupEntry.babyMetrics || {},
       } : {
         bpd:           checkupEntry.bpd !== undefined ? checkupEntry.bpd : null,
         fl:            checkupEntry.fl !== undefined ? checkupEntry.fl : null,
@@ -542,7 +543,8 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     setPregnancyData(prev => ({
       ...prev,
       babyName: tempBabyName,
-      edd: tempEdd
+      edd: tempEdd,
+      babyCount: tempNumBabies
     }));
 
     // ── Background save: lưu song song lên Firestore mà không block UI ──
@@ -553,6 +555,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       setDoc(pregRef, {
         babyName: tempBabyName,
         edd: tempEdd,
+        babyCount: tempNumBabies,
         lastUpdatedAt: serverTimestamp()
       }, { merge: true }),
       setDoc(userRef, {
@@ -824,6 +827,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         {/* ── PREGNANT VIEW ── */}
         {!loading && !error && userStatus === 'pregnant' && (
           <PregnantView
+            isTwin={isTwin}
             pregnancyData={pregnancyData}
             pregnancyWeek={pregnancyWeek}
             latestMotherWeight={latestMotherWeight}
@@ -1233,13 +1237,347 @@ function ComparisonTable({ current, previous }) {
 /* ═══════════════════════════════════════════════════════════
    PREGNANT VIEW
 ═══════════════════════════════════════════════════════════ */
+/* ── Twin Helper — Extract Standardized Baby Metrics ── */
+const getBabyMetrics = (log, babyKey) => {
+  if (!log) return {};
+  const subKey = babyKey === 'A' ? 'baby_a' : 'baby_b';
+  const legacyKey = babyKey === 'A' ? 'babyA' : 'babyB';
+  const metrics = log.babyMetrics?.[subKey] || log[legacyKey] || {};
+  return {
+    bpd: metrics.bpd !== undefined && metrics.bpd !== null ? metrics.bpd : null,
+    fl: metrics.fl !== undefined && metrics.fl !== null ? metrics.fl : null,
+    ac: metrics.ac !== undefined && metrics.ac !== null ? metrics.ac : null,
+    hc: metrics.hc !== undefined && metrics.hc !== null ? metrics.hc : null,
+    crl: metrics.crl !== undefined && metrics.crl !== null ? metrics.crl : null,
+    efw: metrics.efw !== undefined && metrics.efw !== null ? metrics.efw : null,
+    fetalHeartRate: metrics.fetalHeartRate !== undefined && metrics.fetalHeartRate !== null ? metrics.fetalHeartRate : null,
+  };
+};
+
+/* ── TWIN COMPARISON TABLE COMPONENT ── */
+function TwinComparisonTable({ logs, pregnancyData }) {
+  const [compTab, setCompTab] = useState('Bé A');
+  const nameA = pregnancyData?.babyName?.split('&')[0]?.trim() || 'Bé A';
+  const nameB = pregnancyData?.babyName?.split('&')[1]?.trim() || 'Bé B';
+
+  // Find 2 most recent visits with data for a specific baby
+  const getTwinVisitsForBaby = (babyKey) => {
+    const validVisits = logs.filter(log => {
+      const b = getBabyMetrics(log, babyKey);
+      return b.bpd || b.fl || b.ac || b.hc || b.crl || b.efw || b.fetalHeartRate;
+    });
+    return validVisits.slice(0, 2);
+  };
+
+  // Find most recent visit with data for BOTH babies
+  const getVisitWithBothBabies = () => {
+    return logs.find(log => {
+      const bA = getBabyMetrics(log, 'A');
+      const bB = getBabyMetrics(log, 'B');
+      const hasA = bA.bpd || bA.fl || bA.ac || bA.hc || bA.crl || bA.efw || bA.fetalHeartRate;
+      const hasB = bB.bpd || bB.fl || bB.ac || bB.hc || bB.crl || bB.efw || bB.fetalHeartRate;
+      return hasA && hasB;
+    });
+  };
+
+  const metrics = [
+    { name: 'BPD (Đường kính lưỡng đỉnh)', key: 'bpd', unit: 'mm' },
+    { name: 'FL (Chiều dài xương đùi)', key: 'fl', unit: 'mm' },
+    { name: 'AC (Chu vi bụng)', key: 'ac', unit: 'mm' },
+    { name: 'HC (Chu vi đầu)', key: 'hc', unit: 'mm' },
+    { name: 'CRL (Chiều dài đầu mông)', key: 'crl', unit: 'mm' },
+    { name: 'EFW (Cân nặng thai)', key: 'efw', unit: 'g' },
+    { name: 'Tim thai', key: 'fetalHeartRate', unit: 'bpm' }
+  ];
+
+  const getDeltaText = (curVal, prevVal, unit) => {
+    if (curVal === undefined || curVal === null || curVal === '' || prevVal === undefined || prevVal === null || prevVal === '') {
+      return { text: '—', color: '#7B8A82' };
+    }
+    const diff = curVal - prevVal;
+    if (diff > 0) {
+      return { text: `+${diff.toFixed(1).replace('.0', '')} ${unit}`, color: '#2F6B4F' };
+    } else if (diff < 0) {
+      return { text: `${diff.toFixed(1).replace('.0', '')} ${unit}`, color: '#8C6060' };
+    } else {
+      return { text: `0 ${unit}`, color: '#7B8A82' };
+    }
+  };
+
+  const formatValue = (val, unit) => {
+    if (val === undefined || val === null || val === '') return '—';
+    return `${val} ${unit}`;
+  };
+
+  if (compTab === 'Bé A' || compTab === 'Bé B') {
+    const babyKey = compTab === 'Bé A' ? 'A' : 'B';
+    const babyName = compTab === 'Bé A' ? nameA : nameB;
+    const babyLogs = getTwinVisitsForBaby(babyKey);
+
+    if (babyLogs.length < 2) {
+      return (
+        <div className="growth-card comparison-card" style={{ padding: '16px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', gap: '4px', backgroundColor: '#F4F5F4', padding: '4px', borderRadius: '12px', marginBottom: '16px' }}>
+            {['Bé A', 'Bé B', 'So sánh hai bé'].map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setCompTab(tab)}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '12.5px',
+                  fontWeight: compTab === tab ? '600' : '500',
+                  backgroundColor: compTab === tab ? '#FFFFFF' : 'transparent',
+                  color: compTab === tab ? '#2F6B4F' : '#666666',
+                  boxShadow: compTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer'
+                }}
+              >
+                {tab === 'Bé A' ? nameA : tab === 'Bé B' ? nameB : tab}
+              </button>
+            ))}
+          </div>
+          <p style={{ margin: '12px 0', fontSize: '13px', color: '#666666' }}>
+            Cần ít nhất 2 lần khám có chỉ số siêu âm của {babyName} để so sánh.
+          </p>
+        </div>
+      );
+    }
+
+    const currentLog = babyLogs[0];
+    const previousLog = babyLogs[1];
+    const bCurrent = getBabyMetrics(currentLog, babyKey);
+    const bPrevious = getBabyMetrics(previousLog, babyKey);
+
+    const activeMetrics = metrics.filter(m => {
+      const curVal = bCurrent[m.key];
+      const prevVal = bPrevious[m.key];
+      return (curVal !== undefined && curVal !== null && curVal !== '') || 
+             (prevVal !== undefined && prevVal !== null && prevVal !== '');
+    });
+
+    return (
+      <div className="growth-card comparison-card">
+        <div style={{ display: 'flex', gap: '4px', backgroundColor: '#F4F5F4', padding: '4px', borderRadius: '12px', marginBottom: '16px' }}>
+          {['Bé A', 'Bé B', 'So sánh hai bé'].map(tab => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setCompTab(tab)}
+              style={{
+                flex: 1,
+                padding: '8px 10px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '12.5px',
+                fontWeight: compTab === tab ? '600' : '500',
+                backgroundColor: compTab === tab ? '#FFFFFF' : 'transparent',
+                color: compTab === tab ? '#2F6B4F' : '#666666',
+                boxShadow: compTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer'
+              }}
+            >
+              {tab === 'Bé A' ? nameA : tab === 'Bé B' ? nameB : tab}
+            </button>
+          ))}
+        </div>
+
+        <div className="card-header" style={{ marginBottom: '12px' }}>
+          <span className="card-title">Thay đổi chỉ số {babyName}</span>
+        </div>
+
+        <div className="comparison-table-wrapper">
+          <table className="comparison-table">
+            <thead>
+              <tr>
+                <th align="left">Chỉ số</th>
+                <th align="center">Trước ({fmtDate(previousLog.date)})</th>
+                <th align="center">Nay ({fmtDate(currentLog.date)})</th>
+                <th align="right">Thay đổi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeMetrics.map(m => {
+                const curVal = bCurrent[m.key];
+                const prevVal = bPrevious[m.key];
+                const delta = getDeltaText(curVal, prevVal, m.unit);
+
+                return (
+                  <tr key={m.key}>
+                    <td align="left" className="comp-metric-name">{m.name.split(' (')[0]}</td>
+                    <td align="center" className="comp-value">{formatValue(prevVal, m.unit)}</td>
+                    <td align="center" className="comp-value">{formatValue(curVal, m.unit)}</td>
+                    <td align="right" className="comp-delta" style={{ color: delta.color, fontWeight: 'bold' }}>
+                      {delta.text}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="comparison-disclaimer">
+          * Các thay đổi chỉ mang tính theo dõi tham khảo, không thay thế đánh giá của bác sĩ.
+        </p>
+      </div>
+    );
+  } else {
+    // Tab So sánh hai bé
+    const jointVisit = getVisitWithBothBabies();
+
+    if (!jointVisit) {
+      return (
+        <div className="growth-card comparison-card" style={{ padding: '16px', textAlign: 'center' }}>
+          <div style={{ display: 'flex', gap: '4px', backgroundColor: '#F4F5F4', padding: '4px', borderRadius: '12px', marginBottom: '16px' }}>
+            {['Bé A', 'Bé B', 'So sánh hai bé'].map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setCompTab(tab)}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '12.5px',
+                  fontWeight: compTab === tab ? '600' : '500',
+                  backgroundColor: compTab === tab ? '#FFFFFF' : 'transparent',
+                  color: compTab === tab ? '#2F6B4F' : '#666666',
+                  boxShadow: compTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer'
+                }}
+              >
+                {tab === 'Bé A' ? nameA : tab === 'Bé B' ? nameB : tab}
+              </button>
+            ))}
+          </div>
+          <p style={{ margin: '12px 0', fontSize: '13.5px', color: '#666666', fontWeight: '500' }}>
+            Chưa đủ dữ liệu để so sánh hai bé.
+          </p>
+          <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#888888' }}>
+            Cần có ít nhất một lần khám ghi nhận đồng thời chỉ số của cả hai bé.
+          </p>
+        </div>
+      );
+    }
+
+    const bA = getBabyMetrics(jointVisit, 'A');
+    const bB = getBabyMetrics(jointVisit, 'B');
+
+    const activeMetrics = metrics.filter(m => {
+      const valA = bA[m.key];
+      const valB = bB[m.key];
+      return (valA !== undefined && valA !== null && valA !== '') || 
+             (valB !== undefined && valB !== null && valB !== '');
+    });
+
+    const getComparisonDelta = (valA, valB, unit) => {
+      if (valA === undefined || valA === null || valA === '' || valB === undefined || valB === null || valB === '') {
+        return { text: '—', color: '#7B8A82' };
+      }
+      const diff = valA - valB;
+      if (diff > 0) {
+        return { text: `A lớn hơn B: +${diff.toFixed(1).replace('.0', '')} ${unit}`, color: '#2F6B4F' };
+      } else if (diff < 0) {
+        return { text: `B lớn hơn A: +${Math.abs(diff).toFixed(1).replace('.0', '')} ${unit}`, color: '#2F6B4F' };
+      } else {
+        return { text: `Bằng nhau`, color: '#7B8A82' };
+      }
+    };
+
+    return (
+      <div className="growth-card comparison-card">
+        <div style={{ display: 'flex', gap: '4px', backgroundColor: '#F4F5F4', padding: '4px', borderRadius: '12px', marginBottom: '16px' }}>
+          {['Bé A', 'Bé B', 'So sánh hai bé'].map(tab => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setCompTab(tab)}
+              style={{
+                flex: 1,
+                padding: '8px 10px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '12.5px',
+                fontWeight: compTab === tab ? '600' : '500',
+                backgroundColor: compTab === tab ? '#FFFFFF' : 'transparent',
+                color: compTab === tab ? '#2F6B4F' : '#666666',
+                boxShadow: compTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s ease',
+                cursor: 'pointer'
+              }}
+            >
+              {tab === 'Bé A' ? nameA : tab === 'Bé B' ? nameB : tab}
+            </button>
+          ))}
+        </div>
+
+        <div className="card-header" style={{ marginBottom: '6px' }}>
+          <span className="card-title">So sánh hai bé ({nameA} vs {nameB})</span>
+        </div>
+        <p style={{ fontSize: '11.5px', color: '#666666', margin: '0 0 12px 0' }}>
+          Mốc so sánh: Lần khám ngày {fmtDate(jointVisit.date)} (Tuần {jointVisit.gestationalWeek})
+        </p>
+
+        <div className="comparison-table-wrapper">
+          <table className="comparison-table">
+            <thead>
+              <tr>
+                <th align="left">Chỉ số</th>
+                <th align="center">{nameA}</th>
+                <th align="center">{nameB}</th>
+                <th align="right">Chênh lệch</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeMetrics.map(m => {
+                const valA = bA[m.key];
+                const valB = bB[m.key];
+                const delta = getComparisonDelta(valA, valB, m.unit);
+
+                return (
+                  <tr key={m.key}>
+                    <td align="left" className="comp-metric-name">{m.name.split(' (')[0]}</td>
+                    <td align="center" className="comp-value">{formatValue(valA, m.unit)}</td>
+                    <td align="center" className="comp-value">{formatValue(valB, m.unit)}</td>
+                    <td align="right" className="comp-delta" style={{ color: delta.color, fontWeight: '500', fontSize: '12.5px' }}>
+                      {delta.text}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="comparison-disclaimer">
+          * Thông tin so sánh chỉ mang tính chất tham khảo trực quan, không dùng làm kết luận y khoa.
+        </p>
+      </div>
+    );
+  }
+}
+
+/* ── PREGNANT VIEW ── */
 function PregnantView({
-  pregnancyData, pregnancyWeek, latestMotherWeight, lastVisit, logs,
+  isTwin, pregnancyData, pregnancyWeek, latestMotherWeight, lastVisit, logs,
   onOpenCheckupSheet, onEditCheckup, onDeleteCheckup, onOpenEditProfile
 }) {
+  const [activeUltraTab, setActiveUltraTab] = useState('Tổng quan');
+  const [showLineA, setShowLineA] = useState(true);
+  const [showLineB, setShowLineB] = useState(true);
+
   const babyName = pregnancyData?.babyName;
   const edd      = pregnancyData?.edd;
   const nextAppt = lastVisit?.nextAppointment || pregnancyData?.nextAppointment;
+
+  const nameA = babyName?.split('&')[0]?.trim() || 'Bé A';
+  const nameB = babyName?.split('&')[1]?.trim() || 'Bé B';
 
   const weightChartData = logs
     .filter(l => l.motherWeight && (l.gestationalAgeDays != null || l.week != null))
@@ -1273,6 +1611,30 @@ function PregnantView({
     })
     .sort((a, b) => a.fracWeek - b.fracWeek);
 
+  // Twin EFW data builder
+  const twinEfwChartData = logs
+    .filter(l => {
+      const bA = getBabyMetrics(l, 'A');
+      const bB = getBabyMetrics(l, 'B');
+      return (bA.efw || bB.efw) && (l.gestationalAgeDays != null || l.week != null);
+    })
+    .map(l => {
+      const ageDays = l.gestationalAgeDays != null ? l.gestationalAgeDays : (l.week * 7);
+      const fracWeek = ageDays / 7;
+      const bA = getBabyMetrics(l, 'A');
+      const bB = getBabyMetrics(l, 'B');
+      return {
+        fracWeek,
+        label: `T${Math.floor(fracWeek)}`,
+        efwA: bA.efw ? parseFloat(bA.efw) : null,
+        efwB: bB.efw ? parseFloat(bB.efw) : null,
+        tooltipLabel: l.gestationalAgeDays != null 
+          ? `Tuần ${Math.floor(l.gestationalAgeDays / 7)} + ${l.gestationalAgeDays % 7} ngày` 
+          : `Tuần ${l.week}`
+      };
+    })
+    .sort((a, b) => a.fracWeek - b.fracWeek);
+
   return (
     <>
       {/* ── OVERVIEW CARD ── */}
@@ -1283,9 +1645,11 @@ function PregnantView({
               <PregnancyFetusIcon />
             </div>
             <div>
-              <p className="preg-baby-name">{babyName || 'Bé yêu'}</p>
+              <p className="preg-baby-name">
+                {isTwin ? (babyName || 'Bé A & Bé B') : (babyName || 'Bé yêu')}
+              </p>
               <div className="preg-week-badge">
-                {pregnancyWeek ? `Tuần ${pregnancyWeek}` : 'Chưa có tuần thai'}
+                {pregnancyWeek ? `Tuần ${pregnancyWeek}${isTwin ? ' · Thai đôi' : ''}` : 'Chưa có tuần thai'}
               </div>
             </div>
           </div>
@@ -1345,39 +1709,161 @@ function PregnantView({
                 : lastVisit.week ? `Tuần ${lastVisit.week}` : '—'}
             </span>
           </div>
-          <div className="metrics-grid">
-            {[
-              { label: 'Cân nặng mẹ', value: lastVisit.motherWeight, unit: 'kg' },
-              { label: 'BPD',         value: lastVisit.bpd,          unit: 'mm' },
-              { label: 'FL',          value: lastVisit.fl,           unit: 'mm' },
-              { label: 'AC',          value: lastVisit.ac,           unit: 'mm' },
-              { label: 'HC',          value: lastVisit.hc,           unit: 'mm' },
-              { label: 'CRL',         value: lastVisit.crl,          unit: 'mm' },
-              { label: 'EFW',         value: lastVisit.efw,          unit: 'g'  },
-              { label: 'Tim thai',    value: lastVisit.fetalHeartRate, unit: 'bpm' },
-            ].filter(m => m.value != null && m.value !== '' && m.value !== 0).map(m => (
-              <div key={m.label} className="metric-chip">
-                <span className="metric-chip-label">{m.label}</span>
-                <span className="metric-chip-value">{m.value} {m.unit}</span>
+
+          {isTwin && (
+            <div className="twin-segmented-control" style={{ display: 'flex', gap: '4px', backgroundColor: '#F4F5F4', padding: '4px', borderRadius: '12px', marginBottom: '16px' }}>
+              {['Tổng quan', 'Bé A', 'Bé B'].map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveUltraTab(tab)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '13px',
+                    fontWeight: activeUltraTab === tab ? '600' : '500',
+                    backgroundColor: activeUltraTab === tab ? '#FFFFFF' : 'transparent',
+                    color: activeUltraTab === tab ? '#2F6B4F' : '#666666',
+                    boxShadow: activeUltraTab === tab ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {tab === 'Bé A' ? nameA : tab === 'Bé B' ? nameB : tab}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isTwin ? (
+            activeUltraTab === 'Tổng quan' ? (
+              // Tab Tổng quan
+              <div className="metrics-grid" style={{ gap: '12px' }}>
+                {(() => {
+                  const bA = getBabyMetrics(lastVisit, 'A');
+                  const bB = getBabyMetrics(lastVisit, 'B');
+                  const bpdA = bA.bpd ? `${bA.bpd} mm` : '—';
+                  const efwA = bA.efw ? `${bA.efw} g` : '—';
+                  const bpdB = bB.bpd ? `${bB.bpd} mm` : '—';
+                  const efwB = bB.efw ? `${bB.efw} g` : '—';
+
+                  // If no baby metrics are recorded yet for either baby
+                  if (!bA.bpd && !bA.fl && !bA.efw && !bA.crl && !bA.fetalHeartRate &&
+                      !bB.bpd && !bB.fl && !bB.efw && !bB.crl && !bB.fetalHeartRate) {
+                    return (
+                      <div style={{ width: '100%', padding: '12px 0' }}>
+                        <p className="metric-empty-note" style={{ margin: 0, color: '#666666', fontSize: '13.5px' }}>
+                          Lần khám gần nhất chưa có chỉ số siêu âm của từng bé.
+                        </p>
+                        {lastVisit.motherWeight && (
+                          <p style={{ margin: '6px 0 0 0', color: '#2F6B4F', fontWeight: '500', fontSize: '13.5px' }}>
+                            Đã ghi nhận cân nặng mẹ: {lastVisit.motherWeight} kg
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                      <div className="twin-overview-item-card" style={{ backgroundColor: '#F8FAF8', padding: '12px 14px', borderRadius: '12px', border: '1px solid #EAEAEA' }}>
+                        <div style={{ fontWeight: '600', color: '#2F6B4F', marginBottom: '4px', fontSize: '14px' }}>{nameA}</div>
+                        <div style={{ color: '#555555', fontSize: '13.5px' }}>
+                          Cân nặng (EFW): <strong style={{ color: '#2F6B4F' }}>{efwA}</strong> · Lưỡng đỉnh (BPD): <strong>{bpdA}</strong>
+                        </div>
+                      </div>
+                      <div className="twin-overview-item-card" style={{ backgroundColor: '#F8FAF8', padding: '12px 14px', borderRadius: '12px', border: '1px solid #EAEAEA' }}>
+                        <div style={{ fontWeight: '600', color: '#2F6B4F', marginBottom: '4px', fontSize: '14px' }}>{nameB}</div>
+                        <div style={{ color: '#555555', fontSize: '13.5px' }}>
+                          Cân nặng (EFW): <strong style={{ color: '#2F6B4F' }}>{efwB}</strong> · Lưỡng đỉnh (BPD): <strong>{bpdB}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
-            ))}
-            {!lastVisit.bpd && !lastVisit.fl && !lastVisit.efw && !lastVisit.crl && !lastVisit.fetalHeartRate && (
-              <p className="metric-empty-note">Chưa có chỉ số siêu âm từ lần khám này.</p>
-            )}
-          </div>
+            ) : (
+              // Tab Bé A hoặc Bé B
+              <div className="metrics-grid">
+                {(() => {
+                  const babyKey = activeUltraTab === 'Bé A' ? 'A' : 'B';
+                  const b = getBabyMetrics(lastVisit, babyKey);
+                  const name = activeUltraTab === 'Bé A' ? nameA : nameB;
+
+                  const list = [
+                    { label: 'BPD (Đường kính lưỡng đỉnh)', value: b.bpd,          unit: 'mm' },
+                    { label: 'FL (Chiều dài xương đùi)',    value: b.fl,           unit: 'mm' },
+                    { label: 'AC (Chu vi bụng)',            value: b.ac,           unit: 'mm' },
+                    { label: 'HC (Chu vi đầu)',             value: b.hc,           unit: 'mm' },
+                    { label: 'CRL (Chiều dài đầu mông)',    value: b.crl,          unit: 'mm' },
+                    { label: 'EFW (Cân nặng thai nhi)',     value: b.efw,          unit: 'g'  },
+                    { label: 'Tim thai',                    value: b.fetalHeartRate, unit: 'bpm' },
+                  ].filter(m => m.value != null && m.value !== '' && m.value !== 0);
+
+                  if (list.length === 0) {
+                    return <p className="metric-empty-note">Chưa có chỉ số siêu âm của {name} từ lần khám này.</p>;
+                  }
+
+                  return list.map(m => (
+                    <div key={m.label} className="metric-chip" style={{ minWidth: 'calc(50% - 6px)' }}>
+                      <span className="metric-chip-label" style={{ fontSize: '11px', color: '#666666' }}>{m.label.split(' (')[0]}</span>
+                      <span className="metric-chip-value" style={{ fontSize: '14px', fontWeight: '600', color: '#2F6B4F' }}>{m.value} {m.unit}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            )
+          ) : (
+            // Single Baby Grid
+            <div className="metrics-grid">
+              {[
+                { label: 'BPD',         value: lastVisit.bpd,          unit: 'mm' },
+                { label: 'FL',          value: lastVisit.fl,           unit: 'mm' },
+                { label: 'AC',          value: lastVisit.ac,           unit: 'mm' },
+                { label: 'HC',          value: lastVisit.hc,           unit: 'mm' },
+                { label: 'CRL',         value: lastVisit.crl,          unit: 'mm' },
+                { label: 'EFW',         value: lastVisit.efw,          unit: 'g'  },
+                { label: 'Tim thai',    value: lastVisit.fetalHeartRate, unit: 'bpm' },
+              ].filter(m => m.value != null && m.value !== '' && m.value !== 0).map(m => (
+                <div key={m.label} className="metric-chip">
+                  <span className="metric-chip-label">{m.label}</span>
+                  <span className="metric-chip-value">{m.value} {m.unit}</span>
+                </div>
+              ))}
+              {!lastVisit.bpd && !lastVisit.fl && !lastVisit.efw && !lastVisit.crl && !lastVisit.fetalHeartRate && (
+                <p className="metric-empty-note">Chưa có chỉ số siêu âm từ lần khám này.</p>
+              )}
+            </div>
+          )}
         </div>
       ) : (
-        <div className="empty-card">
-          <div className="empty-icon-wrap"><UltrasoundPlaceholderIcon /></div>
-          <p className="empty-title">Chưa có chỉ số siêu âm</p>
-          <p className="empty-sub">Mẹ có thể thêm từ kết quả khám thai hoặc siêu âm.</p>
-          <button className="outline-btn" onClick={onOpenCheckupSheet}>Thêm chỉ số</button>
-        </div>
+        // Empty State
+        isTwin ? (
+          <div className="empty-card" style={{ padding: '24px 16px', textAlign: 'center', backgroundColor: '#F8FAF8', border: '1px dashed rgba(95, 175, 130, 0.4)', borderRadius: '16px' }}>
+            <div className="empty-icon-wrap" style={{ display: 'inline-flex', padding: '12px', backgroundColor: '#EAF5EF', borderRadius: '50%', marginBottom: '12px' }}><UltrasoundPlaceholderIcon /></div>
+            <p className="empty-title" style={{ fontSize: '15.5px', fontWeight: '600', color: '#2F6B4F', margin: '0 0 4px 0' }}>Chưa có chỉ số siêu âm của từng bé</p>
+            <p className="empty-sub" style={{ fontSize: '13px', color: '#666666', margin: '0 0 16px 0', lineHeight: '1.4' }}>Mẹ có thể thêm BPD, FL, AC, HC, EFW và tim thai cho Bé A/B trong lần khám tiếp theo.</p>
+            <button className="primary-btn" style={{ width: 'auto', padding: '10px 20px', fontSize: '13.5px' }} onClick={onOpenCheckupSheet}>Ghi nhận khám thai</button>
+          </div>
+        ) : (
+          <div className="empty-card">
+            <div className="empty-icon-wrap"><UltrasoundPlaceholderIcon /></div>
+            <p className="empty-title">Chưa có chỉ số siêu âm</p>
+            <p className="empty-sub">Mẹ có thể thêm từ kết quả khám thai hoặc siêu âm.</p>
+            <button className="outline-btn" onClick={onOpenCheckupSheet}>Thêm chỉ số</button>
+          </div>
+        )
       )}
 
       {/* ── COMPARISON TABLE ── */}
-      {logs.length >= 2 && (
-        <ComparisonTable current={logs[0]} previous={logs[1]} />
+      {isTwin ? (
+        <TwinComparisonTable logs={logs} pregnancyData={pregnancyData} />
+      ) : (
+        logs.length >= 2 && (
+          <ComparisonTable current={logs[0]} previous={logs[1]} />
+        )
       )}
 
       {/* ── PREGNANCY CHARTS ── */}
@@ -1419,42 +1905,132 @@ function PregnantView({
         </div>
       ) : null}
 
-      {efwChartData.length >= 2 && (
-        <div className="growth-card chart-card-inner">
-          <div className="card-header">
-            <span className="card-title">Cân nặng thai nhi ước tính (EFW)</span>
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={efwChartData} margin={{ top: 8, right: 16, left: -10, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
-              <XAxis 
-                dataKey="fracWeek" 
-                type="number"
-                domain={['dataMin - 1', 'dataMax + 1']}
-                tickFormatter={val => `T${Math.floor(val)}`}
-                tick={{ fontSize: 11, fill: '#8C847C' }} 
-                axisLine={false} 
-                tickLine={false} 
-              />
-              <YAxis tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ borderRadius: 14, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.10)', fontSize: 13 }}
-                labelFormatter={(value) => {
-                  const item = efwChartData.find(d => d.fracWeek === value);
-                  return item ? item.tooltipLabel : `Tuần ${Math.floor(value)}`;
+      {isTwin ? (
+        twinEfwChartData.length >= 2 && (
+          <div className="growth-card chart-card-inner">
+            <div className="card-header">
+              <span className="card-title">Cân nặng hai bé ước tính (EFW)</span>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', margin: '8px 0 12px 0' }}>
+              <button
+                type="button"
+                onClick={() => setShowLineA(!showLineA)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  border: '1px solid #E0E0E0',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  backgroundColor: showLineA ? '#F0F9F4' : '#F9F9F9',
+                  color: showLineA ? '#2F6B4F' : '#999999',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
                 }}
-                formatter={(v) => [`${v} g`, 'Cân nặng ước tính']}
-              />
-              <Line type="monotone" dataKey="efw" stroke="#2F6B4F" strokeWidth={2.5}
-                dot={{ r: 5, fill: '#2F6B4F', stroke: 'white', strokeWidth: 2 }}
-                activeDot={{ r: 7 }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+              >
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#5FAF82' }} />
+                {nameA} ({showLineA ? 'Đang bật' : 'Đã tắt'})
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLineB(!showLineB)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  border: '1px solid #E0E0E0',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  backgroundColor: showLineB ? '#F0FAF5' : '#F9F9F9',
+                  color: showLineB ? '#2F6B4F' : '#999999',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2F6B4F' }} />
+                {nameB} ({showLineB ? 'Đang bật' : 'Đã tắt'})
+              </button>
+            </div>
+
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={twinEfwChartData} margin={{ top: 8, right: 16, left: -10, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
+                <XAxis 
+                  dataKey="fracWeek" 
+                  type="number"
+                  domain={['dataMin - 1', 'dataMax + 1']}
+                  tickFormatter={val => `T${Math.floor(val)}`}
+                  tick={{ fontSize: 11, fill: '#8C847C' }} 
+                  axisLine={false} 
+                  tickLine={false} 
+                />
+                <YAxis tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 14, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.10)', fontSize: 13 }}
+                  labelFormatter={(value) => {
+                    const item = twinEfwChartData.find(d => d.fracWeek === value);
+                    return item ? item.tooltipLabel : `Tuần ${Math.floor(value)}`;
+                  }}
+                  formatter={(v, name) => [`${v} g`, name]}
+                />
+                {showLineA && (
+                  <Line type="monotone" dataKey="efwA" stroke="#5FAF82" strokeWidth={2.5}
+                    dot={{ r: 5, fill: '#5FAF82', stroke: 'white', strokeWidth: 2 }}
+                    activeDot={{ r: 7 }} name={nameA} />
+                )}
+                {showLineB && (
+                  <Line type="monotone" dataKey="efwB" stroke="#2F6B4F" strokeWidth={2.5}
+                    dot={{ r: 5, fill: '#2F6B4F', stroke: 'white', strokeWidth: 2 }}
+                    activeDot={{ r: 7 }} name={nameB} />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )
+      ) : (
+        efwChartData.length >= 2 && (
+          <div className="growth-card chart-card-inner">
+            <div className="card-header">
+              <span className="card-title">Cân nặng thai nhi ước tính (EFW)</span>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={efwChartData} margin={{ top: 8, right: 16, left: -10, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
+                <XAxis 
+                  dataKey="fracWeek" 
+                  type="number"
+                  domain={['dataMin - 1', 'dataMax + 1']}
+                  tickFormatter={val => `T${Math.floor(val)}`}
+                  tick={{ fontSize: 11, fill: '#8C847C' }} 
+                  axisLine={false} 
+                  tickLine={false} 
+                />
+                <YAxis tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 14, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.10)', fontSize: 13 }}
+                  labelFormatter={(value) => {
+                    const item = efwChartData.find(d => d.fracWeek === value);
+                    return item ? item.tooltipLabel : `Tuần ${Math.floor(value)}`;
+                  }}
+                  formatter={(v) => [`${v} g`, 'Cân nặng ước tính']}
+                />
+                <Line type="monotone" dataKey="efw" stroke="#2F6B4F" strokeWidth={2.5}
+                  dot={{ r: 5, fill: '#2F6B4F', stroke: 'white', strokeWidth: 2 }}
+                  activeDot={{ r: 7 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        )
       )}
 
       {/* ── Chart empty: no data at all ── */}
-      {weightChartData.length === 0 && efwChartData.length === 0 && (
+      {((!isTwin && weightChartData.length === 0 && efwChartData.length === 0) || 
+        (isTwin && weightChartData.length === 0 && twinEfwChartData.length === 0)) && (
         <div className="chart-empty-hint">
           <p>Chưa đủ dữ liệu để vẽ biểu đồ. Mẹ hãy thêm ít nhất 2 lần ghi nhận để xem xu hướng thai kỳ.</p>
         </div>
@@ -1474,28 +2050,89 @@ function PregnantView({
             const ageDisplay = v.gestationalWeek !== undefined && v.gestationalWeek !== null
               ? formatGestationalAge(v.gestationalWeek, v.gestationalDay)
               : v.week ? `Tuần ${v.week}` : null;
+            
+            const hasTwinRecord = v.isTwin || v.babyMetrics || v.babyA || v.babyB;
+
             return (
               <div key={v.id || i} className="visit-item">
                 <div className="visit-item-row" style={{ justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="visit-date">{fmtDate(v.date) || '—'}</span>
                     {ageDisplay && <span className="visit-week-tag">{ageDisplay}</span>}
+                    {isTwin && !hasTwinRecord && (
+                      <span style={{ fontSize: '11px', backgroundColor: '#EBEBEB', color: '#666666', padding: '2px 8px', borderRadius: '10px', fontWeight: '500', marginLeft: '4px' }}>
+                        Dữ liệu cũ · Chưa phân bé
+                      </span>
+                    )}
                   </div>
                   <div className="visit-actions">
                     <button type="button" className="visit-action-btn edit-btn" onClick={() => onEditCheckup(v)}>Sửa</button>
                     <button type="button" className="visit-action-btn delete-btn" onClick={() => onDeleteCheckup(v.id)}>Xóa</button>
                   </div>
                 </div>
-                <div className="visit-metrics-row">
-                  {v.motherWeight && <span className="visit-metric">Mẹ: {v.motherWeight} kg</span>}
-                  {v.bpd  && <span className="visit-metric">BPD: {v.bpd}mm</span>}
-                  {v.fl   && <span className="visit-metric">FL: {v.fl}mm</span>}
-                  {v.ac   && <span className="visit-metric">AC: {v.ac}mm</span>}
-                  {v.hc   && <span className="visit-metric">HC: {v.hc}mm</span>}
-                  {v.crl  && <span className="visit-metric">CRL: {v.crl}mm</span>}
-                  {v.efw  && <span className="visit-metric">EFW: {v.efw}g</span>}
-                  {v.fetalHeartRate && <span className="visit-metric">Tim thai: {v.fetalHeartRate} bpm</span>}
-                </div>
+
+                {isTwin && hasTwinRecord ? (
+                  // Detailed twin metrics row layout
+                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {(() => {
+                      const bA = getBabyMetrics(v, 'A');
+                      const bB = getBabyMetrics(v, 'B');
+                      const hasA = bA.bpd || bA.fl || bA.ac || bA.hc || bA.crl || bA.efw || bA.fetalHeartRate;
+                      const hasB = bB.bpd || bB.fl || bB.ac || bB.hc || bB.crl || bB.efw || bB.fetalHeartRate;
+
+                      return (
+                        <>
+                          {hasA && (
+                            <div style={{ fontSize: '13px', color: '#555555' }}>
+                              <span style={{ fontWeight: '600', color: '#2F6B4F' }}>{nameA}:</span>{' '}
+                              {[
+                                bA.bpd && `BPD ${bA.bpd}mm`,
+                                bA.fl && `FL ${bA.fl}mm`,
+                                bA.ac && `AC ${bA.ac}mm`,
+                                bA.hc && `HC ${bA.hc}mm`,
+                                bA.crl && `CRL ${bA.crl}mm`,
+                                bA.efw && `EFW ${bA.efw}g`,
+                                bA.fetalHeartRate && `Tim thai ${bA.fetalHeartRate} bpm`
+                              ].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                          {hasB && (
+                            <div style={{ fontSize: '13px', color: '#555555' }}>
+                              <span style={{ fontWeight: '600', color: '#2F6B4F' }}>{nameB}:</span>{' '}
+                              {[
+                                bB.bpd && `BPD ${bB.bpd}mm`,
+                                bB.fl && `FL ${bB.fl}mm`,
+                                bB.ac && `AC ${bB.ac}mm`,
+                                bB.hc && `HC ${bB.hc}mm`,
+                                bB.crl && `CRL ${bB.crl}mm`,
+                                bB.efw && `EFW ${bB.efw}g`,
+                                bB.fetalHeartRate && `Tim thai ${bB.fetalHeartRate} bpm`
+                              ].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                          {v.motherWeight && (
+                            <div style={{ fontSize: '13px', color: '#555555' }}>
+                              <span style={{ fontWeight: '600', color: '#666666' }}>Cân nặng mẹ:</span> {v.motherWeight} kg
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  // Standard single or legacy root-level metrics layout
+                  <div className="visit-metrics-row">
+                    {v.motherWeight && <span className="visit-metric">Cân nặng mẹ: {v.motherWeight} kg</span>}
+                    {v.bpd  && <span className="visit-metric">BPD: {v.bpd}mm</span>}
+                    {v.fl   && <span className="visit-metric">FL: {v.fl}mm</span>}
+                    {v.ac   && <span className="visit-metric">AC: {v.ac}mm</span>}
+                    {v.hc   && <span className="visit-metric">HC: {v.hc}mm</span>}
+                    {v.crl  && <span className="visit-metric">CRL: {v.crl}mm</span>}
+                    {v.efw  && <span className="visit-metric">EFW: {v.efw}g</span>}
+                    {v.fetalHeartRate && <span className="visit-metric">Tim thai: {v.fetalHeartRate} bpm</span>}
+                  </div>
+                )}
+
                 {v.notes && <p className="visit-notes">{v.notes}</p>}
                 {v.nextAppointment && (
                   <p className="visit-next-appt">

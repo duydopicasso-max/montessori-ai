@@ -100,6 +100,13 @@ const isDateInPast = (iso) => {
 export default function CheckupSheet({ open, onClose, onSave, existingVisit = null, edd = null, isTwin = false }) {
   const textareaRef = useRef(null);
   const sheetRef    = useRef(null);
+  const savedRef    = useRef(false);
+
+  useEffect(() => {
+    if (open) {
+      savedRef.current = false;
+    }
+  }, [open]);
 
   // Form fields
   const [visitDate, setVisitDate]             = useState(todayISO());
@@ -219,6 +226,39 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
     const initialWeek = existingVisit?.gestationalWeek !== undefined && existingVisit?.gestationalWeek !== null ? String(existingVisit.gestationalWeek) : '';
     const initialDay = existingVisit?.gestationalDay !== undefined && existingVisit?.gestationalDay !== null ? String(existingVisit.gestationalDay) : '';
 
+    if (isTwin) {
+      const bA = existingVisit?.babyMetrics?.baby_a || existingVisit?.babyA || {};
+      const bB = existingVisit?.babyMetrics?.baby_b || existingVisit?.babyB || {};
+      
+      const initialBpdA = bA.bpd !== undefined && bA.bpd !== null ? String(bA.bpd) : '';
+      const initialFlA = bA.fl !== undefined && bA.fl !== null ? String(bA.fl) : '';
+      const initialAcA = bA.ac !== undefined && bA.ac !== null ? String(bA.ac) : '';
+      const initialHcA = bA.hc !== undefined && bA.hc !== null ? String(bA.hc) : '';
+      const initialCrlA = bA.crl !== undefined && bA.crl !== null ? String(bA.crl) : '';
+      const initialEfwA = bA.efw !== undefined && bA.efw !== null ? String(bA.efw) : '';
+      const initialFhrA = bA.fetalHeartRate !== undefined && bA.fetalHeartRate !== null ? String(bA.fetalHeartRate) : '';
+
+      const initialBpdB = bB.bpd !== undefined && bB.bpd !== null ? String(bB.bpd) : '';
+      const initialFlB = bB.fl !== undefined && bB.fl !== null ? String(bB.fl) : '';
+      const initialAcB = bB.ac !== undefined && bB.ac !== null ? String(bB.ac) : '';
+      const initialHcB = bB.hc !== undefined && bB.hc !== null ? String(bB.hc) : '';
+      const initialCrlB = bB.crl !== undefined && bB.crl !== null ? String(bB.crl) : '';
+      const initialEfwB = bB.efw !== undefined && bB.efw !== null ? String(bB.efw) : '';
+      const initialFhrB = bB.fetalHeartRate !== undefined && bB.fetalHeartRate !== null ? String(bB.fetalHeartRate) : '';
+
+      return (
+        visitDate !== initialVisitDate ||
+        notes !== initialNotes ||
+        nextAppointment !== initialNextAppt ||
+        enableReminder !== initialReminder ||
+        motherWeight !== initialWeight ||
+        gestationalWeek !== initialWeek ||
+        gestationalDay !== initialDay ||
+        bpdA !== initialBpdA || flA !== initialFlA || acA !== initialAcA || hcA !== initialHcA || crlA !== initialCrlA || efwA !== initialEfwA || fetalHeartRateA !== initialFhrA ||
+        bpdB !== initialBpdB || flB !== initialFlB || acB !== initialAcB || hcB !== initialHcB || crlB !== initialCrlB || efwB !== initialEfwB || fetalHeartRateB !== initialFhrB
+      );
+    }
+
     return (
       visitDate !== initialVisitDate ||
       notes !== initialNotes ||
@@ -239,7 +279,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
 
   // Set the overlayStateRef
   const overlayStateRef = useRef({ isDirty: false, saving: false });
-  overlayStateRef.current = { isDirty: isDirty(), saving };
+  overlayStateRef.current = { isDirty: savedRef.current ? false : isDirty(), saving };
 
   useEffect(() => {
     if (open && window._overlayStack) {
@@ -301,6 +341,48 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
           fetalHeartRate: existingVisit.fetalHeartRate !== undefined && existingVisit.fetalHeartRate !== null,
         });
 
+        // Twin prefill load
+        if (isTwin) {
+          const bA = existingVisit.babyMetrics?.baby_a || existingVisit.babyA || {};
+          const bB = existingVisit.babyMetrics?.baby_b || existingVisit.babyB || {};
+
+          setBpdA(bA.bpd !== undefined && bA.bpd !== null ? String(bA.bpd) : '');
+          setFlA(bA.fl !== undefined && bA.fl !== null ? String(bA.fl) : '');
+          setAcA(bA.ac !== undefined && bA.ac !== null ? String(bA.ac) : '');
+          setHcA(bA.hc !== undefined && bA.hc !== null ? String(bA.hc) : '');
+          setCrlA(bA.crl !== undefined && bA.crl !== null ? String(bA.crl) : '');
+          setEfwA(bA.efw !== undefined && bA.efw !== null ? String(bA.efw) : '');
+          setFetalHeartRateA(bA.fetalHeartRate !== undefined && bA.fetalHeartRate !== null ? String(bA.fetalHeartRate) : '');
+
+          setBpdB(bB.bpd !== undefined && bB.bpd !== null ? String(bB.bpd) : '');
+          setFlB(bB.fl !== undefined && bB.fl !== null ? String(bB.fl) : '');
+          setAcB(bB.ac !== undefined && bB.ac !== null ? String(bB.ac) : '');
+          setHcB(bB.hc !== undefined && bB.hc !== null ? String(bB.hc) : '');
+          setCrlB(bB.crl !== undefined && bB.crl !== null ? String(bB.crl) : '');
+          setEfwB(bB.efw !== undefined && bB.efw !== null ? String(bB.efw) : '');
+          setFetalHeartRateB(bB.fetalHeartRate !== undefined && bB.fetalHeartRate !== null ? String(bB.fetalHeartRate) : '');
+
+          setActiveMetricsA({
+            bpd: bA.bpd !== undefined && bA.bpd !== null,
+            fl: bA.fl !== undefined && bA.fl !== null,
+            ac: bA.ac !== undefined && bA.ac !== null,
+            hc: bA.hc !== undefined && bA.hc !== null,
+            crl: bA.crl !== undefined && bA.crl !== null,
+            efw: bA.efw !== undefined && bA.efw !== null,
+            fetalHeartRate: bA.fetalHeartRate !== undefined && bA.fetalHeartRate !== null,
+          });
+
+          setActiveMetricsB({
+            bpd: bB.bpd !== undefined && bB.bpd !== null,
+            fl: bB.fl !== undefined && bB.fl !== null,
+            ac: bB.ac !== undefined && bB.ac !== null,
+            hc: bB.hc !== undefined && bB.hc !== null,
+            crl: bB.crl !== undefined && bB.crl !== null,
+            efw: bB.efw !== undefined && bB.efw !== null,
+            fetalHeartRate: bB.fetalHeartRate !== undefined && bB.fetalHeartRate !== null,
+          });
+        }
+
         setSheetLoading(false);
         setLoadError(false);
       }, 350);
@@ -323,6 +405,12 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
       setActiveMetrics({
         motherWeight: false, bpd: false, fl: false, ac: false, hc: false, crl: false, efw: false, fetalHeartRate: false
       });
+
+      // Reset Twin fields
+      setBpdA(''); setFlA(''); setAcA(''); setHcA(''); setCrlA(''); setEfwA(''); setFetalHeartRateA('');
+      setBpdB(''); setFlB(''); setAcB(''); setHcB(''); setCrlB(''); setEfwB(''); setFetalHeartRateB('');
+      setActiveMetricsA({ bpd: false, fl: false, ac: false, hc: false, crl: false, efw: false, fetalHeartRate: false });
+      setActiveMetricsB({ bpd: false, fl: false, ac: false, hc: false, crl: false, efw: false, fetalHeartRate: false });
 
       setSheetLoading(false);
       setLoadError(false);
@@ -681,6 +769,26 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
             efw: efwB ? parseFloat(efwB) : null,
             fetalHeartRate: fetalHeartRateB ? parseFloat(fetalHeartRateB) : null,
           },
+          babyMetrics: {
+            baby_a: {
+              bpd: bpdA ? parseFloat(bpdA) : null,
+              fl:  flA  ? parseFloat(flA)  : null,
+              ac:  acA  ? parseFloat(acA)  : null,
+              hc:  hcA  ? parseFloat(hcA)  : null,
+              crl: crlA ? parseFloat(crlA) : null,
+              efw: efwA ? parseFloat(efwA) : null,
+              fetalHeartRate: fetalHeartRateA ? parseFloat(fetalHeartRateA) : null,
+            },
+            baby_b: {
+              bpd: bpdB ? parseFloat(bpdB) : null,
+              fl:  flB  ? parseFloat(flB)  : null,
+              ac:  acB  ? parseFloat(acB)  : null,
+              hc:  hcB  ? parseFloat(hcB)  : null,
+              crl: crlB ? parseFloat(crlB) : null,
+              efw: efwB ? parseFloat(efwB) : null,
+              fetalHeartRate: fetalHeartRateB ? parseFloat(fetalHeartRateB) : null,
+            }
+          }
         } : {
           bpd: bpd ? parseFloat(bpd) : null,
           fl:  fl  ? parseFloat(fl)  : null,
@@ -705,6 +813,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
       }
 
       // Close the sheet immediately
+      savedRef.current = true;
       overlayStateRef.current.isDirty = false;
       overlayStateRef.current.saving = false;
       if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
