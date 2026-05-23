@@ -862,7 +862,24 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
                         <span className="cs-selector-label">Ngày</span>
                         <select
                           className="cs-select"
-                                       {/* Field: Chỉ số siêu âm (Grid Chips) */}
+                          value={gestationalDay}
+                          onChange={e => {
+                            setGestationalDay(e.target.value);
+                            if (validationMsg) setValidationMsg('');
+                          }}
+                        >
+                          <option value="">--</option>
+                          {Array.from({ length: 7 }, (_, i) => i).map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Field: Chỉ số siêu âm (Grid Chips) */}
               <div className="cs-field-group">
                 <label className="cs-label">Chỉ số siêu âm &amp; Sức khỏe</label>
 

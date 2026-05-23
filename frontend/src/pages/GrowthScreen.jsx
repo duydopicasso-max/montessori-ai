@@ -183,6 +183,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [tempBabyName, setTempBabyName] = useState('');
   const [tempEdd, setTempEdd] = useState('');
+  const [tempNumBabies, setTempNumBabies] = useState(1);
   const [showEddCalendar, setShowEddCalendar] = useState(false);
   const [showDobCalendar, setShowDobCalendar] = useState(false);
   const [showMeasureDateCalendar, setShowMeasureDateCalendar] = useState(false);
@@ -193,7 +194,11 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
   const profileOverlayStateRef = useRef({ isDirty: false, saving: false });
   profileOverlayStateRef.current = {
-    isDirty: forceCleanRef.current ? false : (tempBabyName !== (pregnancyData?.babyName || '') || tempEdd !== (pregnancyData?.edd || '')),
+    isDirty: forceCleanRef.current ? false : (
+      tempBabyName !== (pregnancyData?.babyName || '') || 
+      tempEdd !== (pregnancyData?.edd || '') || 
+      tempNumBabies !== (profile?.numBabies || 1)
+    ),
     saving: forceCleanRef.current ? false : loading
   };
 
@@ -541,6 +546,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         lastUpdatedAt: serverTimestamp()
       }, { merge: true }),
       setDoc(userRef, {
+        numBabies: tempNumBabies,
         pregnancyInfo: {
           dueDate: tempEdd,
           babyName: tempBabyName
@@ -549,7 +555,32 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     ];
 
     // 3. Đồng bộ subcollection babies nếu có
-    if (babies && babies.length > 0) {
+    if (tempNumBabies >= 2 && babies.length < 2) {
+      if (babies.length === 0) {
+        const babyARef = doc(db, 'users', userId, 'babies', 'baby-a');
+        writePromises.push(setDoc(babyARef, {
+          label: 'Bé A',
+          name: tempBabyName || 'Bé A',
+          gender: '',
+          pregnancyInfo: {
+            dueDate: tempEdd,
+            babyName: tempBabyName || 'Bé A'
+          },
+          createdAt: serverTimestamp()
+        }, { merge: true }));
+      }
+      const babyBRef = doc(db, 'users', userId, 'babies', 'baby-b');
+      writePromises.push(setDoc(babyBRef, {
+        label: 'Bé B',
+        name: 'Bé B',
+        gender: '',
+        pregnancyInfo: {
+          dueDate: tempEdd,
+          babyName: 'Bé B'
+        },
+        createdAt: serverTimestamp()
+      }, { merge: true }));
+    } else if (babies && babies.length > 0) {
       const currentBaby = babies[selectedBaby] || babies[0];
       const resolvedBabyId = (currentBaby.id || currentBaby.name || 'baby-0')
         .toLowerCase().replace(/\s+/g, '-');
@@ -787,6 +818,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
               const fallbackEdd = babies[selectedBaby]?.pregnancyInfo?.dueDate || profile?.pregnancyInfo?.dueDate || '';
               setTempBabyName(pregnancyData?.babyName || fallbackBabyName);
               setTempEdd(pregnancyData?.edd || fallbackEdd);
+              setTempNumBabies(profile?.numBabies || 1);
               setShowEditProfileModal(true);
             }}
           />
@@ -853,7 +885,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
                     placeholder="Bé yêu"
                   />
                 </div>
-                <div className="cs-field-group">
+                <div className="cs-field-group" style={{ marginBottom: '16px' }}>
                   <label className="cs-label">Ngày dự sinh (EDD)</label>
                   <button
                     type="button"
@@ -863,6 +895,39 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
                     <CalendarIcon size={15} color="#5FAF82" />
                     <span>{fmtDisplay(tempEdd) || 'Chọn ngày dự sinh'}</span>
                   </button>
+                </div>
+                <div className="cs-field-group">
+                  <label className="cs-label">Số lượng bé</label>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                    {[1, 2].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        className={`cs-num-btn ${tempNumBabies === n ? 'active' : ''}`}
+                        onClick={() => setTempNumBabies(n)}
+                        style={{
+                          flex: 1,
+                          padding: '12px 16px',
+                          borderRadius: '12px',
+                          border: tempNumBabies === n ? '2px solid #5FAF82' : '1px solid #EAEAEA',
+                          backgroundColor: tempNumBabies === n ? '#F0F9F4' : '#F9F9F9',
+                          color: tempNumBabies === n ? '#388E3C' : '#555555',
+                          fontWeight: tempNumBabies === n ? '600' : '400',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: tempNumBabies === n ? '0 2px 8px rgba(95, 175, 130, 0.15)' : 'none'
+                        }}
+                      >
+                        <span style={{ fontSize: '16px' }}>{n === 1 ? '👶' : '👶👶'}</span>
+                        {n === 1 ? '1 bé' : 'Thai đôi'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 
                 <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
