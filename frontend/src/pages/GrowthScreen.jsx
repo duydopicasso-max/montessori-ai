@@ -161,6 +161,9 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const [babyOverrides, setBabyOverrides] = useState({});
   const [logs, setLogs]                 = useState([]);
   const [pregnancyData, setPregnancyData] = useState(null);
+  const nameParts  = (pregnancyData?.babyName || '').split('&');
+  const babyAName  = nameParts[0]?.trim() || 'Bé A';
+  const babyBName  = nameParts[1]?.trim() || 'Bé B';
   const [showMeasureForm, setShowMeasureForm] = useState(false);
   const [showVisitForm, setShowVisitForm]     = useState(false);
   const [measureForm, setMeasureForm] = useState({
@@ -182,6 +185,9 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const [toastType, setToastType] = useState('delete'); // 'delete' | 'error'
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [tempBabyName, setTempBabyName] = useState('');
+  const [tempBabyNameA, setTempBabyNameA] = useState('');
+  const [tempBabyNameB, setTempBabyNameB] = useState('');
+  const [tempBabyNameC, setTempBabyNameC] = useState('');
   const [tempEdd, setTempEdd] = useState('');
   const [tempNumBabies, setTempNumBabies] = useState(1);
   const [showEddCalendar, setShowEddCalendar] = useState(false);
@@ -191,11 +197,16 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const [showConfirmCloseProfile, setShowConfirmCloseProfile] = useState(false);
 
   const forceCleanRef = useRef(false);
+  const initialBabyNameARef = useRef('');
+  const initialBabyNameBRef = useRef('');
+  const initialBabyNameCRef = useRef('');
 
   const profileOverlayStateRef = useRef({ isDirty: false, saving: false });
   profileOverlayStateRef.current = {
     isDirty: forceCleanRef.current ? false : (
-      tempBabyName !== (pregnancyData?.babyName || '') || 
+      tempBabyNameA !== initialBabyNameARef.current ||
+      tempBabyNameB !== initialBabyNameBRef.current ||
+      tempBabyNameC !== initialBabyNameCRef.current ||
       tempEdd !== (pregnancyData?.edd || '') || 
       tempNumBabies !== (profile?.numBabies || 1)
     ),
@@ -332,7 +343,22 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       } else if (pendingAction === 'openEditProfile') {
         const fallbackBabyName = babies[selectedBaby]?.name || profile?.childName || 'Bé yêu';
         const fallbackEdd = babies[selectedBaby]?.pregnancyInfo?.dueDate || profile?.pregnancyInfo?.dueDate || '';
-        setTempBabyName(pregnancyData?.babyName || fallbackBabyName);
+        const rawBabyName = pregnancyData?.babyName || fallbackBabyName;
+        setTempBabyName(rawBabyName);
+
+        const nameParts = rawBabyName.split('&').map(n => n.trim());
+        const nA = nameParts[0] || '';
+        const nB = nameParts[1] || '';
+        const nC = nameParts[2] || '';
+
+        setTempBabyNameA(nA);
+        setTempBabyNameB(nB);
+        setTempBabyNameC(nC);
+
+        initialBabyNameARef.current = nA;
+        initialBabyNameBRef.current = nB;
+        initialBabyNameCRef.current = nC;
+
         setTempEdd(pregnancyData?.edd || fallbackEdd);
         setTempNumBabies(profile?.numBabies || 1);
         setShowEditProfileModal(true);
@@ -528,6 +554,19 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const handleProfileUpdate = async (shouldRecalculate) => {
     if (!userId) return;
 
+    // ── Calculate joinedName ──
+    const nameA = tempBabyNameA.trim();
+    const nameB = tempBabyNameB.trim();
+    const nameC = tempBabyNameC.trim();
+    let joinedName = '';
+    if (tempNumBabies === 1) {
+      joinedName = nameA || 'Bé yêu';
+    } else if (tempNumBabies === 2) {
+      joinedName = `${nameA || 'Bé A'} & ${nameB || 'Bé B'}`;
+    } else if (tempNumBabies === 3) {
+      joinedName = `${nameA || 'Bé A'} & ${nameB || 'Bé B'} & ${nameC || 'Bé C'}`;
+    }
+
     // ── Optimistic close: đóng modal NGAY LẬP TỨC, không chờ Firestore ──
     setShowRecalcModal(false);
     forceCleanRef.current = true;
@@ -542,10 +581,49 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     // ── Optimistic UI update: cập nhật state local ngay lập tức ──
     setPregnancyData(prev => ({
       ...prev,
-      babyName: tempBabyName,
+      babyName: joinedName,
       edd: tempEdd,
       babyCount: tempNumBabies
     }));
+
+    // ── Prepare user document babies array ──
+    const updatedBabies = [];
+    if (tempNumBabies >= 1) {
+      updatedBabies.push({
+        id: 'baby-a',
+        label: 'Bé A',
+        name: nameA || 'Bé A',
+        gender: babies[0]?.gender || '',
+        pregnancyInfo: {
+          dueDate: tempEdd,
+          babyName: nameA || 'Bé A'
+        }
+      });
+    }
+    if (tempNumBabies >= 2) {
+      updatedBabies.push({
+        id: 'baby-b',
+        label: 'Bé B',
+        name: nameB || 'Bé B',
+        gender: babies[1]?.gender || '',
+        pregnancyInfo: {
+          dueDate: tempEdd,
+          babyName: nameB || 'Bé B'
+        }
+      });
+    }
+    if (tempNumBabies === 3) {
+      updatedBabies.push({
+        id: 'baby-c',
+        label: 'Bé C',
+        name: nameC || 'Bé C',
+        gender: babies[2]?.gender || '',
+        pregnancyInfo: {
+          dueDate: tempEdd,
+          babyName: nameC || 'Bé C'
+        }
+      });
+    }
 
     // ── Background save: lưu song song lên Firestore mà không block UI ──
     const pregRef = doc(db, 'users', userId, 'tracking', 'pregnancy');
@@ -553,75 +631,54 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
     const writePromises = [
       setDoc(pregRef, {
-        babyName: tempBabyName,
+        babyName: joinedName,
         edd: tempEdd,
         babyCount: tempNumBabies,
         lastUpdatedAt: serverTimestamp()
       }, { merge: true }),
       setDoc(userRef, {
         numBabies: tempNumBabies,
+        babies: updatedBabies,
         pregnancyInfo: {
           dueDate: tempEdd,
-          babyName: tempBabyName
+          babyName: joinedName
         }
       }, { merge: true })
     ];
 
-    // 3. Đồng bộ subcollection babies nếu có
-    if (tempNumBabies >= 2 && babies.length < tempNumBabies) {
-      if (babies.length === 0) {
-        const babyARef = doc(db, 'users', userId, 'babies', 'baby-a');
-        writePromises.push(setDoc(babyARef, {
-          label: 'Bé A',
-          name: tempBabyName || 'Bé A',
-          gender: '',
-          pregnancyInfo: {
-            dueDate: tempEdd,
-            babyName: tempBabyName || 'Bé A'
-          },
-          createdAt: serverTimestamp()
-        }, { merge: true }));
-      }
-      if (babies.length < 2) {
-        const babyBRef = doc(db, 'users', userId, 'babies', 'baby-b');
-        writePromises.push(setDoc(babyBRef, {
-          label: 'Bé B',
-          name: 'Bé B',
-          gender: '',
-          pregnancyInfo: {
-            dueDate: tempEdd,
-            babyName: 'Bé B'
-          },
-          createdAt: serverTimestamp()
-        }, { merge: true }));
-      }
-      if (tempNumBabies === 3 && babies.length < 3) {
-        const babyCRef = doc(db, 'users', userId, 'babies', 'baby-c');
-        writePromises.push(setDoc(babyCRef, {
-          label: 'Bé C',
-          name: 'Bé C',
-          gender: '',
-          pregnancyInfo: {
-            dueDate: tempEdd,
-            babyName: 'Bé C'
-          },
-          createdAt: serverTimestamp()
-        }, { merge: true }));
-      }
-    } else if (babies && babies.length > 0) {
-      const currentBaby = babies[selectedBaby] || babies[0];
-      const resolvedBabyId = (currentBaby.id || currentBaby.name || 'baby-0')
-        .toLowerCase().replace(/\s+/g, '-');
-      if (resolvedBabyId) {
-        const babyRef = doc(db, 'users', userId, 'babies', resolvedBabyId);
-        writePromises.push(setDoc(babyRef, {
-          name: tempBabyName,
-          pregnancyInfo: {
-            dueDate: tempEdd,
-            babyName: tempBabyName
-          }
-        }, { merge: true }));
-      }
+    // 3. Đồng bộ subcollection babies
+    if (tempNumBabies >= 1) {
+      const babyARef = doc(db, 'users', userId, 'babies', 'baby-a');
+      writePromises.push(setDoc(babyARef, {
+        label: 'Bé A',
+        name: nameA || 'Bé A',
+        pregnancyInfo: {
+          dueDate: tempEdd,
+          babyName: nameA || 'Bé A'
+        }
+      }, { merge: true }));
+    }
+    if (tempNumBabies >= 2) {
+      const babyBRef = doc(db, 'users', userId, 'babies', 'baby-b');
+      writePromises.push(setDoc(babyBRef, {
+        label: 'Bé B',
+        name: nameB || 'Bé B',
+        pregnancyInfo: {
+          dueDate: tempEdd,
+          babyName: nameB || 'Bé B'
+        }
+      }, { merge: true }));
+    }
+    if (tempNumBabies === 3) {
+      const babyCRef = doc(db, 'users', userId, 'babies', 'baby-c');
+      writePromises.push(setDoc(babyCRef, {
+        label: 'Bé C',
+        name: nameC || 'Bé C',
+        pregnancyInfo: {
+          dueDate: tempEdd,
+          babyName: nameC || 'Bé C'
+        }
+      }, { merge: true }));
     }
 
     try {
@@ -845,7 +902,22 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
             onOpenEditProfile={() => {
               const fallbackBabyName = babies[selectedBaby]?.name || profile?.childName || 'Bé yêu';
               const fallbackEdd = babies[selectedBaby]?.pregnancyInfo?.dueDate || profile?.pregnancyInfo?.dueDate || '';
-              setTempBabyName(pregnancyData?.babyName || fallbackBabyName);
+              const rawBabyName = pregnancyData?.babyName || fallbackBabyName;
+              setTempBabyName(rawBabyName);
+
+              const nameParts = rawBabyName.split('&').map(n => n.trim());
+              const nA = nameParts[0] || '';
+              const nB = nameParts[1] || '';
+              const nC = nameParts[2] || '';
+
+              setTempBabyNameA(nA);
+              setTempBabyNameB(nB);
+              setTempBabyNameC(nC);
+
+              initialBabyNameARef.current = nA;
+              initialBabyNameBRef.current = nB;
+              initialBabyNameCRef.current = nC;
+
               setTempEdd(pregnancyData?.edd || fallbackEdd);
               setTempNumBabies(profile?.numBabies || 1);
               setShowEditProfileModal(true);
@@ -864,6 +936,8 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
           existingVisit={editingVisit}
           edd={pregnancyData?.edd}
           isTwin={isTwin}
+          babyAName={babyAName}
+          babyBName={babyBName}
         />
 
         {/* ── CUSTOM DELETE CONFIRM MODAL ── */}
@@ -904,30 +978,6 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
                 }
               }}>
                 <div className="cs-field-group" style={{ marginBottom: '16px' }}>
-                  <label className="cs-label">
-                    {tempNumBabies === 1 ? 'Tên bé yêu (ở nhà)' : tempNumBabies === 2 ? 'Tên hai bé (ở nhà)' : 'Tên ba bé (ở nhà)'}
-                  </label>
-                  <input
-                    type="text"
-                    className="cs-input"
-                    style={{ cursor: 'text' }}
-                    value={tempBabyName}
-                    onChange={e => setTempBabyName(e.target.value)}
-                    placeholder={tempNumBabies === 1 ? 'Bé yêu' : tempNumBabies === 2 ? 'Bé A, Bé B' : 'Bé A, Bé B, Bé C'}
-                  />
-                </div>
-                <div className="cs-field-group" style={{ marginBottom: '16px' }}>
-                  <label className="cs-label">Ngày dự sinh (EDD)</label>
-                  <button
-                    type="button"
-                    className="cs-date-trigger-btn"
-                    onClick={() => setShowEddCalendar(true)}
-                  >
-                    <CalendarIcon size={15} color="#5FAF82" />
-                    <span>{fmtDisplay(tempEdd) || 'Chọn ngày dự sinh'}</span>
-                  </button>
-                </div>
-                <div className="cs-field-group">
                   <label className="cs-label">Số lượng bé</label>
                   <div style={{
                     display: 'flex',
@@ -970,6 +1020,97 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
                       );
                     })}
                   </div>
+                </div>
+
+                {tempNumBabies === 1 && (
+                  <div className="cs-field-group" style={{ marginBottom: '16px' }}>
+                    <label className="cs-label">Tên bé yêu (ở nhà)</label>
+                    <input
+                      type="text"
+                      className="cs-input"
+                      style={{ cursor: 'text' }}
+                      value={tempBabyNameA}
+                      onChange={e => setTempBabyNameA(e.target.value)}
+                      placeholder="Bé yêu"
+                    />
+                  </div>
+                )}
+
+                {tempNumBabies === 2 && (
+                  <>
+                    <div className="cs-field-group" style={{ marginBottom: '16px' }}>
+                      <label className="cs-label">Tên Bé A (ở nhà)</label>
+                      <input
+                        type="text"
+                        className="cs-input"
+                        style={{ cursor: 'text' }}
+                        value={tempBabyNameA}
+                        onChange={e => setTempBabyNameA(e.target.value)}
+                        placeholder="Bắp"
+                      />
+                    </div>
+                    <div className="cs-field-group" style={{ marginBottom: '16px' }}>
+                      <label className="cs-label">Tên Bé B (ở nhà)</label>
+                      <input
+                        type="text"
+                        className="cs-input"
+                        style={{ cursor: 'text' }}
+                        value={tempBabyNameB}
+                        onChange={e => setTempBabyNameB(e.target.value)}
+                        placeholder="Bơ"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {tempNumBabies === 3 && (
+                  <>
+                    <div className="cs-field-group" style={{ marginBottom: '16px' }}>
+                      <label className="cs-label">Tên Bé A (ở nhà)</label>
+                      <input
+                        type="text"
+                        className="cs-input"
+                        style={{ cursor: 'text' }}
+                        value={tempBabyNameA}
+                        onChange={e => setTempBabyNameA(e.target.value)}
+                        placeholder="Bắp"
+                      />
+                    </div>
+                    <div className="cs-field-group" style={{ marginBottom: '16px' }}>
+                      <label className="cs-label">Tên Bé B (ở nhà)</label>
+                      <input
+                        type="text"
+                        className="cs-input"
+                        style={{ cursor: 'text' }}
+                        value={tempBabyNameB}
+                        onChange={e => setTempBabyNameB(e.target.value)}
+                        placeholder="Bơ"
+                      />
+                    </div>
+                    <div className="cs-field-group" style={{ marginBottom: '16px' }}>
+                      <label className="cs-label">Tên Bé C (ở nhà)</label>
+                      <input
+                        type="text"
+                        className="cs-input"
+                        style={{ cursor: 'text' }}
+                        value={tempBabyNameC}
+                        onChange={e => setTempBabyNameC(e.target.value)}
+                        placeholder="Cà Rốt"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="cs-field-group" style={{ marginBottom: '16px' }}>
+                  <label className="cs-label">Ngày dự sinh (EDD)</label>
+                  <button
+                    type="button"
+                    className="cs-date-trigger-btn"
+                    onClick={() => setShowEddCalendar(true)}
+                  >
+                    <CalendarIcon size={15} color="#5FAF82" />
+                    <span>{fmtDisplay(tempEdd) || 'Chọn ngày dự sinh'}</span>
+                  </button>
                 </div>
                 
                 <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>

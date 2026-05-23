@@ -97,7 +97,7 @@ const isDateInPast = (iso) => {
 /* ═══════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
-export default function CheckupSheet({ open, onClose, onSave, existingVisit = null, edd = null, isTwin = false }) {
+export default function CheckupSheet({ open, onClose, onSave, existingVisit = null, edd = null, isTwin = false, babyAName = 'Bé A', babyBName = 'Bé B' }) {
   const textareaRef = useRef(null);
   const sheetRef    = useRef(null);
   const savedRef    = useRef(false);
@@ -1032,7 +1032,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
                         className={`cs-twin-baby-tab${activeBabyTab === baby ? ' active' : ''}`}
                         onClick={() => setActiveBabyTab(baby)}
                       >
-                        Bé {baby}
+                        {baby === 'A' ? babyAName : babyBName}
                       </button>
                     ))}
                     <span className="cs-twin-tab-hint">Nhập chỉ số riêng từng bé</span>
