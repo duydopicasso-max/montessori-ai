@@ -81,7 +81,7 @@
 .form-group select {
   padding: 12px 14px;
   border: 2px solid var(--cream-dark); border-radius: var(--r-md);
-  font-family: 'Nunito', sans-serif; font-size: 14px;
+  font-family: 'Nunito', sans-serif; font-size: 16px;
   background: var(--surface-1); outline: none;
   transition: all var(--t-base); color: var(--text-primary); resize: vertical;
 }

@@ -796,7 +796,7 @@
 .chat-input {
   flex: 1; border: none; outline: none; resize: none;
   font-family: 'Nunito', sans-serif;
-  font-size: 14px; font-weight: 500;
+  font-size: 16px; font-weight: 500;
   color: var(--text-primary); background: transparent;
   line-height: 1.55; max-height: 130px; min-height: 22px;
   padding: 6px 0;
@@ -1611,7 +1611,7 @@
   outline: none;
   resize: none;
   font-family: 'Nunito', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--text-primary);
   background: transparent;
@@ -2039,7 +2039,7 @@
   border-radius: 20px;
   border: 2px solid var(--cream-dark);
   padding: 14px;
-  font-size: 13.5px;
+  font-size: 16px;
   font-family: 'Nunito', sans-serif;
   color: var(--text-primary);
   outline: none;
@@ -3572,7 +3572,7 @@
   border: 1.5px solid #CBD5D0;
   border-radius: 8px;
   font-family: 'Outfit', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: #1D2B1F;
   text-align: center;
@@ -3703,7 +3703,7 @@
   background: #F7FBF8;
   border-radius: 14px;
   padding: 12px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
   color: #1D2B1F;
   resize: none;
@@ -4368,7 +4368,7 @@
   border-radius: 18px;
   border: 1.5px solid rgba(47, 107, 79, 0.15);
   padding: 12px 14px;
-  font-size: 13.5px;
+  font-size: 16px;
   font-weight: 500;
   color: #1D2B1F;
   background: #FFFFFF;

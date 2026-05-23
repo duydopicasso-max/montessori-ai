@@ -205,7 +205,7 @@ h3 { font-size: clamp(15px, 3vw, 17px); font-weight: 700; }
   border-radius: var(--r-md);
   background: var(--surface-1);
   font-family: 'Nunito', sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text-primary);
   outline: none;
   transition: all var(--t-base) var(--ease-smooth);
@@ -356,3 +356,26 @@ h3 { font-size: clamp(15px, 3vw, 17px); font-weight: 700; }
   border-right: 0.5px solid rgba(0, 0, 0, 0.15);
 }
 
+/* ══════════════════════════════════════════════════════════
+   iOS Auto-Zoom Prevention
+   iOS Safari auto-zooms when input font-size < 16px.
+   This global rule prevents that on ALL inputs/textareas/selects.
+   ══════════════════════════════════════════════════════════ */
+input,
+textarea,
+select {
+  /* Must be >= 16px to prevent iOS Safari auto-zoom on focus */
+  font-size: 16px !important;
+  /* Eliminate 300ms tap delay on all mobile browsers */
+  touch-action: manipulation;
+}
+
+/* iOS-specific: restore text selection & prevent bounce on focus */
+@supports (-webkit-touch-callout: none) {
+  input:focus,
+  textarea:focus,
+  select:focus {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}

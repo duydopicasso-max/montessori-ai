@@ -393,7 +393,7 @@
   border: 2px solid var(--sage);
   border-radius: 10px;
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: 16px;
   outline: none;
   color: var(--text-primary);
   background: white;
@@ -706,7 +706,7 @@
   border: 2px solid var(--cream-dark);
   border-radius: 12px;
   font-family: 'Nunito', sans-serif;
-  font-size: 14px; font-weight: 600;
+  font-size: 16px; font-weight: 600;
   background: var(--surface-1);
   outline: none; transition: all 0.2s;
   color: var(--text-primary);
@@ -721,7 +721,7 @@
   border: 2px solid var(--cream-dark);
   border-radius: 12px;
   font-family: 'Nunito', sans-serif;
-  font-size: 13px; font-weight: 600;
+  font-size: 16px; font-weight: 600;
   background: var(--surface-1);
   outline: none; transition: all 0.2s;
   color: var(--text-primary);
@@ -849,7 +849,7 @@
   border: 2px solid var(--cream-dark);
   border-radius: 14px;
   font-family: 'Nunito', sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   background: var(--surface-1);
   outline: none;
