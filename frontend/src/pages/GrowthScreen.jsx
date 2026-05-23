@@ -324,12 +324,22 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
   /* ── Consume pending action from App (e.g. navigate here + open CheckupSheet) ── */
   useEffect(() => {
-    if (pendingAction === 'openCheckupSheet' && !loading) {
-      setEditingVisit(null);
-      setShowVisitForm(true);
-      if (onConsumePendingAction) onConsumePendingAction();
+    if (!loading) {
+      if (pendingAction === 'openCheckupSheet') {
+        setEditingVisit(null);
+        setShowVisitForm(true);
+        if (onConsumePendingAction) onConsumePendingAction();
+      } else if (pendingAction === 'openEditProfile') {
+        const fallbackBabyName = babies[selectedBaby]?.name || profile?.childName || 'Bé yêu';
+        const fallbackEdd = babies[selectedBaby]?.pregnancyInfo?.dueDate || profile?.pregnancyInfo?.dueDate || '';
+        setTempBabyName(pregnancyData?.babyName || fallbackBabyName);
+        setTempEdd(pregnancyData?.edd || fallbackEdd);
+        setTempNumBabies(profile?.numBabies || 1);
+        setShowEditProfileModal(true);
+        if (onConsumePendingAction) onConsumePendingAction();
+      }
     }
-  }, [pendingAction, loading, onConsumePendingAction]);
+  }, [pendingAction, loading, onConsumePendingAction, babies, selectedBaby, profile, pregnancyData]);
 
   /* ── Process lingering deletes from localStorage on mount ── */
   useEffect(() => {

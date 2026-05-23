@@ -2641,7 +2641,10 @@ ${logsDesc}`;
                 <button
                   type="button"
                   className="pregnancy-add-due-date-btn"
-                  onClick={() => setActiveTab('growth')}
+                  onClick={() => {
+                    if (setGrowthPendingAction) setGrowthPendingAction('openEditProfile');
+                    setActiveTab('growth');
+                  }}
                   style={{
                     background: 'transparent',
                     color: '#2F6B4F',
