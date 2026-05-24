@@ -574,10 +574,10 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     profileOverlayStateRef.current.isDirty = false;
     profileOverlayStateRef.current.saving = false;
     if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
-      window._overlayStack.pop('growth-profile-edit');
       window.history.back();
+    } else {
+      setShowEditProfileModal(false);
     }
-    setShowEditProfileModal(false);
 
     // ── Optimistic UI update: cập nhật state local ngay lập tức ──
     setPregnancyData(prev => ({

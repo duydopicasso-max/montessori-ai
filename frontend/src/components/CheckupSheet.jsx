@@ -819,7 +819,6 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
       overlayStateRef.current.isDirty = false;
       overlayStateRef.current.saving = false;
       if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
-        window._overlayStack.pop('checkup-sheet');
         window.history.back();
       } else {
         onClose();

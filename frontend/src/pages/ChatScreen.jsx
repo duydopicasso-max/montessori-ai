@@ -2464,7 +2464,7 @@ ${logsDesc}`;
         sheetId,
         () => {
           if (chatOverlayStateRef.current.saving) return 'saving';
-          if (isSheetDirty(sheetId)) return 'dirty';
+          if (chatOverlayStateRef.current.isDirty) return 'dirty';
           return 'clean';
         },
         () => {
@@ -2529,11 +2529,25 @@ ${logsDesc}`;
     // handler from seeing 'saving' state and blocking the close
     chatOverlayStateRef.current.isDirty = false;
     chatOverlayStateRef.current.saving = false;
-    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === sheetId)) {
-      window._overlayStack.pop(sheetId);
-      window.history.back();
-    } else {
-      setActiveBottomSheet(null);
+    
+    // Return to main screen (close both bottom sheet and chat assistant)
+    setActiveBottomSheet(null);
+    setIsChatOpen(false);
+    
+    let backCount = 0;
+    if (window._overlayStack) {
+      if (window._overlayStack.stack.some(item => item.id === sheetId)) {
+        window._overlayStack.pop(sheetId);
+        backCount++;
+      }
+      if (window._overlayStack.stack.some(item => item.id === 'chat-assistant')) {
+        window._overlayStack.pop('chat-assistant');
+        backCount++;
+      }
+    }
+    
+    if (backCount > 0) {
+      window.history.go(-backCount);
     }
   };
 
@@ -2546,20 +2560,18 @@ ${logsDesc}`;
       setPendingImgs([]);
       chatOverlayStateRef.current.isDirty = false;
       chatOverlayStateRef.current.saving = false;
+      setIsChatOpen(false);
       if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'chat-assistant')) {
         window._overlayStack.pop('chat-assistant');
         window.history.back();
-      } else {
-        setIsChatOpen(false);
       }
     } else if (target) {
       chatOverlayStateRef.current.isDirty = false;
       chatOverlayStateRef.current.saving = false;
+      setActiveBottomSheet(null);
       if (window._overlayStack && window._overlayStack.stack.some(item => item.id === target)) {
         window._overlayStack.pop(target);
         window.history.back();
-      } else {
-        setActiveBottomSheet(null);
       }
     }
   };
