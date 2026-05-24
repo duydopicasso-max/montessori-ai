@@ -206,9 +206,26 @@ export function assessNutrition(weightKg, month, gender) {
   const data = getWHOData(gender, 'weight');
   const ref = data.find(d => d.month <= month) || data[0];
   if (!ref || !weightKg) return null;
-  if (weightKg < ref.sd_n2) return { label: 'Thiếu cân (< -2SD)', color: '#e74c3c' };
-  if (weightKg < (ref.sd_n1 ?? ref.median)) return { label: 'Nguy cơ thiếu cân', color: '#f39c12' };
-  if (weightKg <= (ref.sd_p1 ?? ref.median)) return { label: 'Bình thường ✓', color: '#27ae60' };
-  if (weightKg <= ref.sd_p2) return { label: 'Thừa cân nhẹ', color: '#f39c12' };
-  return { label: 'Thừa cân (> +2SD)', color: '#e74c3c' };
+  if (weightKg < ref.sd_n2) {
+    return { 
+      label: 'Thấp hơn vùng tham khảo', 
+      color: '#7F8E86', 
+      sd: '< -2SD',
+      detail: 'Dựa trên vùng tham khảo WHO theo tuổi và giới tính. Chỉ mang tính theo dõi, không thay thế đánh giá của bác sĩ.' 
+    };
+  }
+  if (weightKg <= ref.sd_p2) {
+    return { 
+      label: 'Trong vùng tham khảo', 
+      color: '#5FAF82', 
+      sd: '-2SD đến +2SD',
+      detail: 'Bé đang phát triển tốt trong khoảng chuẩn an toàn của WHO.' 
+    };
+  }
+  return { 
+    label: 'Cao hơn vùng tham khảo', 
+    color: '#D18D5C', 
+    sd: '> +2SD',
+    detail: 'Dựa trên vùng tham khảo WHO theo tuổi và giới tính. Chỉ mang tính theo dõi, không thay thế đánh giá của bác sĩ.' 
+  };
 }

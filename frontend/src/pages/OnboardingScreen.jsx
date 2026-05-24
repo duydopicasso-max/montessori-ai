@@ -93,7 +93,8 @@ export default function OnboardingScreen({ onComplete }) {
         const childKey = i === 0 ? 'baby-a' : i === 1 ? 'baby-b' : 'baby-c';
         const childOrder = i;
         const babyName = baby.name.trim() || (numBabies > 1 ? baby.label : 'Bé yêu');
-        const bDob = baby.dob || new Date().toISOString().split('T')[0];
+        // If no dob provided, store null (not today) so GrowthScreen can prompt properly
+        const bDob = baby.dob || null;
 
         const babyDocData = {
           id: bId,
@@ -121,11 +122,13 @@ export default function OnboardingScreen({ onComplete }) {
           const bWeight = parseFloat(baby.birthWeight) || null;
           const bHeight = parseFloat(baby.birthHeight) || null;
           const bHead = parseFloat(baby.birthHeadCircumference) || null;
+          // Use dob for log date; if dob is null, use today as fallback for the log date only
+          const logDate = bDob || new Date().toISOString().split('T')[0];
 
           if (bWeight !== null || bHeight !== null || bHead !== null) {
             const logRef = doc(collection(db, 'users', user.uid, 'babies', bId, 'growthLogs'));
             await setDoc(logRef, {
-              date: bDob,
+              date: logDate,
               weight: bWeight,
               height: bHeight,
               head: bHead,
@@ -138,7 +141,7 @@ export default function OnboardingScreen({ onComplete }) {
             const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
             const activityLogRef = doc(collection(db, 'users', user.uid, 'babies', bId, 'activityLogs'));
             await setDoc(activityLogRef, {
-              date: bDob,
+              date: logDate,
               time: formattedTime,
               type: 'growth',
               weightKg: bWeight,
@@ -337,14 +340,22 @@ export default function OnboardingScreen({ onComplete }) {
                         </div>
                       </div>
                       <div className="input-group">
-                        <label className="input-label">Ngày sinh</label>
+                        <label className="input-label">
+                          Ngày sinh <span style={{ color: '#5FAF82', fontSize: '11px', fontWeight: '600' }}>— quan trọng để tính tuổi bé</span>
+                        </label>
                         <button
                           type="button"
                           className="cs-date-trigger-btn"
                           onClick={() => setActiveDobCalendarIdx(idx)}
+                          style={!baby.dob ? { borderColor: 'rgba(95,175,130,0.5)', background: 'rgba(95,175,130,0.04)' } : {}}
                         >
-                          <span style={{ fontSize: '15px' }}>📅</span> {fmtDisplay(baby.dob) || 'Chọn ngày sinh của bé'}
+                          <span style={{ fontSize: '15px' }}>📅</span> {fmtDisplay(baby.dob) || <span style={{ color: '#5FAF82' }}>Chọn ngày sinh của bé</span>}
                         </button>
+                        {!baby.dob && (
+                          <p style={{ margin: '4px 0 0 2px', fontSize: '11.5px', color: '#5FAF82', fontWeight: '500' }}>
+                            Nhập ngày sinh giúp app theo dõi tăng trưởng theo chuẩn WHO chính xác
+                          </p>
+                        )}
                       </div>
                       <div className="metrics-grid">
                         <div className="metric-group">

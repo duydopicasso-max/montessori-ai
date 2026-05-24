@@ -794,6 +794,11 @@
   to { transform: scale(1); opacity: 1; }
 }
 
+@keyframes csSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 .cs-modal-header {
   display: flex;
   justify-content: space-between;
@@ -1183,5 +1188,210 @@
   background-color: white !important;
   box-shadow: 0 0 0 3px rgba(92, 158, 122, 0.1);
 }
+
+/* ─────────────────────────────────────────────────────────
+   iOS-STYLE BOTTOM SHEET FOR BABY INFO EDITING
+   ───────────────────────────────────────────────────────── */
+.cs-bottom-sheet-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(30, 74, 51, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 99990;
+  animation: csFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  touch-action: auto;
+}
+
+.cs-bottom-sheet-box {
+  background: var(--warm-white);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 92vh;
+  box-shadow: 0 -10px 40px rgba(47, 107, 79, 0.12);
+  animation: csSlideUp 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+  border: 1px solid rgba(92, 158, 122, 0.12);
+  border-bottom: none;
+}
+
+/* Handle line for iOS sheet indicator */
+.cs-bottom-sheet-handle {
+  width: 36px;
+  height: 5px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+}
+
+.cs-segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 3px;
+  border-radius: 12px;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.cs-segment-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cs-segment-btn.active {
+  background: white;
+  color: #2F6B4F;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.cs-segment-btn.active.boy {
+  color: #2E5A88;
+}
+
+.cs-segment-btn.active.girl {
+  color: #9C5478;
+}
+
+.cs-segment-btn.active.other {
+  color: #555555;
+}
+
+/* ─────────────────────────────────────────────────────────
+   PROFILE SUMMARY CARD
+   ───────────────────────────────────────────────────────── */
+.baby-profile-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--surface-1);
+  border-radius: 16px;
+  border: 1px solid rgba(95, 175, 130, 0.08);
+  gap: 12px;
+}
+
+.baby-profile-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.baby-profile-avatar {
+  font-size: 28px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  box-shadow: 0 4px 12px rgba(47, 107, 79, 0.05);
+  border: 1px solid rgba(95, 175, 130, 0.1);
+}
+
+.baby-profile-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 2px 0;
+}
+
+.baby-profile-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0 0 1px 0;
+}
+
+.baby-profile-dob {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8C9C90;
+  margin: 0;
+}
+
+.baby-profile-edit-btn {
+  background: white;
+  border: 1.5px solid rgba(95, 175, 130, 0.22);
+  color: #2F6B4F;
+  font-weight: 700;
+  font-size: 12.5px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.baby-profile-edit-btn:hover {
+  background: rgba(95, 175, 130, 0.06);
+  border-color: rgba(95, 175, 130, 0.35);
+}
+
+.birth-metric-box {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #EEF2EF;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(47, 107, 79, 0.02);
+  transition: all 0.2s ease;
+}
+
+.who-disclaimer-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(140, 140, 140, 0.05);
+  border: 1px dashed rgba(140, 140, 140, 0.3);
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 8px 0 14px 0;
+}
+
+.who-disclaimer-text {
+  font-size: 12px;
+  color: #555555;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.who-disclaimer-btn {
+  background: white;
+  border: 1px solid #999;
+  color: #444;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 
 

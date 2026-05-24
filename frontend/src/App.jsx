@@ -159,7 +159,12 @@ export default function App() {
                 : (data.babies || subcollectionBabies);
               // Remove 'babies' from data spread to avoid overriding subcollection data
               const { babies: _ignoredBabies, ...restData } = data;
-              return { user: firebaseUser, babies: fallbackBabies, ...restData };
+              return {
+                user: firebaseUser,
+                babies: fallbackBabies,
+                _userDocBabies: data.babies || [],  // Keep user doc babies as fallback for dob merge
+                ...restData
+              };
             });
 
             if (!babiesUnsub) {
@@ -171,7 +176,16 @@ export default function App() {
                 babiesLoadedFromSubcollection = true;
                 setProfile(prev => {
                   if (!prev) return null;
-                  return { ...prev, babies: babiesList };
+                  // Merge: if subcollection baby is missing dob, use fallback from user doc babies
+                  const userDocBabies = prev._userDocBabies || [];
+                  const mergedBabies = babiesList.map(subBaby => {
+                    if (!subBaby.dob) {
+                      const fallback = userDocBabies.find(b => b.id === subBaby.id || b.childKey === subBaby.childKey);
+                      if (fallback?.dob) return { ...subBaby, dob: fallback.dob };
+                    }
+                    return subBaby;
+                  });
+                  return { ...prev, babies: mergedBabies };
                 });
               }, (error) => {
                 console.error('[App] Babies load error:', error);
