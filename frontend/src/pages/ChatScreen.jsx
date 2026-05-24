@@ -3122,10 +3122,14 @@ ${logsDesc}`;
       const height = vv ? (vv.height || window.innerHeight) : window.innerHeight;
       if (window.innerWidth < 640) {
         const bottomOffset = Math.max(0, window.innerHeight - (offsetTop + height));
-        setViewportStyle({
-          bottom: isNaN(bottomOffset) ? '0px' : `${bottomOffset}px`,
-          maxHeight: isNaN(height) ? '80vh' : `${height * 0.9}px`
-        });
+        if (bottomOffset > 40) {
+          setViewportStyle({
+            bottom: `${bottomOffset}px`,
+            maxHeight: `${height * 0.9}px`
+          });
+        } else {
+          setViewportStyle({});
+        }
       } else {
         setViewportStyle({});
       }
@@ -3150,10 +3154,14 @@ ${logsDesc}`;
       const height = vv ? (vv.height || window.innerHeight) : window.innerHeight;
       if (window.innerWidth < 640) {
         const bottomOffset = Math.max(0, window.innerHeight - (offsetTop + height));
-        setChatViewportStyle({
-          bottom: isNaN(bottomOffset) ? '0px' : `${bottomOffset}px`,
-          maxHeight: isNaN(height) ? '90vh' : `${height * 0.9}px`
-        });
+        if (bottomOffset > 40) {
+          setChatViewportStyle({
+            bottom: `${bottomOffset}px`,
+            maxHeight: `${height * 0.9}px`
+          });
+        } else {
+          setChatViewportStyle({});
+        }
       } else {
         setChatViewportStyle({});
       }
@@ -3560,8 +3568,9 @@ ${logsDesc}`;
       {/* ──────────────────────────────────────────────────────── */}
       {/* 💬 MONTESSORI AI CHAT SLIDE-UP MODAL (90% HEIGHT) */}
       {isChatOpen && createPortal(
-        <div className="chat-slide-up-modal-overlay" onClick={handleAttemptCloseChat}>
-          <div className="chat-slide-up-content-panel animate-slide-up" onClick={e => e.stopPropagation()} style={chatViewportStyle} onFocusCapture={handleFocusCapture}>
+        <>
+          <div className="chat-slide-up-modal-overlay" onClick={handleAttemptCloseChat} />
+          <div className="chat-slide-up-content-panel animate-slide-up" style={chatViewportStyle} onFocusCapture={handleFocusCapture}>
             
             {/* Chat Header inside sliding panel */}
             <header className="chat-sliding-header">
@@ -3659,15 +3668,16 @@ ${logsDesc}`;
             </div>
 
           </div>
-        </div>,
+        </>,
         document.body
       )}
 
       {/* ──────────────────────────────────────────────────────── */}
       {/* 📥 4 INPUT TRACKER BOTTOM SHEETS (70% HEIGHT) */}
       {activeBottomSheet && createPortal(
-        <div className="bottom-sheet-backdrop-overlay" onClick={handleAttemptCloseSheet}>
-          <div className="bottom-sheet-content-panel animate-slide-up" onClick={e => e.stopPropagation()} style={viewportStyle} onFocusCapture={handleFocusCapture}>
+        <>
+          <div className="bottom-sheet-backdrop-overlay" onClick={handleAttemptCloseSheet} />
+          <div className="bottom-sheet-content-panel animate-slide-up" style={viewportStyle} onFocusCapture={handleFocusCapture}>
             
             {/* Sliding Header top notch bar */}
             <div className="sheet-drag-handle-pill" />
@@ -6510,7 +6520,7 @@ ${logsDesc}`;
             )}
 
           </div>
-        </div>,
+        </>,
         document.body
       )}
 

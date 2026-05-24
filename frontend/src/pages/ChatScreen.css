@@ -1395,6 +1395,12 @@
 }
 
 .chat-slide-up-content-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  z-index: 1002;
   height: 90%;
   width: 100%;
   max-width: 680px;
@@ -1672,6 +1678,12 @@
 }
 
 .bottom-sheet-content-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  z-index: 99991;
   height: auto;
   max-height: 75%;
   width: 100%;
