@@ -220,7 +220,7 @@ export default function App() {
   const sharedProfile = { ...profile, user: authUser, momName, childName: babyLabel };
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" aria-label="Montessori AI App">
 
       {/* ── TOP BAR (mobile only) ── */}
       {activeTab !== 'chat' && (

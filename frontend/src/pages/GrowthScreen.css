@@ -1089,3 +1089,99 @@
   line-height: 1.4;
 }
 
+/* ─────────────────────────────────────────────────────────
+   COLLAPSIBLE PREGNANCY HISTORY CARD
+   ───────────────────────────────────────────────────────── */
+.pregnancy-history-card {
+  background: var(--warm-white);
+  border-radius: 20px;
+  border: 1.5px solid rgba(92, 158, 122, 0.09);
+  box-shadow: 0 2px 12px rgba(47, 107, 79, 0.06);
+  overflow: hidden;
+  margin-top: 14px;
+}
+
+.history-toggle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  text-align: left;
+}
+
+.history-toggle-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.history-toggle-icon {
+  transition: transform 0.3s ease;
+  color: var(--sage);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-toggle-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.history-content {
+  padding: 0 20px 20px;
+  animation: csHistorySlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes csHistorySlideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─────────────────────────────────────────────────────────
+   BABY OVERVIEW CARD & AVATAR
+   ───────────────────────────────────────────────────────── */
+.baby-overview-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.baby-overview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 18px rgba(47, 107, 79, 0.09);
+}
+
+.baby-avatar-circle.boy {
+  background: rgba(95, 175, 130, 0.15) !important;
+  color: #2F6B4F !important;
+}
+
+.baby-avatar-circle.girl {
+  background: rgba(212, 232, 220, 0.6) !important;
+  color: #2F6B4F !important;
+}
+
+.cs-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232F6B4F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  padding-right: 40px !important;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.cs-select:focus {
+  border-color: var(--sage) !important;
+  background-color: white !important;
+  box-shadow: 0 0 0 3px rgba(92, 158, 122, 0.1);
+}
+
+

@@ -151,21 +151,64 @@ const removePendingFromLocalStorage = (visitId) => {
    ═══════════════════════════════════════════════════════════ */
 export default function GrowthScreen({ profile, setActiveTab, pendingAction, onConsumePendingAction }) {
   const userStatus = profile?.status || 'born';
-  const isTwin     = (profile?.numBabies || pregnancyData?.babyCount || 1) >= 2;
   const userId     = profile?.user?.uid;
   const babies     = profile?.babies || [];
 
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
-  const [selectedBaby, setSelectedBaby] = useState(0);
+  const [selectedBaby, setSelectedBaby] = useState(() => {
+    return (profile?.numBabies || 1) >= 2 ? 'overview' : 0;
+  });
   const [babyOverrides, setBabyOverrides] = useState({});
   const [logs, setLogs]                 = useState([]);
   const [pregnancyData, setPregnancyData] = useState(null);
+  const [babyLogs, setBabyLogs]         = useState({});
+  const [pregnancyVisits, setPregnancyVisits] = useState([]);
+
+  // EDD near-due banner state
+  const [dismissedNearDueBannerTime, setDismissedNearDueBannerTime] = useState(() => {
+    try {
+      const hideUntil = parseInt(localStorage.getItem('dismissedNearDueBannerUntil') || '0');
+      return hideUntil;
+    } catch {
+      return 0;
+    }
+  });
+
+  // Confirm birth bottom sheet states
+  const [showConfirmBirthSheet, setShowConfirmBirthSheet] = useState(false);
+  const [savingBirth, setSavingBirth]                     = useState(false);
+  const [showBirthSuccessModal, setShowBirthSuccessModal] = useState(false);
+
+  // Form inputs for birth confirmation
+  const [birthNames, setBirthNames]   = useState(['', '', '']);
+  const [birthGenders, setBirthGenders] = useState(['girl', 'girl', 'girl']);
+  const [birthWeights, setBirthWeights] = useState(['', '', '']);
+  const [birthHeights, setBirthHeights] = useState(['', '', '']);
+  const [birthHeads, setBirthHeads]     = useState(['', '', '']);
+  const [birthTime, setBirthTime]       = useState('');
+  const [birthDate, setBirthDate]       = useState(() => new Date().toISOString().split('T')[0]);
+  const [sameBirthDate, setSameBirthDate] = useState(true);
+  const [birthDates, setBirthDates]     = useState([
+    new Date().toISOString().split('T')[0],
+    new Date().toISOString().split('T')[0],
+    new Date().toISOString().split('T')[0]
+  ]);
+
+  // Date picker state for birth confirmation sheet
+  const [activeBirthDatePickerIndex, setActiveBirthDatePickerIndex] = useState(null);
+  const [showBirthDatePicker, setShowBirthDatePicker] = useState(false);
+
+  const isTwin     = (profile?.numBabies || pregnancyData?.babyCount || 1) >= 2;
   const nameParts  = (pregnancyData?.babyName || '').split('&');
   const babyAName  = nameParts[0]?.trim() || 'Bé A';
   const babyBName  = nameParts[1]?.trim() || 'Bé B';
   const [showMeasureForm, setShowMeasureForm] = useState(false);
   const [showVisitForm, setShowVisitForm]     = useState(false);
+
+  // Active child measurement form target (in case of multiple babies)
+  const [measureFormBabyIndex, setMeasureFormBabyIndex] = useState(0);
+
   const [measureForm, setMeasureForm] = useState({
     date: new Date().toISOString().split('T')[0],
     weight: '', height: '', head: ''
@@ -281,14 +324,134 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
 
   /* ── Resolved baby ── */
-  const rawBaby  = babies[selectedBaby] || {};
-  const override = babyOverrides[selectedBaby] || {};
+  const currentBabyIndex = typeof selectedBaby === 'number' ? selectedBaby : 0;
+  const rawBaby  = babies[currentBabyIndex] || {};
+  const override = babyOverrides[currentBabyIndex] || {};
   const baby     = { ...rawBaby, ...override };
-  const babyId   = (rawBaby.id || rawBaby.name || `baby-${selectedBaby}`)
+  const babyId   = (rawBaby.id || rawBaby.name || `baby-${currentBabyIndex}`)
     .toLowerCase().replace(/\s+/g, '-');
   const gender    = baby.gender || 'girl';
   const dob       = baby.dob || '';
   const ageMonths = getAgeInMonths(dob);
+
+  // Initialize birth form names when pregnancyData is loaded
+  useEffect(() => {
+    if (pregnancyData?.babyName) {
+      const parts = pregnancyData.babyName.split('&').map(p => p.trim());
+      setBirthNames([parts[0] || '', parts[1] || '', parts[2] || '']);
+    }
+  }, [pregnancyData]);
+
+  /* ── Near-due checker ── */
+  const isNearDue = (() => {
+    if (userStatus !== 'pregnant' || !pregnancyData?.edd) return false;
+    try {
+      const hideUntil = parseInt(localStorage.getItem('dismissedNearDueBannerUntil') || '0');
+      if (Date.now() < hideUntil) return false;
+    } catch {}
+
+    const now = new Date();
+    const eddDate = new Date(pregnancyData.edd);
+    eddDate.setHours(0,0,0,0);
+    now.setHours(0,0,0,0);
+    const diffTime = eddDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 3;
+  })();
+
+  const handleDismissBanner = (days) => {
+    const hideUntil = Date.now() + (days * 24 * 60 * 60 * 1000);
+    localStorage.setItem('dismissedNearDueBannerUntil', hideUntil.toString());
+    setDismissedNearDueBannerTime(hideUntil);
+  };
+
+  const handleConfirmBirth = async (e) => {
+    if (e) e.preventDefault();
+    if (!userId || savingBirth) return;
+
+    setSavingBirth(true);
+    const confirmedBabyCount = pregnancyData?.babyCount || profile?.numBabies || 1;
+    
+    try {
+      const batch = writeBatch(db);
+      const updatedBabies = [];
+
+      for (let i = 0; i < confirmedBabyCount; i++) {
+        const bId = i === 0 ? 'baby-a' : i === 1 ? 'baby-b' : 'baby-c';
+        const babyName = birthNames[i].trim() || (confirmedBabyCount > 1 ? `Bé ${String.fromCharCode(65 + i)}` : 'Bé yêu');
+        const babyDob = sameBirthDate ? birthDate : birthDates[i];
+        const babyGender = birthGenders[i];
+
+        const bWeight = parseFloat(birthWeights[i]) || null;
+        const bHeight = parseFloat(birthHeights[i]) || null;
+        const bHead = parseFloat(birthHeads[i]) || null;
+
+        // 1. Create baby document under users/{userId}/babies/{bId}
+        const babyDocRef = doc(db, 'users', userId, 'babies', bId);
+        batch.set(babyDocRef, {
+          id: bId,
+          name: babyName,
+          dob: babyDob,
+          gender: babyGender,
+          birthWeight: bWeight,
+          birthHeight: bHeight,
+          birthHeadCircumference: bHead,
+          linkedPregnancyId: 'pregnancy',
+          linkedFetusId: bId,
+          createdAt: serverTimestamp()
+        }, { merge: true });
+
+        // 2. Create the first growth log if birth indicators are provided
+        if (bWeight !== null || bHeight !== null || bHead !== null) {
+          const logRef = doc(collection(db, 'users', userId, 'babies', bId, 'growthLogs'));
+          batch.set(logRef, {
+            date: babyDob,
+            weight: bWeight,
+            height: bHeight,
+            head: bHead,
+            bmi: calcBMI(bWeight, bHeight),
+            note: 'Chỉ số lúc sinh',
+            createdAt: serverTimestamp()
+          });
+        }
+
+        updatedBabies.push({
+          id: bId,
+          label: confirmedBabyCount > 1 ? `Bé ${String.fromCharCode(65 + i)}` : 'Bé yêu',
+          name: babyName,
+          gender: babyGender,
+          dob: babyDob
+        });
+      }
+
+      // 3. Update pregnancy status to completed
+      const pregDocRef = doc(db, 'users', userId, 'tracking', 'pregnancy');
+      batch.set(pregDocRef, {
+        status: 'completed',
+        deliveredAt: birthDate,
+        completedAt: serverTimestamp()
+      }, { merge: true });
+
+      // 4. Update user status to parent
+      const userDocRef = doc(db, 'users', userId);
+      batch.set(userDocRef, {
+        status: 'parent',
+        numBabies: confirmedBabyCount,
+        babies: updatedBabies
+      }, { merge: true });
+
+      // Execute batch
+      await batch.commit();
+
+      setSavingBirth(false);
+      setShowConfirmBirthSheet(false);
+      setShowBirthSuccessModal(true);
+    } catch (err) {
+      console.error('Birth confirmation failed:', err);
+      setSavingBirth(false);
+      alert('Không thể lưu thông tin. Mẹ vui lòng kiểm tra kết nối mạng nhé.');
+    }
+  };
 
   /* ── Load data ── */
   const loadData = useCallback(async () => {
@@ -297,24 +460,48 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     setError(null);
     try {
       if (userStatus === 'parent') {
-        if (!babyId) { setLogs([]); setLoading(false); return; }
-        const q = query(
-          collection(db, 'users', userId, 'babies', babyId, 'growthLogs'),
-          orderBy('date', 'asc')
-        );
-        const snap = await getDocs(q);
-        setLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      } else {
+        const logsMap = {};
+        for (let i = 0; i < babies.length; i++) {
+          const b = babies[i];
+          const bId = (b.id || b.name || `baby-${i}`).toLowerCase().replace(/\s+/g, '-');
+          const q = query(
+            collection(db, 'users', userId, 'babies', bId, 'growthLogs'),
+            orderBy('date', 'asc')
+          );
+          const snap = await getDocs(q);
+          logsMap[bId] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+        setBabyLogs(logsMap);
+
+        const activeIdx = typeof selectedBaby === 'number' ? selectedBaby : 0;
+        const activeBaby = babies[activeIdx] || {};
+        const activeBabyId = (activeBaby.id || activeBaby.name || `baby-${activeIdx}`).toLowerCase().replace(/\s+/g, '-');
+        setLogs(logsMap[activeBabyId] || []);
+
+        // Also load pregnancy history
         const pregRef  = doc(db, 'users', userId, 'tracking', 'pregnancy');
         const pregSnap = await getDoc(pregRef);
         setPregnancyData(pregSnap.exists() ? pregSnap.data() : null);
+
         const vq = query(
           collection(db, 'users', userId, 'pregnancyVisits'),
           orderBy('date', 'desc')
         );
         const vSnap = await getDocs(vq);
         const fetchedLogs = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Filter out any logs that are pending delete in localStorage
+        const pendingList = getPendingDeletesFromStorage().map(item => item.visitId);
+        setPregnancyVisits(fetchedLogs.filter(log => !pendingList.includes(log.id)));
+      } else {
+        const pregRef  = doc(db, 'users', userId, 'tracking', 'pregnancy');
+        const pregSnap = await getDoc(pregRef);
+        setPregnancyData(pregSnap.exists() ? pregSnap.data() : null);
+
+        const vq = query(
+          collection(db, 'users', userId, 'pregnancyVisits'),
+          orderBy('date', 'desc')
+        );
+        const vSnap = await getDocs(vq);
+        const fetchedLogs = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         const pendingList = getPendingDeletesFromStorage().map(item => item.visitId);
         setLogs(fetchedLogs.filter(log => !pendingList.includes(log.id)));
       }
@@ -324,7 +511,16 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     } finally {
       setLoading(false);
     }
-  }, [userId, babyId, userStatus, selectedBaby]);
+  }, [userId, userStatus, selectedBaby, babies]);
+
+  useEffect(() => {
+    if (userStatus === 'parent' && Object.keys(babyLogs).length > 0) {
+      const activeIdx = typeof selectedBaby === 'number' ? selectedBaby : 0;
+      const activeBaby = babies[activeIdx] || {};
+      const activeBabyId = (activeBaby.id || activeBaby.name || `baby-${activeIdx}`).toLowerCase().replace(/\s+/g, '-');
+      setLogs(babyLogs[activeBabyId] || []);
+    }
+  }, [selectedBaby, babyLogs, userStatus, babies]);
 
   useEffect(() => {
     loadData();
@@ -410,19 +606,40 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
   /* ── Save baby measurement ── */
   const handleSaveMeasure = async () => {
-    if (!userId || !babyId || saving) return;
+    const targetIdx = babies.length > 1 ? measureFormBabyIndex : currentBabyIndex;
+    const targetBaby = babies[targetIdx] || {};
+    const targetBabyId = (targetBaby.id || targetBaby.name || `baby-${targetIdx}`)
+      .toLowerCase().replace(/\s+/g, '-');
+
+    if (!userId || !targetBabyId || saving) return;
+
+    const wVal = parseFloat(measureForm.weight) || null;
+    const hVal = parseFloat(measureForm.height) || null;
+    const headVal = parseFloat(measureForm.head) || null;
+
+    if (wVal === null && hVal === null && headVal === null) {
+      alert("Mẹ nhập ít nhất một chỉ số trước khi lưu nhé.");
+      return;
+    }
+
     setSaving(true);
     try {
       const entry = {
         date:   measureForm.date,
-        weight: parseFloat(measureForm.weight) || null,
-        height: parseFloat(measureForm.height) || null,
-        head:   parseFloat(measureForm.head)   || null,
-        bmi:    calcBMI(parseFloat(measureForm.weight), parseFloat(measureForm.height)),
+        weight: wVal,
+        height: hVal,
+        head:   headVal,
+        bmi:    calcBMI(wVal, hVal),
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, 'users', userId, 'babies', babyId, 'growthLogs'), entry);
-      setLogs(prev => [...prev, entry].sort((a, b) => a.date.localeCompare(b.date)));
+      await addDoc(collection(db, 'users', userId, 'babies', targetBabyId, 'growthLogs'), entry);
+      
+      setBabyLogs(prev => {
+        const currentLogs = prev[targetBabyId] || [];
+        const newLogs = [...currentLogs, entry].sort((a, b) => a.date.localeCompare(b.date));
+        return { ...prev, [targetBabyId]: newLogs };
+      });
+
       setMeasureForm({ date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '' });
       setShowMeasureForm(false);
     } catch (e) { console.error(e); }
@@ -791,25 +1008,33 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   };
 
 
-  /* ── Chart data builder (WHO baby growth) ── */
-  const buildChartData = (type) => {
-    const whoRef = getWHOData(gender, type);
+  /* ── Chart comparison data builder (multi-baby growth) ── */
+  const buildComparisonChartData = (type) => {
+    if (babies.length === 0) return [];
+    const refGender = babies[0]?.gender || 'girl';
+    const whoRef = getWHOData(refGender, type);
     return whoRef.map(ref => {
-      const matchLog = logs.find(l => {
-        if (!l.date || !dob) return false;
-        const lAge = Math.round((new Date(l.date) - new Date(dob)) / (1000 * 60 * 60 * 24 * 30.4375));
-        return Math.abs(lAge - ref.month) <= 1;
-      });
-      const val = matchLog
-        ? (type === 'weight' ? matchLog.weight : type === 'height' ? matchLog.height : matchLog.head)
-        : null;
-      return {
+      const dataPoint = {
         month:  ref.month,
         label:  `${ref.month}th`,
         lower:  ref.sd_n2,
         band:   parseFloat((ref.sd_p2 - ref.sd_n2).toFixed(2)),
-        actual: val ? parseFloat(val) : null,
       };
+      babies.forEach((b, i) => {
+        const bId = (b.id || b.name || `baby-${i}`).toLowerCase().replace(/\s+/g, '-');
+        const bDob = b.dob || '';
+        const bLogs = babyLogs[bId] || [];
+        const matchLog = bLogs.find(l => {
+          if (!l.date || !bDob) return false;
+          const lAge = Math.round((new Date(l.date) - new Date(bDob)) / (1000 * 60 * 60 * 24 * 30.4375));
+          return Math.abs(lAge - ref.month) <= 1;
+        });
+        const val = matchLog
+          ? (type === 'weight' ? matchLog.weight : type === 'height' ? matchLog.height : matchLog.head)
+          : null;
+        dataPoint[`actual_${i}`] = val ? parseFloat(val) : null;
+      });
+      return dataPoint;
     });
   };
 
@@ -849,20 +1074,81 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         </div>
       </header>
 
-      {/* ── BABY TABS (parent, multi-baby) ── */}
+      {/* ── NEAR DUE BANNER ── */}
+      {isNearDue && (
+        <div className="near-due-banner" style={{
+          backgroundColor: '#F0FAF4',
+          border: '1.5px solid rgba(95, 175, 130, 0.25)',
+          borderRadius: '16px',
+          padding: '16px',
+          margin: '14px 16px 0 16px',
+          boxShadow: '0 2px 10px rgba(47, 107, 79, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '18px' }}>🌿</span>
+            <strong style={{ color: '#1E4A33', fontSize: '14.5px' }}>Gần đến ngày gặp bé rồi mẹ</strong>
+          </div>
+          <p style={{ color: '#4F7C62', fontSize: '13px', margin: '0 0 12px 0', lineHeight: '1.4' }}>
+            Mong mẹ và bé luôn bình an. Khi bé đã chào đời, mẹ có thể cập nhật để app chuyển sang theo dõi tăng trưởng sau sinh.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="primary-btn"
+              style={{ flex: 1, padding: '8px 12px', fontSize: '12.5px', boxShadow: 'none' }}
+              onClick={() => setShowConfirmBirthSheet(true)}
+            >
+              Đã sinh bé
+            </button>
+            <button
+              type="button"
+              className="outline-btn"
+              style={{ flex: 1, padding: '7px 12px', fontSize: '12.5px', border: '1px solid #5FAF82', color: '#2F6B4F', background: 'transparent' }}
+              onClick={() => handleDismissBanner(1)}
+            >
+              Nhắc lại sau
+            </button>
+            <button
+              type="button"
+              className="outline-btn"
+              style={{ flex: 1, padding: '7px 12px', fontSize: '12.5px', border: '1px solid #5FAF82', color: '#2F6B4F', background: 'transparent' }}
+              onClick={() => handleDismissBanner(3)}
+            >
+              Chưa sinh
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── BABY TABS (parent, multi-baby selector) ── */}
       {userStatus === 'parent' && babies.length > 1 && (
         <div className="baby-tabs">
+          <button
+            type="button"
+            className={`baby-tab ${selectedBaby === 'overview' ? 'active' : ''}`}
+            onClick={() => setSelectedBaby('overview')}
+          >
+            Tổng quan
+          </button>
           {babies.map((b, i) => {
             const ov = babyOverrides[i] || {};
             const n  = ov.name || b.name || `Bé ${String.fromCharCode(65 + i)}`;
             return (
               <button
                 key={i}
+                type="button"
                 className={`baby-tab ${selectedBaby === i ? 'active' : ''}`}
                 onClick={() => setSelectedBaby(i)}
               >{n}</button>
             );
           })}
+          <button
+            type="button"
+            className={`baby-tab ${selectedBaby === 'compare' ? 'active' : ''}`}
+            onClick={() => setSelectedBaby('compare')}
+          >
+            So sánh
+          </button>
         </div>
       )}
 
@@ -1193,6 +1479,271 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
           document.body
         )}
 
+        {showBirthDatePicker && createPortal(
+          <AppDatePicker
+            value={activeBirthDatePickerIndex === null ? birthDate : birthDates[activeBirthDatePickerIndex]}
+            onConfirm={(dateStr) => {
+              if (activeBirthDatePickerIndex === null) {
+                setBirthDate(dateStr);
+              } else {
+                setBirthDates(prev => {
+                  const copy = [...prev];
+                  copy[activeBirthDatePickerIndex] = dateStr;
+                  return copy;
+                });
+              }
+              setShowBirthDatePicker(false);
+            }}
+            onCancel={() => setShowBirthDatePicker(false)}
+            dateType="birthDate"
+          />,
+          document.body
+        )}
+
+        {/* ── BIRTH CONFIRMATION BOTTOM SHEET ── */}
+        {showConfirmBirthSheet && createPortal(
+          <div className="cs-modal-overlay" onClick={() => setShowConfirmBirthSheet(false)}>
+            <div className="cs-modal-box" style={{ maxWidth: '460px', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+              <div className="cs-modal-header">
+                <h3 className="cs-modal-title">Chúc mừng mẹ và bé</h3>
+                <button type="button" className="cs-modal-close" onClick={() => setShowConfirmBirthSheet(false)}>
+                  <CloseIcon size={16} />
+                </button>
+              </div>
+              <form onSubmit={handleConfirmBirth} className="cs-modal-body" style={{ padding: '20px' }} onFocusCapture={(e) => {
+                const target = e.target;
+                if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                  setTimeout(() => {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }, 250);
+                }
+              }}>
+                <p style={{ fontSize: '13.5px', color: '#687E70', margin: '0 0 20px 0', lineHeight: '1.5', fontWeight: '500' }}>
+                  Một hành trình mới bắt đầu. Chúc mẹ, bé và gia đình luôn mạnh khỏe, bình an và nhiều yêu thương.
+                </p>
+
+                {((pregnancyData?.babyCount || profile?.numBabies || 1) <= 1 || sameBirthDate) && (
+                  <div className="cs-field-group" style={{ marginBottom: '16px' }}>
+                    <label className="cs-label">Ngày sinh của bé</label>
+                    <button
+                      type="button"
+                      className="cs-date-trigger-btn"
+                      onClick={() => {
+                        setActiveBirthDatePickerIndex(null);
+                        setShowBirthDatePicker(true);
+                      }}
+                      disabled={savingBirth}
+                    >
+                      <CalendarIcon size={15} color="#5FAF82" />
+                      <span>{fmtDisplay(birthDate) || 'Chọn ngày sinh'}</span>
+                    </button>
+                  </div>
+                )}
+
+                {(pregnancyData?.babyCount || profile?.numBabies || 1) > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                    <input
+                      type="checkbox"
+                      id="sameBirthDateCheckbox"
+                      checked={sameBirthDate}
+                      onChange={e => setSameBirthDate(e.target.checked)}
+                      disabled={savingBirth}
+                      style={{ accentColor: '#5FAF82', width: '16px', height: '16px' }}
+                    />
+                    <label htmlFor="sameBirthDateCheckbox" style={{ fontSize: '13px', fontWeight: '600', color: '#2F6B4F', cursor: 'pointer' }}>
+                      Các bé có cùng ngày sinh
+                    </label>
+                  </div>
+                )}
+
+                {Array.from({ length: pregnancyData?.babyCount || profile?.numBabies || 1 }).map((_, idx) => {
+                  const label = (pregnancyData?.babyCount || profile?.numBabies || 1) > 1 ? `Bé ${String.fromCharCode(65 + idx)}` : 'Thông tin của bé';
+                  return (
+                    <div key={idx} style={{
+                      padding: '16px',
+                      backgroundColor: '#F8FAF8',
+                      borderRadius: '16px',
+                      marginBottom: '16px',
+                      border: '1px solid #EEF2EF'
+                    }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '700', color: '#2F6B4F' }}>{label}</h4>
+                      
+                      {(pregnancyData?.babyCount || profile?.numBabies || 1) > 1 && !sameBirthDate && (
+                        <div className="cs-field-group" style={{ marginBottom: '12px' }}>
+                          <label className="cs-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: '#666' }}>Ngày sinh</label>
+                          <button
+                            type="button"
+                            className="cs-date-trigger-btn"
+                            onClick={() => {
+                              setActiveBirthDatePickerIndex(idx);
+                              setShowBirthDatePicker(true);
+                            }}
+                            disabled={savingBirth}
+                          >
+                            <CalendarIcon size={14} color="#5FAF82" />
+                            <span>{fmtDisplay(birthDates[idx])}</span>
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="cs-field-group" style={{ marginBottom: '12px' }}>
+                        <label className="cs-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: '#666' }}>Tên / Biệt danh</label>
+                        <input
+                          type="text"
+                          className="cs-input"
+                          placeholder="Ví dụ: Cốm, Bơ"
+                          value={birthNames[idx]}
+                          onChange={e => setBirthNames(prev => {
+                            const copy = [...prev];
+                            copy[idx] = e.target.value;
+                            return copy;
+                          })}
+                          disabled={savingBirth}
+                        />
+                      </div>
+
+                      <div className="cs-field-group" style={{ marginBottom: '12px' }}>
+                        <label className="cs-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: '#666' }}>Giới tính</label>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {[
+                            { value: 'girl', label: 'Bé gái' },
+                            { value: 'boy', label: 'Bé trai' },
+                            { value: 'other', label: 'Khác' }
+                          ].map(g => (
+                            <button
+                              key={g.value}
+                              type="button"
+                              onClick={() => setBirthGenders(prev => {
+                                const copy = [...prev];
+                                copy[idx] = g.value;
+                                return copy;
+                              })}
+                              disabled={savingBirth}
+                              style={{
+                                flex: 1,
+                                padding: '8px 10px',
+                                borderRadius: '10px',
+                                border: birthGenders[idx] === g.value ? '1.5px solid #5FAF82' : '1px solid #EEF2EF',
+                                backgroundColor: birthGenders[idx] === g.value ? '#F0F9F4' : '#FFFFFF',
+                                color: birthGenders[idx] === g.value ? '#2E7D32' : '#666666',
+                                fontWeight: birthGenders[idx] === g.value ? '700' : '500',
+                                fontSize: '12.5px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {g.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                        <div className="cs-field-group">
+                          <label className="cs-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: '#666' }}>Cân nặng (kg)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="cs-input"
+                            placeholder="3.2"
+                            value={birthWeights[idx]}
+                            onChange={e => setBirthWeights(prev => {
+                              const copy = [...prev];
+                              copy[idx] = e.target.value;
+                              return copy;
+                            })}
+                            disabled={savingBirth}
+                          />
+                        </div>
+                        <div className="cs-field-group">
+                          <label className="cs-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: '#666' }}>Chiều cao (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            className="cs-input"
+                            placeholder="50"
+                            value={birthHeights[idx]}
+                            onChange={e => setBirthHeights(prev => {
+                              const copy = [...prev];
+                              copy[idx] = e.target.value;
+                              return copy;
+                            })}
+                            disabled={savingBirth}
+                          />
+                        </div>
+                        <div className="cs-field-group">
+                          <label className="cs-label" style={{ fontSize: '11px', textTransform: 'uppercase', color: '#666' }}>Vòng đầu (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            className="cs-input"
+                            placeholder="34"
+                            value={birthHeads[idx]}
+                            onChange={e => setBirthHeads(prev => {
+                              const copy = [...prev];
+                              copy[idx] = e.target.value;
+                              return copy;
+                            })}
+                            disabled={savingBirth}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <button
+                    type="button"
+                    className="outline-btn"
+                    style={{ flex: 1 }}
+                    onClick={() => setShowConfirmBirthSheet(false)}
+                    disabled={savingBirth}
+                  >
+                    Để sau
+                  </button>
+                  <button
+                    type="submit"
+                    className="primary-btn"
+                    style={{ flex: 1, padding: '12px' }}
+                    disabled={savingBirth}
+                  >
+                    {savingBirth ? 'Đang lưu...' : 'Xác nhận đã sinh'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* ── BIRTH SUCCESS CONFIRM MODAL ── */}
+        {showBirthSuccessModal && createPortal(
+          <div className="cs-modal-overlay" style={{ zIndex: 99999 }}>
+            <div className="cs-confirm-box" style={{ maxWidth: '360px' }} onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🌱</div>
+              <h3 className="cs-confirm-title" style={{ fontSize: '17px', color: '#2F6B4F' }}>Chào mừng bé đến với gia đình</h3>
+              <p className="cs-confirm-text" style={{ fontSize: '13.5px', color: '#555555', margin: '8px 0 20px 0', lineHeight: '1.5' }}>
+                Chúc mẹ, bé và gia đình luôn bình an, khỏe mạnh và tràn đầy yêu thương.
+              </p>
+              <div className="cs-confirm-actions">
+                <button
+                  type="button"
+                  className="primary-btn"
+                  style={{ padding: '12px' }}
+                  onClick={() => {
+                    setShowBirthSuccessModal(false);
+                    loadData();
+                  }}
+                >
+                  Bắt đầu theo dõi tăng trưởng
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
 
         {/* ── CUSTOM RECALCULATION MODAL ── */}
         {showRecalcModal && createPortal(
@@ -1237,6 +1788,11 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         {/* ── PARENT VIEW ── */}
         {!loading && !error && userStatus === 'parent' && (
           <ParentView
+            selectedBaby={selectedBaby}
+            setSelectedBaby={setSelectedBaby}
+            babies={babies}
+            babyLogs={babyLogs}
+            pregnancyVisits={pregnancyVisits}
             baby={baby}
             dob={dob}
             ageLabel={ageLabel}
@@ -1251,6 +1807,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
             chartTab={chartTab}
             setChartTab={setChartTab}
             buildChartData={buildChartData}
+            buildComparisonChartData={buildComparisonChartData}
             editField={editField}
             editVal={editVal}
             startEdit={startEdit}
@@ -1263,6 +1820,9 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
             setMeasureForm={setMeasureForm}
             handleSaveMeasure={handleSaveMeasure}
             saving={saving}
+            measureFormBabyIndex={measureFormBabyIndex}
+            setMeasureFormBabyIndex={setMeasureFormBabyIndex}
+            setShowMeasureDateCalendar={setShowMeasureDateCalendar}
           />
         )}
       </div>
@@ -1837,6 +2397,15 @@ function PregnantView({
         <button className="primary-btn" onClick={onOpenCheckupSheet}>
           + Ghi nhận khám thai
         </button>
+
+        <button
+          type="button"
+          className="outline-btn mt-8"
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', border: '1px solid #5FAF82', color: '#2F6B4F', padding: '12px', borderRadius: '16px', background: 'transparent' }}
+          onClick={() => setShowConfirmBirthSheet(true)}
+        >
+          Cập nhật bé đã chào đời
+        </button>
       </div>
 
       {/* ── LATEST ULTRASOUND METRICS ── */}
@@ -2311,13 +2880,451 @@ function PregnantView({
    PARENT VIEW
 ═══════════════════════════════════════════════════════════ */
 function ParentView({
-  baby, dob, ageLabel, gender, ageMonths, logs,
-  curWeight, curHeight, curHead, latestLog, nutrition,
-  chartTab, setChartTab, buildChartData,
-  editField, editVal, startEdit, saveEdit, setEditField, setEditVal,
-  showMeasureForm, setShowMeasureForm, measureForm, setMeasureForm,
-  handleSaveMeasure, saving
+  selectedBaby,
+  setSelectedBaby,
+  babies,
+  babyLogs,
+  pregnancyVisits,
+  baby,
+  dob,
+  ageLabel,
+  gender,
+  ageMonths,
+  logs,
+  curWeight,
+  curHeight,
+  curHead,
+  latestLog,
+  nutrition,
+  chartTab,
+  setChartTab,
+  buildChartData,
+  buildComparisonChartData,
+  editField,
+  editVal,
+  startEdit,
+  saveEdit,
+  setEditField,
+  setEditVal,
+  showMeasureForm,
+  setShowMeasureForm,
+  measureForm,
+  setMeasureForm,
+  handleSaveMeasure,
+  saving,
+  measureFormBabyIndex,
+  setMeasureFormBabyIndex,
+  setShowMeasureDateCalendar
 }) {
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+
+  // Render collapsible pregnancy history at the bottom of the screens
+  const renderPregnancyHistory = () => {
+    if (!pregnancyVisits || pregnancyVisits.length === 0) return null;
+
+    return (
+      <div className="pregnancy-history-card">
+        <button
+          type="button"
+          className="history-toggle-header"
+          onClick={() => setHistoryExpanded(!historyExpanded)}
+        >
+          <div className="history-toggle-title">
+            <PregnancyFetusIcon />
+            <span>Xem lại lịch sử thai kỳ ({pregnancyVisits.length} lần khám)</span>
+          </div>
+          <div className={`history-toggle-icon ${historyExpanded ? 'expanded' : ''}`}>
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+        </button>
+        
+        {historyExpanded && (
+          <div className="history-content">
+            <div className="visit-list" style={{ marginTop: '10px' }}>
+              {pregnancyVisits.map((v, idx) => (
+                <div key={v.id || idx} className="visit-item">
+                  <div className="visit-item-row" style={{ justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="visit-date">{fmtDate(v.date)}</span>
+                      {v.week && (
+                        <span className="visit-week-tag">Tuần {v.week}</span>
+                      )}
+                    </div>
+                    {v.motherWeight && (
+                      <span className="visit-metric" style={{ fontSize: '11.5px', fontWeight: 700 }}>
+                        Cân nặng mẹ: {v.motherWeight} kg
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="visit-metrics-row">
+                    {v.bp && <span className="visit-metric">Huyết áp: {v.bp}</span>}
+                    {v.bpd && <span className="visit-metric">BPD: {v.bpd} mm</span>}
+                    {v.fl && <span className="visit-metric">FL: {v.fl} mm</span>}
+                    {v.efw && <span className="visit-metric">EFW: {v.efw} g</span>}
+                    {v.lh && <span className="visit-metric">Lượng ối: {v.lh}</span>}
+                  </div>
+
+                  {v.notes && (
+                    <p className="visit-notes" style={{ fontSize: '12.5px', margin: '4px 0 0' }}>{v.notes}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMeasureForm = () => {
+    return (
+      <div className="form-card">
+        <div className="form-card-header">
+          <span className="form-card-title">Thêm lần đo</span>
+          <button type="button" className="form-close-btn" onClick={() => setShowMeasureForm(false)}>
+            <CloseIcon />
+          </button>
+        </div>
+
+        {babies.length > 1 && (
+          <div className="form-group form-group-full">
+            <label>Chọn bé</label>
+            <select
+              value={measureFormBabyIndex}
+              onChange={e => setMeasureFormBabyIndex(parseInt(e.target.value))}
+              className="cs-select"
+              style={{
+                width: '100%',
+                padding: '11px 14px',
+                borderRadius: '12px',
+                border: '2px solid var(--cream-dark)',
+                background: 'var(--surface-1)',
+                fontFamily: 'Nunito, sans-serif',
+                fontSize: '15px',
+                fontWeight: 600,
+                outline: 'none',
+                color: 'var(--text-primary)'
+              }}
+              disabled={typeof selectedBaby === 'number'}
+            >
+              {babies.map((b, idx) => (
+                <option key={idx} value={idx}>
+                  {b.name || `Bé ${String.fromCharCode(65 + idx)}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="form-grid-2">
+          <div className="form-group">
+            <label><CalendarIcon size={13} /> Ngày đo</label>
+            <button
+              type="button"
+              className="cs-date-trigger-btn"
+              style={{ padding: '11px 14px', borderRadius: '12px' }}
+              onClick={() => setShowMeasureDateCalendar(true)}
+            >
+              {fmtDisplay(measureForm.date) || 'Chọn ngày'}
+            </button>
+          </div>
+          <div className="form-group">
+            <label><WeightIcon size={13} /> Cân nặng (kg)</label>
+            <input type="number" step="0.01" placeholder="8.5"
+              value={measureForm.weight}
+              onChange={e => setMeasureForm(f => ({ ...f, weight: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label><RulerIcon size={13} /> Chiều cao (cm)</label>
+            <input type="number" step="0.1" placeholder="72.5"
+              value={measureForm.height}
+              onChange={e => setMeasureForm(f => ({ ...f, height: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label><HeadCircleIcon size={13} /> Chu vi đầu (cm)</label>
+            <input type="number" step="0.1" placeholder="44.0"
+              value={measureForm.head}
+              onChange={e => setMeasureForm(f => ({ ...f, head: e.target.value }))} />
+          </div>
+        </div>
+        <button 
+          type="button"
+          className="primary-btn" 
+          disabled={saving} 
+          onClick={handleSaveMeasure}
+        >
+          {saving ? 'Đang lưu...' : 'Lưu lần đo'}
+        </button>
+      </div>
+    );
+  };
+
+  // 1. OVERVIEW VIEW
+  if (selectedBaby === 'overview') {
+    return (
+      <>
+        <div className="overview-grid" style={{ display: 'grid', gridTemplateColumns: babies.length > 1 ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr', gap: '14px' }}>
+          {babies.map((b, idx) => {
+            const bId = (b.id || b.name || `baby-${idx}`).toLowerCase().replace(/\s+/g, '-');
+            const bLogs = babyLogs[bId] || [];
+            const bLatest = bLogs[bLogs.length - 1];
+            const bWeight = parseFloat(bLatest?.weight || 0);
+            const bHeight = parseFloat(bLatest?.height || 0);
+            const bHead = parseFloat(bLatest?.head || 0);
+            const bDob = b.dob || '';
+            const bAgeMonths = getAgeInMonths(bDob);
+            const bAgeLabel = !bDob ? '—'
+              : bAgeMonths < 24 ? `${bAgeMonths} tháng tuổi`
+              : `${Math.floor(bAgeMonths / 12)} tuổi ${bAgeMonths % 12} tháng`;
+            const bNutrition = assessNutrition(bWeight, bAgeMonths, b.gender || 'girl');
+
+            return (
+              <div key={bId} className="growth-card baby-overview-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className={`baby-avatar-circle ${b.gender || 'girl'}`} style={{
+                      width: '40px', height: '40px', borderRadius: '50%',
+                      background: b.gender === 'boy' ? 'rgba(95, 175, 130, 0.15)' : 'rgba(212, 232, 220, 0.6)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '16px', fontWeight: 'bold', color: '#2F6B4F'
+                    }}>
+                      {b.name ? b.name.trim().charAt(0).toUpperCase() : 'B'}
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>{b.name || 'Bé yêu'}</h3>
+                      <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {b.gender === 'boy' ? 'Bé trai' : 'Bé gái'} · {bAgeLabel}
+                      </p>
+                    </div>
+                  </div>
+                  <button type="button" className="ghost-btn" style={{ padding: '6px 12px' }} onClick={() => setSelectedBaby(idx)}>
+                    Xem chi tiết
+                  </button>
+                </div>
+
+                <div className="latest-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  <div className="latest-metric" style={{ padding: '10px 6px', background: 'var(--surface-1)', borderRadius: '12px' }}>
+                    <div className="latest-metric-icon weight-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', margin: '0 auto 4px' }}><WeightIcon size={14} /></div>
+                    <span className="latest-metric-value" style={{ fontSize: '14px' }}>{bWeight > 0 ? `${bWeight} kg` : '—'}</span>
+                    <span className="latest-metric-label" style={{ fontSize: '9.5px' }}>Cân nặng</span>
+                  </div>
+                  <div className="latest-metric" style={{ padding: '10px 6px', background: 'var(--surface-1)', borderRadius: '12px' }}>
+                    <div className="latest-metric-icon height-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', margin: '0 auto 4px' }}><RulerIcon size={14} /></div>
+                    <span className="latest-metric-value" style={{ fontSize: '14px' }}>{bHeight > 0 ? `${bHeight} cm` : '—'}</span>
+                    <span className="latest-metric-label" style={{ fontSize: '9.5px' }}>Chiều cao</span>
+                  </div>
+                  <div className="latest-metric" style={{ padding: '10px 6px', background: 'var(--surface-1)', borderRadius: '12px' }}>
+                    <div className="latest-metric-icon head-icon" style={{ width: '28px', height: '28px', borderRadius: '8px', margin: '0 auto 4px' }}><HeadCircleIcon size={14} /></div>
+                    <span className="latest-metric-value" style={{ fontSize: '14px' }}>{bHead > 0 ? `${bHead} cm` : '—'}</span>
+                    <span className="latest-metric-label" style={{ fontSize: '9.5px' }}>Chu vi đầu</span>
+                  </div>
+                </div>
+
+                {bNutrition && bWeight > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(95,175,130,0.06)', padding: '8px 12px', borderRadius: '10px', fontSize: '11.5px', color: '#2F6B4F', fontWeight: 600 }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: bNutrition.color }} />
+                    Tình trạng: <span style={{ color: bNutrition.color }}>{bNutrition.label}</span>
+                  </div>
+                )}
+
+                <button type="button" className="outline-btn" style={{ width: '100%', padding: '10px' }} onClick={() => {
+                  setMeasureFormBabyIndex(idx);
+                  setShowMeasureForm(true);
+                }}>
+                  + Thêm số đo mới
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {showMeasureForm && renderMeasureForm()}
+        {renderPregnancyHistory()}
+      </>
+    );
+  }
+
+  // 2. COMPARISON VIEW
+  if (selectedBaby === 'compare') {
+    const compColors = ['#5FAF82', '#2F6B4F', '#A8C5B0'];
+    const compChartData = buildComparisonChartData(chartTab);
+    const hasAnyActual = compChartData.some(d => babies.some((_, i) => d[`actual_${i}`] != null));
+
+    return (
+      <>
+        {/* Comparison Table */}
+        <div className="growth-card comparison-card">
+          <div className="card-header">
+            <span className="card-title">Bảng so sánh đối chiếu</span>
+          </div>
+          <div className="comparison-table-wrapper">
+            <table className="comparison-table">
+              <thead>
+                <tr>
+                  <th>Thông tin</th>
+                  {babies.map((b, idx) => (
+                    <th key={idx}>{b.name || `Bé ${String.fromCharCode(65 + idx)}`}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="comp-metric-name">Ngày sinh</td>
+                  {babies.map((b, idx) => (
+                    <td key={idx} className="comp-value">{fmtDate(b.dob) || '—'}</td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="comp-metric-name">Tuổi</td>
+                  {babies.map((b, idx) => {
+                    const ageM = b.dob ? getAgeInMonths(b.dob) : 0;
+                    const ageLbl = !b.dob ? '—'
+                      : ageM < 24 ? `${ageM} tháng`
+                      : `${Math.floor(ageM / 12)} tuổi ${ageM % 12} tháng`;
+                    return <td key={idx} className="comp-value">{ageLbl}</td>;
+                  })}
+                </tr>
+                <tr>
+                  <td className="comp-metric-name">Giới tính</td>
+                  {babies.map((b, idx) => (
+                    <td key={idx} className="comp-value">{b.gender === 'boy' ? 'Bé trai' : 'Bé gái'}</td>
+                  ))}
+                </tr>
+                <tr>
+                  <td className="comp-metric-name">Cân nặng gần nhất</td>
+                  {babies.map((b, idx) => {
+                    const bId = (b.id || b.name || `baby-${idx}`).toLowerCase().replace(/\s+/g, '-');
+                    const bLogs = babyLogs[bId] || [];
+                    const bLatest = bLogs[bLogs.length - 1];
+                    return <td key={idx} className="comp-value" style={{ fontWeight: 'bold', color: '#2F6B4F' }}>
+                      {bLatest?.weight ? `${bLatest.weight} kg` : '—'}
+                    </td>;
+                  })}
+                </tr>
+                <tr>
+                  <td className="comp-metric-name">Chiều cao gần nhất</td>
+                  {babies.map((b, idx) => {
+                    const bId = (b.id || b.name || `baby-${idx}`).toLowerCase().replace(/\s+/g, '-');
+                    const bLogs = babyLogs[bId] || [];
+                    const bLatest = bLogs[bLogs.length - 1];
+                    return <td key={idx} className="comp-value" style={{ fontWeight: 'bold', color: '#2F6B4F' }}>
+                      {bLatest?.height ? `${bLatest.height} cm` : '—'}
+                    </td>;
+                  })}
+                </tr>
+                <tr>
+                  <td className="comp-metric-name">Chu vi đầu gần nhất</td>
+                  {babies.map((b, idx) => {
+                    const bId = (b.id || b.name || `baby-${idx}`).toLowerCase().replace(/\s+/g, '-');
+                    const bLogs = babyLogs[bId] || [];
+                    const bLatest = bLogs[bLogs.length - 1];
+                    return <td key={idx} className="comp-value" style={{ fontWeight: 'bold', color: '#2F6B4F' }}>
+                      {bLatest?.head ? `${bLatest.head} cm` : '—'}
+                    </td>;
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Comparison Chart */}
+        <div className="growth-card">
+          <div className="card-header">
+            <span className="card-title">Biểu đồ so sánh tăng trưởng</span>
+          </div>
+          <div className="chart-tabs">
+            {['weight', 'height', 'head'].map(tab => (
+              <button
+                key={tab}
+                type="button"
+                className={`chart-tab-btn ${chartTab === tab ? 'active' : ''}`}
+                onClick={() => setChartTab(tab)}
+              >
+                {tab === 'weight' ? 'Cân nặng' : tab === 'height' ? 'Chiều cao' : 'Chu vi đầu'}
+              </button>
+            ))}
+          </div>
+
+          <div className="chart-legend-row" style={{ flexWrap: 'wrap', gap: '10px 14px', marginBottom: '14px' }}>
+            {babies.map((b, i) => (
+              <span key={i} className="chart-legend-item">
+                <span className="legend-dot" style={{ background: compColors[i % compColors.length] }} />
+                {b.name || `Bé ${String.fromCharCode(65 + i)}`}
+              </span>
+            ))}
+            <span className="chart-legend-item">
+              <span className="legend-band" />
+              Vùng tham khảo WHO
+            </span>
+          </div>
+
+          {hasAnyActual ? (
+            <>
+              <ResponsiveContainer width="100%" height={260}>
+                <ComposedChart data={compChartData} margin={{ top: 8, right: 16, left: -10, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 14, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.10)', fontSize: 13 }}
+                    formatter={(v, name) => {
+                      if (name === 'band' || name === 'lower') return null;
+                      const unit = chartTab === 'weight' ? 'kg' : 'cm';
+                      return [`${v} ${unit}`, name];
+                    }}
+                  />
+                  <Area type="monotone" dataKey="lower" stackId="who"
+                    fill="rgba(240,236,230,0.6)" stroke="rgba(200,210,200,0.4)" strokeWidth={1}
+                    dot={false} name="lower" />
+                  <Area type="monotone" dataKey="band" stackId="who"
+                    fill="rgba(95,175,130,0.12)" stroke="rgba(95,175,130,0.3)" strokeWidth={1}
+                    dot={false} name="band" />
+                  {babies.map((b, i) => {
+                    const key = `actual_${i}`;
+                    const color = compColors[i % compColors.length];
+                    const bName = b.name || `Bé ${String.fromCharCode(65 + i)}`;
+                    return (
+                      <Line type="monotone" key={i} dataKey={key} stroke={color}
+                        strokeWidth={2.5}
+                        dot={({ cx, cy, payload }) =>
+                          payload[key] != null ? (
+                            <g key={`dot-${cx}-${i}`}>
+                              <circle cx={cx} cy={cy} r={4.5} fill={color}
+                                stroke="white" strokeWidth={1.5} />
+                            </g>
+                          ) : <g key={`dot-${cx}-${i}`} />
+                        }
+                        activeDot={{ r: 6 }}
+                        name={bName}
+                        connectNulls={true}
+                      />
+                    );
+                  })}
+                </ComposedChart>
+              </ResponsiveContainer>
+              <p className="who-chart-note">
+                Biểu đồ so sánh dựa theo <strong>Chuẩn tăng trưởng WHO 2006</strong>.
+              </p>
+            </>
+          ) : (
+            <div className="chart-empty-state">
+              <GrowthChartEmptyIcon />
+              <p className="empty-title">Chưa có dữ liệu vẽ biểu đồ</p>
+              <p className="empty-sub">Hãy thêm ít nhất một chỉ số cho các bé để bắt đầu so sánh.</p>
+            </div>
+          )}
+        </div>
+
+        {renderPregnancyHistory()}
+      </>
+    );
+  }
+
+  // 3. SINGLE BABY VIEW (selectedBaby is index 0, 1, 2...)
   const hasData      = logs.length > 0;
   const hasChartData = logs.length >= 2 && dob;
   const chartData    = hasChartData ? buildChartData(chartTab) : [];
@@ -2331,7 +3338,7 @@ function ParentView({
         <div className="card-header">
           <span className="card-title">Thông tin bé</span>
           {editField === null && (
-            <button className="edit-link-btn" onClick={() => startEdit('name')}>
+            <button type="button" className="edit-link-btn" onClick={() => startEdit('name')}>
               <PencilIcon size={13} /> Chỉnh sửa
             </button>
           )}
@@ -2346,8 +3353,8 @@ function ParentView({
                 <input autoFocus className="edit-input" value={editVal}
                   onChange={e => setEditVal(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && saveEdit()} />
-                <button className="edit-save" onClick={saveEdit}><CheckIcon /></button>
-                <button className="edit-cancel" onClick={() => setEditField(null)}><CloseIcon /></button>
+                <button type="button" className="edit-save" onClick={saveEdit}><CheckIcon /></button>
+                <button type="button" className="edit-cancel" onClick={() => setEditField(null)}><CloseIcon /></button>
               </div>
             ) : (
               <span className="info-value">{baby.name || 'Chưa cập nhật'}</span>
@@ -2361,7 +3368,6 @@ function ParentView({
               {fmtDate(dob) || <span className="info-hint">Chưa cập nhật</span>}
             </span>
           </div>
-
 
           <div className="info-row">
             <span className="info-label">Tuổi</span>
@@ -2377,7 +3383,7 @@ function ParentView({
         {!dob && (
           <div className="dob-hint">
             <span>Thêm ngày sinh để app tính tuổi và biểu đồ chính xác hơn.</span>
-            <button className="hint-btn" onClick={() => startEdit('dob')}>Thêm ngày sinh</button>
+            <button type="button" className="hint-btn" onClick={() => startEdit('dob')}>Thêm ngày sinh</button>
           </div>
         )}
       </div>
@@ -2409,7 +3415,10 @@ function ParentView({
               <span className="latest-metric-label">Chu vi đầu</span>
             </div>
           </div>
-          <button className="primary-btn mt-8" onClick={() => setShowMeasureForm(v => !v)}>
+          <button type="button" className="primary-btn mt-8" onClick={() => {
+            setMeasureFormBabyIndex(selectedBaby);
+            setShowMeasureForm(v => !v);
+          }}>
             {showMeasureForm ? 'Đóng' : '+ Cập nhật số đo'}
           </button>
         </div>
@@ -2418,61 +3427,17 @@ function ParentView({
           <div className="empty-icon-wrap"><GrowthPlaceholderIcon /></div>
           <p className="empty-title">Chưa có số đo của bé</p>
           <p className="empty-sub">Thêm cân nặng, chiều cao và chu vi đầu để xem biểu đồ tăng trưởng.</p>
-          <button className="primary-btn" style={{ width: 'auto', padding: '11px 24px' }} onClick={() => setShowMeasureForm(true)}>
+          <button type="button" className="primary-btn" style={{ width: 'auto', padding: '11px 24px' }} onClick={() => {
+            setMeasureFormBabyIndex(selectedBaby);
+            setShowMeasureForm(true);
+          }}>
             Thêm lần đo đầu tiên
           </button>
         </div>
       )}
 
       {/* ── MEASURE FORM ── */}
-      {showMeasureForm && (
-        <div className="form-card">
-          <div className="form-card-header">
-            <span className="form-card-title">Thêm lần đo</span>
-            <button className="form-close-btn" onClick={() => setShowMeasureForm(false)}>
-              <CloseIcon />
-            </button>
-          </div>
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label><CalendarIcon size={13} /> Ngày đo</label>
-              <button
-                type="button"
-                className="cs-date-trigger-btn"
-                style={{ padding: '11px 14px', borderRadius: '12px' }}
-                onClick={() => setShowMeasureDateCalendar(true)}
-              >
-                {fmtDisplay(measureForm.date) || 'Chọn ngày'}
-              </button>
-            </div>
-            <div className="form-group">
-              <label><WeightIcon size={13} /> Cân nặng (kg)</label>
-              <input type="number" step="0.01" placeholder="8.5"
-                value={measureForm.weight}
-                onChange={e => setMeasureForm(f => ({ ...f, weight: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label><RulerIcon size={13} /> Chiều cao (cm)</label>
-              <input type="number" step="0.1" placeholder="72.5"
-                value={measureForm.height}
-                onChange={e => setMeasureForm(f => ({ ...f, height: e.target.value }))} />
-            </div>
-            <div className="form-group">
-              <label><HeadCircleIcon size={13} /> Chu vi đầu (cm)</label>
-              <input type="number" step="0.1" placeholder="44.0"
-                value={measureForm.head}
-                onChange={e => setMeasureForm(f => ({ ...f, head: e.target.value }))} />
-            </div>
-          </div>
-          <button 
-            className="primary-btn" 
-            disabled={saving} 
-            onClick={handleSaveMeasure}
-          >
-            {saving ? 'Đang lưu...' : 'Lưu lần đo'}
-          </button>
-        </div>
-      )}
+      {showMeasureForm && renderMeasureForm()}
 
       {/* ── TABBED GROWTH CHART ── */}
       <div className="growth-card">
@@ -2483,6 +3448,7 @@ function ParentView({
           {['weight', 'height', 'head'].map(tab => (
             <button
               key={tab}
+              type="button"
               className={`chart-tab-btn ${chartTab === tab ? 'active' : ''}`}
               onClick={() => setChartTab(tab)}
             >
@@ -2568,7 +3534,10 @@ function ParentView({
       {/* ── MEASUREMENT HISTORY ── */}
       <div className="section-hdr">
         <h2 className="section-title">Lịch sử đo lường</h2>
-        <button className="ghost-btn" onClick={() => setShowMeasureForm(v => !v)}>
+        <button type="button" className="ghost-btn" onClick={() => {
+          setMeasureFormBabyIndex(selectedBaby);
+          setShowMeasureForm(v => !v);
+        }}>
           <PlusIcon size={14} /> Thêm lần đo
         </button>
       </div>
@@ -2602,17 +3571,16 @@ function ParentView({
       ) : (
         <div className="empty-list">
           <p className="empty-list-text">Chưa có lần đo nào.</p>
-          <button className="outline-btn" onClick={() => setShowMeasureForm(true)}>
+          <button type="button" className="outline-btn" onClick={() => {
+            setMeasureFormBabyIndex(selectedBaby);
+            setShowMeasureForm(true);
+          }}>
             Thêm lần đo đầu tiên
           </button>
         </div>
       )}
 
-      {/* ── WHO NOTE ── */}
-      <div className="who-note">
-        Biểu đồ theo <strong>Chuẩn tăng trưởng WHO 2006</strong> — áp dụng tại Việt Nam.
-        Chỉ mang tính tham khảo, không thay thế đánh giá của bác sĩ.
-      </div>
+      {renderPregnancyHistory()}
     </>
   );
 }
