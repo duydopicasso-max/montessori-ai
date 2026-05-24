@@ -625,6 +625,16 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   const [diaperColor, setDiaperColor] = useState('yellow'); // 'yellow' | 'mustard' | 'green' | 'brown'
   const [diaperDesc, setDiaperDesc] = useState('Bình thường');
 
+  // Potty / Toilet / Diaper redesign states
+  const [pottyCategory, setPottyCategory] = useState('diaper'); // 'diaper' | 'potty' | 'toilet'
+  const [pottyDiaperType, setPottyDiaperType] = useState(null); // 'wet' | 'dirty' | 'both' | 'dry' | null
+  const [pottyResult, setPottyResult] = useState(null); // 'success' | 'no_result' | 'practice' | null
+  const [pottyToiletType, setPottyToiletType] = useState(null); // 'pee' | 'poop' | 'both' | null
+  const [pottyNote, setPottyNote] = useState('');
+  const [pottyTimeStr, setPottyTimeStr] = useState('');
+  const [isSavingPotty, setIsSavingPotty] = useState(false);
+  const [savePottyError, setSavePottyError] = useState(false);
+
   // D. Growth Sheet inputs
   const [growthWeight, setGrowthWeight] = useState(7.5);
   const [growthHeight, setGrowthHeight] = useState(68.2);
@@ -1127,43 +1137,79 @@ ${logsDesc}`;
 
   // Diaper Log save
   const handleSaveDiaper = async () => {
-    if (!userId) return;
-    const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
+    if (!userId || isSavingPotty) return;
 
-    let logData = {};
-    if (babyAgeMonths >= 18) {
-      const typeLabel = diaperType === 'diaper' ? 'Thay tã' : diaperType === 'potty' ? 'Ngồi bô' : 'Đi vệ sinh';
-      logData = {
-        date: getTodayLocalyyyymmdd(),
-        time: formattedTime,
-        type: 'diaper',
-        diaperType,
-        diaperStatus: 'normal',
-        note: `Vệ sinh: ${typeLabel}. ${diaperDesc ? `Ghi chú: ${diaperDesc}` : ''}`,
-        createdAt: serverTimestamp(),
-        childId: babyId || ''
-      };
-    } else {
-      const typeLabel = diaperType === 'pee' ? 'Tã ướt' : diaperType === 'poop' ? 'Tã bẩn' : 'Cả hai';
-      logData = {
-        date: getTodayLocalyyyymmdd(),
-        time: formattedTime,
-        type: 'diaper',
-        diaperType,
-        diaperStatus: diaperColor,
-        note: `Thay tã: ${typeLabel}. Màu phân: ${diaperDesc}`,
-        createdAt: serverTimestamp(),
-        childId: babyId || ''
-      };
+    setIsSavingPotty(true);
+    setSavePottyError(false);
+
+    const today = new Date();
+    let finalDate = today;
+    if (pottyTimeStr) {
+      const [hh, mm] = pottyTimeStr.split(':').map(Number);
+      if (!isNaN(hh) && !isNaN(mm)) {
+        finalDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hh, mm);
+      }
     }
+
+    // Format note based on category and subtypes
+    let formattedNote = '';
+    let toastMessage = 'Đã lưu ghi nhận vệ sinh';
+
+    if (pottyCategory === 'diaper') {
+      toastMessage = 'Đã lưu thay tã';
+      let subLabel = '';
+      if (pottyDiaperType === 'wet') subLabel = 'tã ướt';
+      else if (pottyDiaperType === 'dirty') subLabel = 'tã bẩn';
+      else if (pottyDiaperType === 'both') subLabel = 'thay tã';
+      else if (pottyDiaperType === 'dry') subLabel = 'thay tã';
+
+      const base = subLabel ? `Đã ghi nhận ${subLabel}` : 'Đã ghi nhận thay tã';
+      formattedNote = pottyNote.trim() ? `${base} · ${pottyNote.trim()}` : base;
+    } else if (pottyCategory === 'potty') {
+      toastMessage = 'Đã lưu tập bô';
+      let subLabel = '';
+      if (pottyResult === 'success') subLabel = 'Có đi';
+      else if (pottyResult === 'no_result') subLabel = 'Chưa đi';
+      else if (pottyResult === 'practice') subLabel = 'Làm quen';
+
+      const base = subLabel ? `Ngồi bô · ${subLabel}` : 'Đã ghi nhận ngồi bô';
+      formattedNote = pottyNote.trim() ? `${base} · ${pottyNote.trim()}` : base;
+    } else if (pottyCategory === 'toilet') {
+      toastMessage = 'Đã lưu vệ sinh';
+      let subLabel = '';
+      if (pottyToiletType === 'pee') subLabel = 'đi tè';
+      else if (pottyToiletType === 'poop') subLabel = 'đi ị';
+      else if (pottyToiletType === 'both') subLabel = 'đi vệ sinh';
+
+      const base = subLabel ? `Đã ghi nhận ${subLabel}` : 'Đã ghi nhận đi vệ sinh';
+      formattedNote = pottyNote.trim() ? `${base} · ${pottyNote.trim()}` : base;
+    }
+
+    const logData = {
+      date: getTodayLocalyyyymmdd(),
+      time: formatHHMM(finalDate),
+      type: pottyCategory || 'diaper',
+      diaperType: pottyCategory === 'diaper' ? pottyDiaperType : null,
+      pottyResult: pottyCategory === 'potty' ? pottyResult : null,
+      toiletType: pottyCategory === 'toilet' ? pottyToiletType : null,
+      note: formattedNote,
+      rawNote: pottyNote.trim(),
+      loggedAt: finalDate,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      childId: babyId || ''
+    };
 
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
+      showToast(toastMessage);
       handleCleanCloseSheet('diaper');
     } catch (err) {
       console.error(err);
+      setSavePottyError(true);
+    } finally {
+      setIsSavingPotty(false);
     }
   };
 
@@ -1557,8 +1603,26 @@ ${logsDesc}`;
       setShowSleepResetConfirm(false);
       setSaveSleepError(false);
       setIsSavingSleep(false);
+    } else if (activeBottomSheet === 'diaper') {
+      const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
+      if (babyAgeMonths >= 18) {
+        if (babyAgeMonths <= 36) {
+          setPottyCategory('diaper'); // Vệ sinh / Tập bô defaults to Thay tã
+        } else {
+          setPottyCategory('toilet'); // Vệ sinh defaults to Đi vệ sinh
+        }
+      } else {
+        setPottyCategory('diaper'); // Under 18 months defaults to Thay tã
+      }
+      setPottyDiaperType(null);
+      setPottyResult(null);
+      setPottyToiletType(null);
+      setPottyNote('');
+      setPottyTimeStr(formatHHMM(new Date()));
+      setSavePottyError(false);
+      setIsSavingPotty(false);
     }
-  }, [activeBottomSheet, activityLogs, profile, sleepActive]);
+  }, [activeBottomSheet, activityLogs, profile, sleepActive, ageInfo]);
 
   const handleSaveVitamins = async () => {
     if (!userId || isSavingVitaminsRef.current) return;
@@ -2066,43 +2130,59 @@ ${logsDesc}`;
       let icon = '⏱️';
       let colorClass = '';
 
-      if (log.type === 'diaper') {
+      if (log.type === 'diaper' || log.type === 'potty' || log.type === 'toilet') {
         colorClass = 'timeline-diaper';
-        let baseDesc = 'Đã ghi nhận thay tã';
-        if (log.diaperType === 'potty') {
-          typeLabel = 'Tập bô';
-          icon = '🚽';
-          baseDesc = 'Đã ghi nhận ngồi bô';
-        } else if (log.diaperType === 'toilet') {
-          typeLabel = 'Vệ sinh';
-          icon = '🚻';
-          baseDesc = 'Đã ghi nhận đi vệ sinh';
-        } else {
+        let baseDesc = 'Đã ghi nhận vệ sinh';
+
+        if (log.type === 'diaper') {
           typeLabel = 'Vệ sinh';
           icon = '🧷';
-          if (log.diaperType === 'pee') baseDesc = 'Thay tã - Ướt';
-          else if (log.diaperType === 'poop') baseDesc = 'Thay tã - Bẩn';
-          else if (log.diaperType === 'both') baseDesc = 'Thay tã - Cả hai';
+          const dType = log.diaperType;
+          if (dType === 'potty') {
+            typeLabel = 'Tập bô';
+            icon = '🚽';
+            baseDesc = 'Đã ghi nhận ngồi bô';
+          } else if (dType === 'toilet') {
+            typeLabel = 'Vệ sinh';
+            icon = '🚻';
+            baseDesc = 'Đã ghi nhận đi vệ sinh';
+          } else if (dType === 'wet' || dType === 'pee') {
+            baseDesc = dType === 'wet' ? 'Đã ghi nhận tã ướt' : 'Thay tã - Ướt';
+          } else if (dType === 'dirty' || dType === 'poop') {
+            baseDesc = dType === 'dirty' ? 'Đã ghi nhận tã bẩn' : 'Thay tã - Bẩn';
+          } else if (dType === 'both') {
+            baseDesc = 'Thay tã - Cả hai';
+          } else if (dType === 'dry') {
+            baseDesc = 'Thay tã - Khô';
+          } else {
+            baseDesc = 'Đã ghi nhận thay tã';
+          }
+        } else if (log.type === 'potty') {
+          typeLabel = 'Tập bô';
+          icon = '🚽';
+          const pRes = log.pottyResult;
+          if (pRes === 'success') baseDesc = 'Ngồi bô · Có đi';
+          else if (pRes === 'no_result') baseDesc = 'Ngồi bô · Chưa đi';
+          else if (pRes === 'practice') baseDesc = 'Ngồi bô · Làm quen';
+          else baseDesc = 'Đã ghi nhận ngồi bô';
+        } else if (log.type === 'toilet') {
+          typeLabel = 'Vệ sinh';
+          icon = '🚻';
+          const tType = log.toiletType;
+          if (tType === 'pee') baseDesc = 'Đã ghi nhận đi tè';
+          else if (tType === 'poop') baseDesc = 'Đã ghi nhận đi ị';
+          else baseDesc = 'Đã ghi nhận đi vệ sinh';
         }
 
-        let rawNote = '';
-        if (log.note) {
-          if (log.note.includes('Ghi chú: ')) {
-            rawNote = log.note.split('Ghi chú: ')[1];
-          } else if (log.note.includes('Màu phân: ') && log.diaperType !== 'potty' && log.diaperType !== 'toilet') {
-            rawNote = log.note;
-          } else {
-            const cleaned = log.note.replace(/^Vệ sinh: [^.]+\.\s*/, '').replace(/^Thay tã: [^.]+\.\s*/, '');
-            if (cleaned && cleaned !== log.note) {
-              rawNote = cleaned;
-            }
-          }
-        }
-        
-        if (rawNote && rawNote.trim() && rawNote.trim() !== 'undefined' && rawNote.trim() !== 'null') {
-          desc = `${baseDesc} · ${rawNote.trim()}`;
+        let rawNote = log.rawNote || '';
+        if (!rawNote && log.note) {
+          desc = log.note;
         } else {
-          desc = baseDesc;
+          if (rawNote.trim() && rawNote.trim() !== 'undefined' && rawNote.trim() !== 'null') {
+            desc = `${baseDesc} · ${rawNote.trim()}`;
+          } else {
+            desc = baseDesc;
+          }
         }
       } else if (log.type === 'sleep' || log.type === 'day_sleep' || log.type === 'night_sleep') {
         typeLabel = 'Ngủ';
@@ -2723,7 +2803,7 @@ ${logsDesc}`;
     
     // Calculate custom diaper card details based on baby age
     const todayStr = getTodayLocalyyyymmdd();
-    const diaperLogs = activityLogs.filter(l => l.type === 'diaper');
+    const diaperLogs = activityLogs.filter(l => l.type === 'diaper' || l.type === 'potty' || l.type === 'toilet');
     const todayDiapers = diaperLogs.filter(l => l.date === todayStr);
 
     let diaperCardTitle = 'Thay tã';
@@ -2786,16 +2866,7 @@ ${logsDesc}`;
           <button 
             type="button" 
             className="tracker-action-trigger-btn" 
-            onClick={() => {
-              setActiveBottomSheet('diaper');
-              if (babyAgeMonths >= 18) {
-                setDiaperType('diaper');
-                setDiaperDesc('');
-              } else {
-                setDiaperType('pee');
-                setDiaperDesc('Tã ướt bình thường');
-              }
-            }}
+            onClick={() => setActiveBottomSheet('diaper')}
           >
             {diaperCardButtonText}
           </button>
@@ -4861,92 +4932,390 @@ ${logsDesc}`;
             {/* 3. DIAPER BOTTOM SHEET */}
             {activeBottomSheet === 'diaper' && (() => {
               const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
+              const childName = baby?.name || '';
               const sheetTitle = babyAgeMonths >= 18 
-                ? (babyAgeMonths <= 36 ? 'Ghi nhận Vệ sinh / Tập bô' : 'Ghi nhận Vệ sinh') 
+                ? (babyAgeMonths <= 36 ? 'Vệ sinh / Tập bô' : 'Ghi nhận Vệ sinh') 
                 : 'Ghi nhận thay tã';
+              const subtitle = childName ? `Hôm nay ${childName} đi vệ sinh thế nào mẹ?` : 'Hôm nay bé đi vệ sinh thế nào mẹ?';
+
+              // Inline line icon SVGs
+              const DiaperLineIcon = () => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" />
+                  <path d="M2 10h20v2a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8z" />
+                  <circle cx="12" cy="13" r="1.5" />
+                </svg>
+              );
+
+              const PottyLineIcon = () => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 10h10v4a5 5 0 0 1-10 0z" />
+                  <path d="M5 5v5a7 7 0 0 0 14 0V5" />
+                  <path d="M12 17v4" />
+                  <path d="M9 21h6" />
+                </svg>
+              );
+
+              const ToiletLineIcon = () => (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v8h6V5a3 3 0 0 0-3-3z" />
+                  <path d="M19 13H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z" />
+                  <path d="M12 13v4" />
+                </svg>
+              );
+
+              // Validate if save is enabled
+              const isSaveEnabled = pottyCategory !== null;
+
+              // Compute placeholder and submit button text
+              let pottyPlaceholder = 'Ví dụ: Bé tự gọi mẹ, bé hợp tác...';
+              let saveBtnText = 'Lưu ghi nhận';
+              if (pottyCategory === 'diaper') {
+                pottyPlaceholder = 'Ví dụ: Tã rất đầy, bé hơi hăm, phân mềm...';
+                saveBtnText = 'Lưu thay tã';
+              } else if (pottyCategory === 'potty') {
+                pottyPlaceholder = 'Ví dụ: Bé tự ngồi bô, bé gọi mẹ, bé chưa hợp tác...';
+                saveBtnText = 'Lưu tập bô';
+              } else if (pottyCategory === 'toilet') {
+                pottyPlaceholder = 'Ví dụ: Bé tự gọi mẹ, tè nhiều, phân hơi cứng...';
+                saveBtnText = 'Lưu vệ sinh';
+              }
 
               return (
-                <div className="tracker-sheet-viewport">
-                  <h3 className="tracker-sheet-title">{sheetTitle}</h3>
+                <div className="tracker-sheet-viewport" style={{ maxHeight: '82vh', overflowY: 'auto', paddingBottom: '30px', position: 'relative' }}>
+                  <h3 className="tracker-sheet-title" style={{ marginBottom: '4px' }}>{sheetTitle}</h3>
+                  <p className="tracker-sheet-subtitle" style={{ fontSize: '13.5px', color: '#687E70', margin: '0 0 20px', fontWeight: '500', textAlign: 'left' }}>
+                    {subtitle}
+                  </p>
 
-                  {babyAgeMonths >= 18 ? (
-                    <div className="diaper-types-toggles-row" style={{ marginBottom: '20px' }}>
-                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'diaper' ? 'active' : ''}`} onClick={() => { setDiaperType('diaper'); }}>
-                        <span className="diaper-icon">💦</span>
-                        <span className="diaper-label">Thay tã</span>
-                      </button>
-                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'potty' ? 'active' : ''}`} onClick={() => { setDiaperType('potty'); }}>
-                        <span className="diaper-icon">🚽</span>
-                        <span className="diaper-label">Ngồi bô</span>
-                      </button>
-                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'toilet' ? 'active' : ''}`} onClick={() => { setDiaperType('toilet'); }}>
-                        <span className="diaper-icon">🚻</span>
-                        <span className="diaper-label">Đi vệ sinh</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="diaper-types-toggles-row">
-                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'pee' ? 'active' : ''}`} onClick={() => { setDiaperType('pee'); setDiaperDesc('Tã ướt bình thường'); }}>
-                        <span className="diaper-icon">💦</span>
-                        <span className="diaper-label">Tã ướt</span>
-                      </button>
-                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'poop' ? 'active' : ''}`} onClick={() => { setDiaperType('poop'); setDiaperDesc('Tã bẩn màu vàng mustard'); }}>
-                        <span className="diaper-icon">💩</span>
-                        <span className="diaper-label">Tã bẩn</span>
-                      </button>
-                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'both' ? 'active' : ''}`} onClick={() => { setDiaperType('both'); setDiaperDesc('Tã vừa ướt vừa bẩn'); }}>
-                        <span className="diaper-icon">🧷</span>
-                        <span className="diaper-label">Cả hai</span>
+                  {/* Errors / Warnings */}
+                  {savePottyError && (
+                    <div style={{ padding: '14px', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: '14px', color: '#D97706', fontSize: '13px', marginBottom: '16px', textAlign: 'left' }}>
+                      <p style={{ margin: '0 0 4px', fontWeight: '700' }}>Chưa thể lưu ghi nhận</p>
+                      <p style={{ margin: '0 0 10px' }}>Mẹ thử lại sau một chút nhé.</p>
+                      <button 
+                        type="button" 
+                        style={{
+                          padding: '6px 12px',
+                          background: '#D97706',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          cursor: 'pointer'
+                        }}
+                        onClick={handleSaveDiaper}
+                      >
+                        Thử lại
                       </button>
                     </div>
                   )}
 
-                  {babyAgeMonths >= 18 ? (
-                    <div style={{ marginBottom: '20px', width: '100%', textAlign: 'left' }}>
-                      <label style={{ fontSize: '13px', color: '#4E6856', display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-                        Ghi chú thêm (tùy chọn):
-                      </label>
+                  <div className="tracker-sheet-form-body" style={{ opacity: isSavingPotty ? 0.6 : 1, pointerEvents: isSavingPotty ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    
+                    {/* SECTION 1: Category Selector (Hidden for babies < 18 months) */}
+                    {babyAgeMonths >= 18 && (
+                      <div>
+                        <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '10px' }}>
+                          Con vừa làm gì?
+                        </label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          
+                          {/* Card 1: Thay tã */}
+                          <button
+                            type="button"
+                            onClick={() => setPottyCategory('diaper')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '14px',
+                              padding: '12px 16px',
+                              borderRadius: '14px',
+                              border: pottyCategory === 'diaper' ? '2px solid #2F6B4F' : '1px solid #E2EFE7',
+                              background: pottyCategory === 'diaper' ? '#F0F9F4' : '#FFFFFF',
+                              color: pottyCategory === 'diaper' ? '#2F6B4F' : '#2D3732',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              width: '100%',
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <div style={{ color: pottyCategory === 'diaper' ? '#2F6B4F' : '#7A8E82' }}>
+                              <DiaperLineIcon />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '700', fontSize: '13.5px' }}>Thay tã</div>
+                              <div style={{ fontSize: '11.5px', color: pottyCategory === 'diaper' ? '#4E6856' : '#7A8E82', marginTop: '2px', fontWeight: '500' }}>
+                                Ghi nhận tã ướt/bẩn
+                              </div>
+                            </div>
+                            {pottyCategory === 'diaper' && (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F6B4F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </button>
+
+                          {/* Card 2: Ngồi bô */}
+                          <button
+                            type="button"
+                            onClick={() => setPottyCategory('potty')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '14px',
+                              padding: '12px 16px',
+                              borderRadius: '14px',
+                              border: pottyCategory === 'potty' ? '2px solid #2F6B4F' : '1px solid #E2EFE7',
+                              background: pottyCategory === 'potty' ? '#F0F9F4' : '#FFFFFF',
+                              color: pottyCategory === 'potty' ? '#2F6B4F' : '#2D3732',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              width: '100%',
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <div style={{ color: pottyCategory === 'potty' ? '#2F6B4F' : '#7A8E82' }}>
+                              <PottyLineIcon />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '700', fontSize: '13.5px' }}>Ngồi bô</div>
+                              <div style={{ fontSize: '11.5px', color: pottyCategory === 'potty' ? '#4E6856' : '#7A8E82', marginTop: '2px', fontWeight: '500' }}>
+                                Bé ngồi bô, có hoặc chưa có kết quả
+                              </div>
+                            </div>
+                            {pottyCategory === 'potty' && (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F6B4F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </button>
+
+                          {/* Card 3: Đi vệ sinh */}
+                          <button
+                            type="button"
+                            onClick={() => setPottyCategory('toilet')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '14px',
+                              padding: '12px 16px',
+                              borderRadius: '14px',
+                              border: pottyCategory === 'toilet' ? '2px solid #2F6B4F' : '1px solid #E2EFE7',
+                              background: pottyCategory === 'toilet' ? '#F0F9F4' : '#FFFFFF',
+                              color: pottyCategory === 'toilet' ? '#2F6B4F' : '#2D3732',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              width: '100%',
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <div style={{ color: pottyCategory === 'toilet' ? '#2F6B4F' : '#7A8E82' }}>
+                              <ToiletLineIcon />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '700', fontSize: '13.5px' }}>Đi vệ sinh</div>
+                              <div style={{ fontSize: '11.5px', color: pottyCategory === 'toilet' ? '#4E6856' : '#7A8E82', marginTop: '2px', fontWeight: '500' }}>
+                                Bé đã tè/ị ngoài tã
+                              </div>
+                            </div>
+                            {pottyCategory === 'toilet' && (
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F6B4F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SECTION 2: Subtype details based on Category */}
+                    {pottyCategory === 'diaper' && (
+                      <div>
+                        <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                          Loại tã
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                          {[
+                            { key: 'wet', label: 'Ướt' },
+                            { key: 'dirty', label: 'Bẩn' },
+                            { key: 'both', label: 'Cả hai' },
+                            { key: 'dry', label: 'Khô' }
+                          ].map(item => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setPottyDiaperType(pottyDiaperType === item.key ? null : item.key)}
+                              style={{
+                                padding: '12px',
+                                fontSize: '13px',
+                                fontWeight: '700',
+                                border: pottyDiaperType === item.key ? '1.5px solid #2F6B4F' : '1.5px solid #E2EFE7',
+                                borderRadius: '12px',
+                                background: pottyDiaperType === item.key ? '#F0F9F4' : '#F7FAF8',
+                                color: pottyDiaperType === item.key ? '#2F6B4F' : '#55655B',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {pottyCategory === 'potty' && (
+                      <div>
+                        <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                          Kết quả
+                        </label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {[
+                            { key: 'success', label: 'Có đi' },
+                            { key: 'no_result', label: 'Chưa đi' },
+                            { key: 'practice', label: 'Chỉ làm quen' }
+                          ].map(item => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setPottyResult(pottyResult === item.key ? null : item.key)}
+                              style={{
+                                flex: 1,
+                                padding: '12px 6px',
+                                fontSize: '12.5px',
+                                fontWeight: '700',
+                                border: pottyResult === item.key ? '1.5px solid #2F6B4F' : '1.5px solid #E2EFE7',
+                                borderRadius: '12px',
+                                background: pottyResult === item.key ? '#F0F9F4' : '#F7FAF8',
+                                color: pottyResult === item.key ? '#2F6B4F' : '#55655B',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {pottyCategory === 'toilet' && (
+                      <div>
+                        <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                          Bé đi gì?
+                        </label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {[
+                            { key: 'pee', label: 'Đi tè' },
+                            { key: 'poop', label: 'Đi ị' },
+                            { key: 'both', label: 'Cả hai' }
+                          ].map(item => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setPottyToiletType(pottyToiletType === item.key ? null : item.key)}
+                              style={{
+                                flex: 1,
+                                padding: '12px 6px',
+                                fontSize: '12.5px',
+                                fontWeight: '700',
+                                border: pottyToiletType === item.key ? '1.5px solid #2F6B4F' : '1.5px solid #E2EFE7',
+                                borderRadius: '12px',
+                                background: pottyToiletType === item.key ? '#F0F9F4' : '#F7FAF8',
+                                color: pottyToiletType === item.key ? '#2F6B4F' : '#55655B',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* SECTION 3: Time Picker */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAF8', padding: '10px 14px', borderRadius: '12px', border: '1px solid #EEF5F1' }}>
+                      <span style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700' }}>Thời gian</span>
                       <input
-                        type="text"
-                        className="tracker-input-note-premium"
-                        value={diaperDesc}
-                        onChange={(e) => setDiaperDesc(e.target.value)}
-                        placeholder="Mẹ ghi chú thêm (ví dụ: tự lập, tè nhiều...)"
+                        type="time"
+                        value={pottyTimeStr}
+                        onChange={(e) => setPottyTimeStr(e.target.value)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #E2EFE7',
+                          fontSize: '16px',
+                          outline: 'none',
+                          backgroundColor: '#FBFDFB',
+                          color: '#2F6B4F',
+                          fontWeight: '700'
+                        }}
+                      />
+                    </div>
+
+                    {/* SECTION 4: Ghi chú */}
+                    <div>
+                      <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                        Ghi chú nếu cần
+                      </label>
+                      <textarea
+                        value={pottyNote}
+                        onChange={(e) => setPottyNote(e.target.value)}
+                        placeholder={pottyPlaceholder}
                         style={{
                           width: '100%',
+                          minHeight: '80px',
                           padding: '12px 14px',
                           borderRadius: '14px',
                           border: '1px solid #E2EFE7',
-                          fontSize: '13.5px',
+                          fontSize: '16px',
                           outline: 'none',
                           backgroundColor: '#FBFDFB',
-                          boxSizing: 'border-box'
+                          boxSizing: 'border-box',
+                          resize: 'none'
                         }}
                       />
-                      <p style={{ fontSize: '11px', color: '#8A8A8A', marginTop: '6px', fontStyle: 'italic' }}>
-                        * Ghi nhận vệ sinh phù hợp với độ tuổi của bé, không bắt buộc tập bô cưỡng ép.
-                      </p>
                     </div>
-                  ) : (
-                    <div className="diaper-stool-color-spectrum-wrapper">
-                      <h4 className="stool-spectrum-label-heading">Màu sắc theo dõi tiêu hóa:</h4>
-                      <div className="stool-color-row-chips">
-                        {[
-                          { color: 'yellow', label: 'Vàng tươi', hex: '#FFEB3B' },
-                          { color: 'mustard', label: 'Mù tạt', hex: '#E5A93B' },
-                          { color: 'green', label: 'Xanh phân xu', hex: '#689F38' },
-                          { color: 'brown', label: 'Nâu sẫm', hex: '#5D4037' }
-                        ].map(item => (
-                          <button key={item.color} type="button" className={`stool-color-chip ${diaperColor === item.color ? 'active' : ''}`} style={{ backgroundColor: item.hex }} onClick={() => { setDiaperColor(item.color); setDiaperDesc(item.label); }} title={item.label} />
-                        ))}
-                      </div>
-                      <p className="selected-stool-feedback">Tình trạng phân: <b>{diaperDesc}</b></p>
-                    </div>
-                  )}
+                  </div>
 
-                  <button className="submit-tracker-log-btn-full" onClick={handleSaveDiaper}>
-                    {babyAgeMonths >= 18 ? 'Lưu ghi nhận' : 'Lưu thay tã'}
-                  </button>
+                  {/* Sticky Footer Save Button */}
+                  <div style={{ marginTop: '24px' }}>
+                    {!isSaveEnabled && (
+                      <p style={{ fontSize: '12.5px', color: '#7A8E82', fontStyle: 'italic', fontWeight: '600', marginBottom: '12px', textAlign: 'center' }}>
+                        Mẹ chọn một hoạt động để lưu nhé.
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      className="submit-tracker-log-btn-full"
+                      style={{
+                        width: '100%',
+                        padding: '16px',
+                        borderRadius: '100px',
+                        background: isSaveEnabled ? '#2F6B4F' : '#A3B8AC',
+                        color: 'white',
+                        fontWeight: '700',
+                        fontSize: '15px',
+                        border: 'none',
+                        cursor: isSaveEnabled ? 'pointer' : 'not-allowed',
+                        boxShadow: isSaveEnabled ? '0 8px 24px rgba(47, 107, 79, 0.15)' : 'none',
+                        transition: 'all 0.2s ease',
+                        pointerEvents: isSavingPotty ? 'none' : 'auto'
+                      }}
+                      onClick={handleSaveDiaper}
+                      disabled={!isSaveEnabled || isSavingPotty}
+                    >
+                      {isSavingPotty ? 'Đang lưu...' : saveBtnText}
+                    </button>
+                  </div>
                 </div>
               );
             })()}
