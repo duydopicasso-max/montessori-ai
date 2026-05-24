@@ -1017,9 +1017,11 @@
 
 /* ── SCROLL LOCK & POINTER ISOLATION ── */
 body.cs-modal-open {
-  overflow: hidden !important;
-  /* Do NOT set touch-action: none here — it blocks taps on portal-rendered overlays */
+  /* Do NOT use overflow:hidden — iOS Safari freezes touch events on position:fixed
+     elements (portals/modals) when body has overflow:hidden. The app uses
+     height:100dvh containers so body scroll is already prevented. */
 }
+
 /* All overlay elements always receive pointer events */
 .checkup-overlay,
 .checkup-sheet,

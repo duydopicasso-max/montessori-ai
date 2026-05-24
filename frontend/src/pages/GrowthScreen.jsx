@@ -262,24 +262,23 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const pendingDeletesRef = useRef({});
   const latestDeletedIdRef = useRef(null);
 
-  /* ── Body overflow scroll lock effect for active modals ── */
+  /* ── Body class effects for active modals — NO overflow:hidden (iOS Safari bug) ── */
   useEffect(() => {
     const isModalOpen = showDeleteConfirm || showEditProfileModal || showEddCalendar || showDobCalendar || showMeasureDateCalendar || showRecalcModal;
     if (isModalOpen) {
-      document.body.style.overflow = 'hidden';
+      // Do NOT set overflow:hidden — iOS Safari freezes touch events on fixed elements
       document.body.classList.add('cs-modal-open');
       document.body.classList.add('overlay-open');
     } else {
-      document.body.style.overflow = '';
       document.body.classList.remove('cs-modal-open');
       document.body.classList.remove('overlay-open');
     }
     return () => {
-      document.body.style.overflow = '';
       document.body.classList.remove('cs-modal-open');
       document.body.classList.remove('overlay-open');
     };
   }, [showDeleteConfirm, showEditProfileModal, showEddCalendar, showDobCalendar, showMeasureDateCalendar, showRecalcModal]);
+
 
   /* ── Resolved baby ── */
   const rawBaby  = babies[selectedBaby] || {};

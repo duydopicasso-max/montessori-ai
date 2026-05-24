@@ -478,9 +478,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
   useEffect(() => {
     if (!open) return;
 
-    // Lock body scroll and apply pointer isolation
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    // Apply pointer isolation classes (do NOT set overflow:hidden — iOS Safari touch-freeze bug)
     document.body.classList.add('cs-modal-open');
     document.body.classList.add('overlay-open');
 
@@ -604,7 +602,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      // Do NOT restore overflow — we never set it (iOS Safari fix)
       document.body.classList.remove('cs-modal-open');
       document.body.classList.remove('overlay-open');
       document.removeEventListener('touchstart', handleTouchStart);

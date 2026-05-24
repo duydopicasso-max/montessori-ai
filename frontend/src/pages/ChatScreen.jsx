@@ -3185,21 +3185,22 @@ ${logsDesc}`;
     }
   };
 
-  // Body scroll lock + overlay-open class effect
-  // overlay-open class hides bottom-nav via CSS in App.css (iOS WebKit z-index fix)
+  // Body class effects for overlay state
+  // overlay-open class hides bottom-nav via CSS in App.css
+  // NOTE: We do NOT set overflow:hidden on body — iOS Safari freezes touch events
+  // on position:fixed elements when body has overflow:hidden. The app uses
+  // height:100dvh everywhere so body scroll lock is unnecessary.
   useEffect(() => {
     const isModalOpen = !!activeBottomSheet || isChatOpen || !!confirmCloseTarget;
     if (isModalOpen) {
-      document.body.style.overflow = 'hidden';
+      // Do NOT set document.body.style.overflow = 'hidden' (iOS Safari bug)
       document.body.classList.add('cs-modal-open');
       document.body.classList.add('overlay-open');
     } else {
-      document.body.style.overflow = '';
       document.body.classList.remove('cs-modal-open');
       document.body.classList.remove('overlay-open');
     }
     return () => {
-      document.body.style.overflow = '';
       document.body.classList.remove('cs-modal-open');
       document.body.classList.remove('overlay-open');
     };
