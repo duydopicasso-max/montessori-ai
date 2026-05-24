@@ -969,9 +969,10 @@ ${logsDesc}`;
 
   // Pregnancy Logs: Weight
   const handleSavePregWeight = async () => {
-    if (!userId || isSavingWeight) return;
+    if (!userId || isSavingWeightRef.current) return;
     const wNum = Number(pregWeight);
     if (isNaN(wNum) || wNum < 30 || wNum > 200) return;
+    isSavingWeightRef.current = true;
     setIsSavingWeight(true);
     setSaveWeightError(false);
 
@@ -1012,9 +1013,10 @@ ${logsDesc}`;
 
     // Close sheet immediately
     handleCleanCloseSheet('preg_weight');
+    setIsSavingWeight(false);
 
     Promise.all([saveActivity, syncVisit]).finally(() => {
-      setIsSavingWeight(false);
+      isSavingWeightRef.current = false;
     });
   };
 
@@ -1211,6 +1213,10 @@ ${logsDesc}`;
   const pregWeightInitialRef = useRef(58.5);
   const pregRemindersInitialRef = useRef({ vitaminsLogged: { Folic: false, Iron: false, Calcium: false, DHA: false }, waterCount: 0 });
   const chatOverlayStateRef = useRef({ isDirty: false, saving: false });
+  const isSavingWeightRef = useRef(false);
+  const isSavingVitaminsRef = useRef(false);
+  const isSavingClinicRef = useRef(false);
+  const isSavingEmotionRef = useRef(false);
 
   useEffect(() => {
     if (activeBottomSheet === 'preg_reminders') {
@@ -1267,7 +1273,8 @@ ${logsDesc}`;
   }, [activeBottomSheet, activityLogs, profile]);
 
   const handleSaveVitamins = async () => {
-    if (!userId || isSavingVitamins) return;
+    if (!userId || isSavingVitaminsRef.current) return;
+    isSavingVitaminsRef.current = true;
     setIsSavingVitamins(true);
     setSaveVitaminsError(false);
 
@@ -1313,9 +1320,10 @@ ${logsDesc}`;
 
     // Close sheet immediately
     handleCleanCloseSheet('preg_reminders');
+    setIsSavingVitamins(false);
 
     saveTask.finally(() => {
-      setIsSavingVitamins(false);
+      isSavingVitaminsRef.current = false;
     });
   };
 
@@ -1372,7 +1380,7 @@ ${logsDesc}`;
 
   // Pregnancy Logs: Clinic Checkup
   const handleSavePregClinic = async () => {
-    if (!userId || isSavingClinic) return;
+    if (!userId || isSavingClinicRef.current) return;
 
     setSaveClinicError(false);
     setShowValidationWarning(false);
@@ -1383,6 +1391,7 @@ ${logsDesc}`;
       return;
     }
 
+    isSavingClinicRef.current = true;
     setIsSavingClinic(true);
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     const ultrasoundData = parseClinicNote(clinicNote);
@@ -1442,9 +1451,10 @@ ${logsDesc}`;
     handleCleanCloseSheet('preg_clinic');
     setClinicNote('');
     setNextApptDate('');
+    setIsSavingClinic(false);
 
     saveTask.finally(() => {
-      setIsSavingClinic(false);
+      isSavingClinicRef.current = false;
     });
   };
 
@@ -1526,13 +1536,14 @@ ${logsDesc}`;
 
   // Pregnancy Logs: Emotion Tracker
   const handleSavePregEmotion = async () => {
-    if (!userId || isSavingEmotion) return;
+    if (!userId || isSavingEmotionRef.current) return;
     
     // Validation: if both emotions and notes are empty, return silently
     if (selectedEmotions.length === 0 && !emotionNote.trim()) {
       return;
     }
     
+    isSavingEmotionRef.current = true;
     setIsSavingEmotion(true);
     setSaveEmotionError(false);
     
@@ -1573,9 +1584,10 @@ ${logsDesc}`;
     setSelectedEmotions([]);
     setEmotionIntensity('Vừa');
     setEmotionNote('');
+    setIsSavingEmotion(false);
 
     saveTask.finally(() => {
-      setIsSavingEmotion(false);
+      isSavingEmotionRef.current = false;
     });
   };
 
