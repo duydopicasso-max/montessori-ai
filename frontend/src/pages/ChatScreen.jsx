@@ -3675,7 +3675,7 @@ ${logsDesc}`;
             {/* 1. NUTRITION BOTTOM SHEET */}
             {activeBottomSheet === 'nutrition' && (() => {
               const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
-              const sheetTitle = 'Ghi nhận ăn uống';
+              const sheetTitle = 'Ghi nhận ăn uống (v2)';
               const childName = baby?.name || '';
               const sheetSubtitle = childName ? `Hôm nay ${childName} ăn gì rồi mẹ?` : 'Hôm nay bé ăn gì rồi mẹ?';
 
@@ -4329,7 +4329,7 @@ ${logsDesc}`;
 
               return (
                 <div className="tracker-sheet-viewport" style={{ maxHeight: '82vh', overflowY: 'auto', paddingBottom: '30px', position: 'relative' }}>
-                  <h3 className="tracker-sheet-title" style={{ marginBottom: '4px' }}>Ghi nhận giấc ngủ</h3>
+                  <h3 className="tracker-sheet-title" style={{ marginBottom: '4px' }}>Ghi nhận giấc ngủ (v2)</h3>
                   <p className="tracker-sheet-subtitle" style={{ fontSize: '13.5px', color: '#687E70', margin: '0 0 20px', fontWeight: '500', textAlign: 'left' }}>
                     {sheetSubtitle}
                   </p>
@@ -4938,8 +4938,8 @@ ${logsDesc}`;
               const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
               const childName = baby?.name || '';
               const sheetTitle = babyAgeMonths >= 18 
-                ? (babyAgeMonths <= 36 ? 'Vệ sinh / Tập bô' : 'Ghi nhận Vệ sinh') 
-                : 'Ghi nhận thay tã';
+                ? (babyAgeMonths <= 36 ? 'Vệ sinh / Tập bô (v2)' : 'Ghi nhận Vệ sinh (v2)') 
+                : 'Ghi nhận thay tã (v2)';
               const subtitle = childName ? `Hôm nay ${childName} đi vệ sinh thế nào mẹ?` : 'Hôm nay bé đi vệ sinh thế nào mẹ?';
 
               // Inline line icon SVGs
