@@ -572,6 +572,54 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   const [sleepTag, setSleepTag] = useState('Tự ngủ'); // 'Tự ngủ' | 'Ti mẹ' | 'Bế ru'
   const sleepTimerRef = useRef(null);
 
+  // Optimized sleep sheet states
+  const [sleepTab, setSleepTab] = useState('live'); // 'live' | 'manual'
+  const [sleepFlowState, setSleepFlowState] = useState('idle'); // 'idle' | 'running' | 'finished'
+  const [sleepStartTime, setSleepStartTime] = useState(null);
+  const [sleepEndTime, setSleepEndTime] = useState(null);
+  const [sleepType, setSleepType] = useState('day'); // 'day' | 'night'
+  const [sleepNote, setSleepNote] = useState('');
+  const [manualStartStr, setManualStartStr] = useState('');
+  const [manualEndStr, setManualEndStr] = useState('');
+  const [showSleepResetConfirm, setShowSleepResetConfirm] = useState(false);
+  const [hasManuallySetSleepType, setHasManuallySetSleepType] = useState(false);
+  const [isSavingSleep, setIsSavingSleep] = useState(false);
+  const [saveSleepError, setSaveSleepError] = useState(false);
+
+  const formatHHMM = (date) => {
+    if (!date) return '';
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  const getManualDuration = () => {
+    if (!manualStartStr || !manualEndStr) return 0;
+    const [sH, sM] = manualStartStr.split(':').map(Number);
+    const [eH, eM] = manualEndStr.split(':').map(Number);
+    let diff = (eH * 60 + eM) - (sH * 60 + sM);
+    if (diff < 0) {
+      diff += 24 * 60; // Crosses midnight
+    }
+    return diff;
+  };
+
+  const handleManualStartChange = (val) => {
+    setManualStartStr(val);
+    if (!hasManuallySetSleepType && val) {
+      const [hh, mm] = val.split(':').map(Number);
+      if (!isNaN(hh) && !isNaN(mm)) {
+        const totalMinutes = hh * 60 + mm;
+        setSleepType(totalMinutes >= 360 && totalMinutes <= 1080 ? 'day' : 'night');
+      }
+    }
+  };
+
+  const handleSelectSleepType = (type) => {
+    setSleepType(type);
+    setHasManuallySetSleepType(true);
+  };
+
   // C. Diaper Sheet inputs
   const [diaperType, setDiaperType] = useState('pee'); // 'pee' | 'poop' | 'both'
   const [diaperColor, setDiaperColor] = useState('yellow'); // 'yellow' | 'mustard' | 'green' | 'brown'
@@ -804,7 +852,7 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
 
   // Send message chatbot logic
   const getDynamicContext = useCallback(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayLocalyyyymmdd();
     const todayNutrition = nutritionLogs.filter(l => l.date === todayStr);
     const todayActivity = activityLogs.filter(l => l.date === todayStr);
     
@@ -815,7 +863,7 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
       logsDesc = 'Các hoạt động đã ghi nhận hôm nay:\n' + 
         [
           ...todayNutrition.map(l => `[${l.time}] Ăn uống - ${l.type === 'breast_direct' ? 'Bú mẹ' : l.type === 'breast_pump' ? 'Bú sữa mẹ vắt' : l.type === 'formula' ? 'Bú sữa công thức' : l.type === 'solid' ? 'Ăn dặm' : 'Ăn'} (${l.amountMl ? `${l.amountMl}ml` : ''}${l.foodDetails || ''})`),
-          ...todayActivity.map(l => `[${l.time}] ${l.type === 'sleep' ? 'Ngủ' : l.type === 'diaper' ? 'Thay tã' : l.type === 'growth' ? 'Tăng trưởng' : l.type === 'preg_kick' ? 'Thai máy' : l.type === 'preg_contraction' ? 'Cơn gò' : l.type === 'preg_weight' ? 'Cân nặng mẹ' : l.type === 'preg_reminders' ? 'Vi chất' : 'Khác'} - ${l.note || ''}`)
+          ...todayActivity.map(l => `[${l.time}] ${l.type === 'sleep' || l.type === 'day_sleep' || l.type === 'night_sleep' ? 'Ngủ' : l.type === 'diaper' ? 'Thay tã' : l.type === 'growth' ? 'Tăng trưởng' : l.type === 'preg_kick' ? 'Thai máy' : l.type === 'preg_contraction' ? 'Cơn gò' : l.type === 'preg_weight' ? 'Cân nặng mẹ' : l.type === 'preg_reminders' ? 'Vi chất' : 'Khác'} - ${l.note || ''}`)
         ].join('\n');
     }
 
@@ -1000,28 +1048,80 @@ ${logsDesc}`;
   };
 
   // Sleep Log save
-  const handleSaveSleep = async () => {
-    if (!userId) return;
-    const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    let durationMin = Math.round(sleepSecs / 60) || 1;
+  const handleSaveSleep = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!userId || isSavingSleep) return;
+
+    const isLive = sleepTab === 'live';
+    let finalStart = isLive ? sleepStartTime : null;
+    let finalEnd = isLive ? sleepEndTime : null;
+    let durationMin = 0;
+
+    if (isLive) {
+      durationMin = Math.round(sleepSecs / 60) || 1;
+    } else {
+      if (!manualStartStr || !manualEndStr) return;
+      const today = new Date();
+      const [sH, sM] = manualStartStr.split(':').map(Number);
+      const [eH, eM] = manualEndStr.split(':').map(Number);
+      finalStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), sH, sM);
+      finalEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), eH, eM);
+      if (finalEnd < finalStart) {
+        finalEnd.setDate(finalEnd.getDate() + 1);
+      }
+      durationMin = Math.round((finalEnd.getTime() - finalStart.getTime()) / 60000);
+    }
+
+    if (!finalStart || !finalEnd || durationMin <= 0 || finalEnd <= finalStart) {
+      return;
+    }
+
+    setIsSavingSleep(true);
+    setSaveSleepError(false);
+
+    const type = sleepType === 'day' ? 'day_sleep' : 'night_sleep';
+    const typeLabel = sleepType === 'day' ? 'Ngủ ngày' : 'Ngủ đêm';
+
+    const startYear = finalStart.getFullYear();
+    const startMonth = String(finalStart.getMonth() + 1).padStart(2, '0');
+    const startDay = String(finalStart.getDate()).padStart(2, '0');
+    const localDateStr = `${startYear}-${startMonth}-${startDay}`;
 
     const logData = {
-      date: getTodayLocalyyyymmdd(),
-      time: formattedTime,
-      type: 'sleep',
-      sleepDurationMin: durationMin,
-      note: `Bé đã ngủ. Cách vào giấc: ${sleepTag}. Thời lượng: ${durationMin} phút`,
+      date: localDateStr,
+      time: formatHHMM(finalEnd),
+      type,
+      startedAt: finalStart, // JS Date mapped to Firestore Timestamp
+      endedAt: finalEnd,     // JS Date mapped to Firestore Timestamp
+      durationMinutes: durationMin,
+      note: sleepNote.trim() ? `${typeLabel} · ${durationMin} phút · ${sleepNote.trim()}` : `${typeLabel} · ${durationMin} phút`,
+      rawNote: sleepNote.trim(),
+      status: 'completed',
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       childId: babyId || ''
     };
 
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
       triggerChime();
+      showToast("Đã lưu giấc ngủ");
       handleCleanCloseSheet('sleep');
-      setSleepActive(false); setSleepSecs(0); setSleepStartStr('');
+      
+      // Reset states
+      setSleepActive(false);
+      setSleepSecs(0);
+      setSleepStartTime(null);
+      setSleepEndTime(null);
+      setSleepFlowState('idle');
+      setSleepNote('');
+      setSleepType('day');
+      setHasManuallySetSleepType(false);
     } catch (err) {
       console.error(err);
+      setSaveSleepError(true);
+    } finally {
+      setIsSavingSleep(false);
     }
   };
 
@@ -1429,8 +1529,36 @@ ${logsDesc}`;
       setSaveWeightError(false);
       setShowPrePregInput(false);
       setPrePregInputValue(profile?.prePregnancyWeight || '');
+    } else if (activeBottomSheet === 'sleep') {
+      setSleepTab('live');
+      const now = new Date();
+      let initialType = 'day';
+      if (sleepActive && sleepStartTime) {
+        const h = sleepStartTime.getHours();
+        initialType = (h >= 6 && h < 18) ? 'day' : 'night';
+      } else {
+        const h = now.getHours();
+        initialType = (h >= 6 && h < 18) ? 'day' : 'night';
+      }
+      if (!sleepActive) {
+        setSleepFlowState('idle');
+        setSleepSecs(0);
+        setSleepStartTime(null);
+        setSleepEndTime(null);
+      } else {
+        setSleepFlowState('running');
+      }
+      setSleepType(initialType);
+      setSleepNote('');
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      setManualStartStr(formatHHMM(oneHourAgo));
+      setManualEndStr(formatHHMM(now));
+      setHasManuallySetSleepType(false);
+      setShowSleepResetConfirm(false);
+      setSaveSleepError(false);
+      setIsSavingSleep(false);
     }
-  }, [activeBottomSheet, activityLogs, profile]);
+  }, [activeBottomSheet, activityLogs, profile, sleepActive]);
 
   const handleSaveVitamins = async () => {
     if (!userId || isSavingVitaminsRef.current) return;
@@ -1773,10 +1901,15 @@ ${logsDesc}`;
   };
 
   const getLastSleepText = () => {
-    const sleepLogs = activityLogs.filter(l => l.type === 'sleep');
-    if (sleepLogs.length === 0) return 'Giấc ngủ 1: --';
+    if (sleepActive) {
+      const minutes = Math.floor(sleepSecs / 60);
+      return `Đang ngủ · ${minutes} phút`;
+    }
+    const sleepLogs = activityLogs.filter(l => l.type === 'sleep' || l.type === 'day_sleep' || l.type === 'night_sleep');
+    if (sleepLogs.length === 0) return 'Chưa có cữ ngủ nào';
     const last = sleepLogs[0];
-    return `Giấc ngủ cuối: ${last.sleepDurationMin} phút`;
+    const duration = last.durationMinutes || last.sleepDurationMin || 0;
+    return `Giấc ngủ gần nhất: ${duration} phút`;
   };
 
   const getLastDiaperText = () => {
@@ -1915,7 +2048,19 @@ ${logsDesc}`;
     });
 
     // 2. Activities (Sleep, Diaper, Growth, etc.) today
-    activityLogs.filter(log => log.date === todayStr).forEach(log => {
+    activityLogs.filter(log => {
+      if (log.type === 'sleep' || log.type === 'day_sleep' || log.type === 'night_sleep') {
+        const startedAtDate = log.startedAt ? (typeof log.startedAt.toDate === 'function' ? log.startedAt.toDate() : new Date(log.startedAt)) : null;
+        if (startedAtDate) {
+          const year = startedAtDate.getFullYear();
+          const month = String(startedAtDate.getMonth() + 1).padStart(2, '0');
+          const day = String(startedAtDate.getDate()).padStart(2, '0');
+          const localDateStr = `${year}-${month}-${day}`;
+          return localDateStr === todayStr;
+        }
+      }
+      return log.date === todayStr;
+    }).forEach(log => {
       let desc = log.note || '';
       let typeLabel = '';
       let icon = '⏱️';
@@ -1959,11 +2104,35 @@ ${logsDesc}`;
         } else {
           desc = baseDesc;
         }
-      } else if (log.type === 'sleep') {
+      } else if (log.type === 'sleep' || log.type === 'day_sleep' || log.type === 'night_sleep') {
         typeLabel = 'Ngủ';
         icon = '🌙';
         colorClass = 'timeline-sleep';
-        desc = `Đã ngủ: ${log.sleepDurationMin} phút`;
+        const duration = log.durationMinutes || log.sleepDurationMin || 0;
+        
+        let typeText = 'Giấc ngủ';
+        if (log.type === 'day_sleep') {
+          typeText = 'Ngủ ngày';
+        } else if (log.type === 'night_sleep') {
+          typeText = 'Ngủ đêm';
+        }
+
+        let durationText = `${duration} phút`;
+        if (log.type === 'night_sleep' && duration >= 60) {
+          const hours = duration / 60;
+          if (hours % 1 === 0) {
+            durationText = `${hours} giờ`;
+          } else {
+            durationText = `${hours.toFixed(1)} giờ`;
+          }
+        }
+
+        const customNote = log.rawNote || '';
+        if (customNote.trim()) {
+          desc = `${typeText} · ${durationText} · ${customNote.trim()}`;
+        } else {
+          desc = `${typeText} · ${durationText}`;
+        }
       } else if (log.type === 'growth') {
         typeLabel = 'Phát triển';
         icon = '⚖️';
@@ -4076,50 +4245,618 @@ ${logsDesc}`;
               );
             })()}
 
-            {/* 2. SLEEP BOTTOM SHEET (LOCAL DARK-MODE & NEON ACCENT) */}
-            {activeBottomSheet === 'sleep' && (
-              <div className="tracker-sheet-viewport sleep-dark-mode">
-                <h3 className="tracker-sheet-title">Ghi nhận Giấc ngủ</h3>
+            {/* 2. SLEEP BOTTOM SHEET */}
+            {activeBottomSheet === 'sleep' && (() => {
+              const childName = baby?.name || '';
+              const sheetSubtitle = childName 
+                ? `${childName} đang ngủ hay mẹ muốn ghi lại giấc ngủ đã qua?`
+                : 'Bé đang ngủ hay mẹ muốn ghi lại giấc ngủ đã qua?';
 
-                <div className="sleep-stopwatch-neon-box">
-                  {/* Glowing neon accent timer ring */}
-                  <div className={`neon-timer-glow-accent ${sleepActive ? 'glowing-pulsing' : ''}`}>
-                    <span className="sleep-clock-timer-icon">🌙</span>
-                    <h2 className="neon-timer-digits">
-                      {Math.floor(sleepSecs / 3600).toString().padStart(2, '0')}:
-                      {Math.floor((sleepSecs % 3600) / 60).toString().padStart(2, '0')}:
-                      {(sleepSecs % 60).toString().padStart(2, '0')}
-                    </h2>
-                  </div>
-
-                  <p className="sleep-insight-predictive-txt">
-                    Dự kiến Minh Anh sẽ thức dậy vào khoảng 15:30.
+              return (
+                <div className="tracker-sheet-viewport" style={{ maxHeight: '82vh', overflowY: 'auto', paddingBottom: '30px', position: 'relative' }}>
+                  <h3 className="tracker-sheet-title" style={{ marginBottom: '4px' }}>Ghi nhận giấc ngủ</h3>
+                  <p className="tracker-sheet-subtitle" style={{ fontSize: '13.5px', color: '#687E70', margin: '0 0 20px', fontWeight: '500', textAlign: 'left' }}>
+                    {sheetSubtitle}
                   </p>
 
-                  <div className="sleep-watch-actions-controls">
-                    <button type="button" className={`sleep-btn-control-trigger ${sleepActive ? 'running' : ''}`} onClick={() => { setSleepActive(!sleepActive); if(!sleepStartStr) setSleepStartStr(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })); }}>
-                      {sleepActive ? '⏸️ Tạm dừng' : '▶️ Bắt đầu ngủ'}
+                  {/* Segmented Control Tabs */}
+                  <div className="tracker-subtabs-row" style={{ display: 'flex', background: '#EEF2EF', padding: '4px', borderRadius: '16px', gap: '4px', marginBottom: '24px' }}>
+                    <button
+                      type="button"
+                      className={`subtab-chip ${sleepTab === 'live' ? 'active' : ''}`}
+                      style={{
+                        flex: 1,
+                        padding: '10px 4px',
+                        border: 'none',
+                        background: sleepTab === 'live' ? '#FFFFFF' : 'transparent',
+                        color: sleepTab === 'live' ? '#2F6B4F' : '#5C6E64',
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        boxShadow: sleepTab === 'live' ? '0 4px 12px rgba(47, 107, 79, 0.08)' : 'none',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                      onClick={() => {
+                        setSleepTab('live');
+                        if (!hasManuallySetSleepType) {
+                          const startHour = (sleepActive && sleepStartTime) ? sleepStartTime.getHours() : new Date().getHours();
+                          setSleepType(startHour >= 6 && startHour < 18 ? 'day' : 'night');
+                        }
+                      }}
+                      disabled={isSavingSleep}
+                    >
+                      Đang ngủ
+                    </button>
+                    <button
+                      type="button"
+                      className={`subtab-chip ${sleepTab === 'manual' ? 'active' : ''}`}
+                      style={{
+                        flex: 1,
+                        padding: '10px 4px',
+                        border: 'none',
+                        background: sleepTab === 'manual' ? '#FFFFFF' : 'transparent',
+                        color: sleepTab === 'manual' ? '#2F6B4F' : '#5C6E64',
+                        fontWeight: '700',
+                        fontSize: '13px',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        boxShadow: sleepTab === 'manual' ? '0 4px 12px rgba(47, 107, 79, 0.08)' : 'none',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                      onClick={() => {
+                        setSleepTab('manual');
+                        if (!hasManuallySetSleepType && manualStartStr) {
+                          const [hh] = manualStartStr.split(':').map(Number);
+                          if (!isNaN(hh)) {
+                            setSleepType(hh >= 6 && hh < 18 ? 'day' : 'night');
+                          }
+                        }
+                      }}
+                      disabled={isSavingSleep}
+                    >
+                      Ngủ đã xong
                     </button>
                   </div>
 
-                  {/* How fell asleep pills */}
-                  <div className="how-fell-asleep-tags-block">
-                    <span className="tags-label-heading">Cách bé vào giấc?</span>
-                    <div className="tags-selection-row">
-                      {['Tự ngủ', 'Ti mẹ', 'Bế ru'].map(tag => (
-                        <button key={tag} type="button" className={`sleep-tag-pill ${sleepTag === tag ? 'active' : ''}`} onClick={() => setSleepTag(tag)}>
-                          {tag}
-                        </button>
-                      ))}
+                  {/* Errors / Warnings */}
+                  {saveSleepError && (
+                    <div style={{ padding: '14px', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: '14px', color: '#D97706', fontSize: '13px', marginBottom: '16px', textAlign: 'left' }}>
+                      <p style={{ margin: '0 0 4px', fontWeight: '700' }}>Chưa thể lưu giấc ngủ</p>
+                      <p style={{ margin: '0 0 10px' }}>Mẹ thử lại sau một chút nhé.</p>
+                      <button 
+                        type="button" 
+                        style={{
+                          padding: '6px 12px',
+                          background: '#D97706',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontWeight: '700',
+                          fontSize: '11px',
+                          cursor: 'pointer'
+                        }}
+                        onClick={handleSaveSleep}
+                      >
+                        Thử lại
+                      </button>
                     </div>
+                  )}
+
+                  <div className="tracker-sheet-form-body" style={{ opacity: isSavingSleep ? 0.6 : 1, pointerEvents: isSavingSleep ? 'none' : 'auto' }}>
+                    
+                    {/* 🌙 TAB: LIVE SLEEP (Đang ngủ) */}
+                    {sleepTab === 'live' && (
+                      <>
+                        {sleepFlowState === 'idle' && (
+                          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                            <h4 style={{ fontSize: '12px', color: '#687E70', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                              Giấc ngủ hiện tại
+                            </h4>
+                            <div style={{ fontSize: '36px', color: '#2F6B4F', fontWeight: '800', margin: '12px 0 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#2F6B4F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                              </svg>
+                              <span>0 phút</span>
+                            </div>
+                            <button
+                              type="button"
+                              style={{
+                                width: '100%',
+                                padding: '16px',
+                                borderRadius: '100px',
+                                background: '#2F6B4F',
+                                color: 'white',
+                                fontWeight: '700',
+                                fontSize: '15px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 8px 24px rgba(47, 107, 79, 0.2)',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onClick={() => {
+                                const start = new Date();
+                                setSleepFlowState('running');
+                                setSleepActive(true);
+                                setSleepStartTime(start);
+                                setSleepEndTime(null);
+                                setSleepSecs(0);
+                                if (!hasManuallySetSleepType) {
+                                  const h = start.getHours();
+                                  setSleepType(h >= 6 && h < 18 ? 'day' : 'night');
+                                }
+                              }}
+                            >
+                              Bắt đầu ngủ
+                            </button>
+                            <p style={{ fontSize: '12.5px', color: '#7A8E82', marginTop: '16px', fontStyle: 'italic', fontWeight: '500' }}>
+                              Mẹ bấm bắt đầu khi bé vừa ngủ, rồi kết thúc khi bé thức dậy.
+                            </p>
+                          </div>
+                        )}
+
+                        {sleepFlowState === 'running' && (
+                          <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                            <h4 style={{ fontSize: '12px', color: '#D97706', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                              Đang ngủ
+                            </h4>
+                            <div style={{ fontSize: '36px', color: '#2F6B4F', fontWeight: '800', margin: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#2F6B4F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                              </svg>
+                              <span>{Math.floor(sleepSecs / 60)} phút {sleepSecs % 60}s</span>
+                            </div>
+                            <p style={{ fontSize: '13px', color: '#687E70', margin: '0 0 24px', fontWeight: '600' }}>
+                              Bắt đầu lúc {sleepStartTime ? sleepStartTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </p>
+                            
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                              <button
+                                type="button"
+                                style={{
+                                  flex: 2,
+                                  padding: '14px 20px',
+                                  fontSize: '14px',
+                                  fontWeight: '700',
+                                  border: 'none',
+                                  borderRadius: '100px',
+                                  background: '#2F6B4F',
+                                  color: 'white',
+                                  cursor: 'pointer',
+                                  boxShadow: '0 4px 14px rgba(47, 107, 79, 0.2)',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => {
+                                  setSleepActive(false);
+                                  setSleepFlowState('finished');
+                                  const end = new Date();
+                                  setSleepEndTime(end);
+                                  const startHour = sleepStartTime ? sleepStartTime.getHours() : new Date().getHours();
+                                  if (!hasManuallySetSleepType) {
+                                    setSleepType(startHour >= 6 && startHour < 18 ? 'day' : 'night');
+                                  }
+                                }}
+                              >
+                                Kết thúc giấc ngủ
+                              </button>
+                              <button
+                                type="button"
+                                style={{
+                                  flex: 1,
+                                  padding: '14px 20px',
+                                  fontSize: '13.5px',
+                                  fontWeight: '600',
+                                  border: '1.5px solid #E2EFE7',
+                                  borderRadius: '100px',
+                                  background: 'white',
+                                  color: '#55655B',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => setShowSleepResetConfirm(true)}
+                              >
+                                Làm lại
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {sleepFlowState === 'finished' && (
+                          <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div style={{ background: '#F4FAF6', padding: '16px', borderRadius: '16px', border: '1px solid #E2EFE7', textAlign: 'center' }}>
+                              <h4 style={{ fontSize: '11px', color: '#687E70', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 6px' }}>
+                                Giấc ngủ đã kết thúc
+                              </h4>
+                              <p style={{ fontSize: '18px', color: '#2F6B4F', fontWeight: '800', margin: '0 0 4px' }}>
+                                {sleepStartTime ? sleepStartTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''} – {sleepEndTime ? sleepEndTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </p>
+                              <p style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', margin: 0 }}>
+                                Tổng thời gian: {Math.round(sleepSecs / 60) || 1} phút
+                              </p>
+                            </div>
+
+                            {/* Loại giấc ngủ */}
+                            <div>
+                              <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                                Loại giấc ngủ
+                              </label>
+                              <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                  type="button"
+                                  style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    fontSize: '13.5px',
+                                    fontWeight: '700',
+                                    border: sleepType === 'day' 
+                                      ? (hasManuallySetSleepType ? '1.5px solid #2F6B4F' : '1.5px dashed #2F6B4F')
+                                      : '1.5px solid #E2EFE7',
+                                    borderRadius: '12px',
+                                    background: sleepType === 'day' 
+                                      ? (hasManuallySetSleepType ? '#F0F9F4' : '#F7FAF8')
+                                      : '#FFFFFF',
+                                    color: sleepType === 'day' ? '#2F6B4F' : '#55655B',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onClick={() => handleSelectSleepType('day')}
+                                >
+                                  Ngủ ngày
+                                </button>
+                                <button
+                                  type="button"
+                                  style={{
+                                    flex: 1,
+                                    padding: '12px',
+                                    fontSize: '13.5px',
+                                    fontWeight: '700',
+                                    border: sleepType === 'night' 
+                                      ? (hasManuallySetSleepType ? '1.5px solid #2F6B4F' : '1.5px dashed #2F6B4F')
+                                      : '1.5px solid #E2EFE7',
+                                    borderRadius: '12px',
+                                    background: sleepType === 'night' 
+                                      ? (hasManuallySetSleepType ? '#F0F9F4' : '#F7FAF8')
+                                      : '#FFFFFF',
+                                    color: sleepType === 'night' ? '#2F6B4F' : '#55655B',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onClick={() => handleSelectSleepType('night')}
+                                >
+                                  Ngủ đêm
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Ghi chú */}
+                            <div>
+                              <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                                Ghi chú nếu cần
+                              </label>
+                              <textarea
+                                style={{
+                                  width: '100%',
+                                  minHeight: '80px',
+                                  padding: '12px 14px',
+                                  borderRadius: '14px',
+                                  border: '1px solid #E2EFE7',
+                                  fontSize: '16px', // iOS zoom safe
+                                  fontFamily: 'inherit',
+                                  outline: 'none',
+                                  backgroundColor: '#FBFDFB',
+                                  boxSizing: 'border-box',
+                                  resize: 'none'
+                                }}
+                                placeholder="Ví dụ: Bé ngủ dễ, tỉnh dậy vui vẻ."
+                                value={sleepNote}
+                                onChange={e => setSleepNote(e.target.value)}
+                              />
+                            </div>
+
+                            {/* Footer Nút Lưu */}
+                            <button
+                              type="button"
+                              style={{
+                                width: '100%',
+                                padding: '16px',
+                                borderRadius: '100px',
+                                background: '#2F6B4F',
+                                color: 'white',
+                                border: 'none',
+                                fontSize: '15px',
+                                fontWeight: '700',
+                                marginTop: '10px',
+                                cursor: 'pointer',
+                                boxShadow: '0 8px 24px rgba(47, 107, 79, 0.25)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                              }}
+                              onClick={handleSaveSleep}
+                              disabled={isSavingSleep}
+                            >
+                              {isSavingSleep ? 'Đang lưu...' : 'Lưu giấc ngủ'}
+                            </button>
+                            
+                            {/* Link flat button to go back to timer */}
+                            <button
+                              type="button"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#687E70',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                textDecoration: 'underline',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                marginTop: '-10px',
+                                width: '100%'
+                              }}
+                              onClick={() => setShowSleepResetConfirm(true)}
+                            >
+                              Làm lại giấc ngủ
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* 📝 TAB: MANUAL SLEEP (Ngủ đã xong) */}
+                    {sleepTab === 'manual' && (
+                      <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {/* Bé ngủ lúc nào? */}
+                        <div>
+                          <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                            Bé ngủ lúc nào?
+                          </label>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontSize: '12.5px', color: '#687E70', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Bắt đầu</span>
+                              <input
+                                type="time"
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 12px',
+                                  borderRadius: '10px',
+                                  border: '1px solid #E2EFE7',
+                                  fontSize: '16px', // iOS safe zoom
+                                  outline: 'none',
+                                  backgroundColor: '#FBFDFB',
+                                  boxSizing: 'border-box'
+                                }}
+                                value={manualStartStr}
+                                onChange={e => handleManualStartChange(e.target.value)}
+                              />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontSize: '12.5px', color: '#687E70', display: 'block', marginBottom: '4px', fontWeight: '600' }}>Kết thúc</span>
+                              <input
+                                type="time"
+                                style={{
+                                  width: '100%',
+                                  padding: '10px 12px',
+                                  borderRadius: '10px',
+                                  border: '1px solid #E2EFE7',
+                                  fontSize: '16px', // iOS safe zoom
+                                  outline: 'none',
+                                  backgroundColor: '#FBFDFB',
+                                  boxSizing: 'border-box'
+                                }}
+                                value={manualEndStr}
+                                onChange={e => setManualEndStr(e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Duration calculation / Warning */}
+                          {(() => {
+                            const duration = getManualDuration();
+                            const isInvalid = !manualStartStr || !manualEndStr || duration <= 0;
+                            
+                            if (isInvalid) {
+                              return (
+                                <p style={{ fontSize: '12.5px', color: '#7A8E82', margin: '8px 0 0', fontStyle: 'italic', fontWeight: '600' }}>
+                                  * Giờ kết thúc cần sau giờ bắt đầu.
+                                </p>
+                              );
+                            }
+                            
+                            const hours = Math.floor(duration / 60);
+                            const mins = duration % 60;
+                            return (
+                              <p style={{ fontSize: '13px', color: '#2F6B4F', margin: '8px 0 0', fontWeight: '700' }}>
+                                Tổng thời gian: {hours > 0 ? `${hours} giờ ${mins} phút` : `${mins} phút`}
+                              </p>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Loại giấc ngủ */}
+                        <div>
+                          <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                            Loại giấc ngủ
+                          </label>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                              type="button"
+                              style={{
+                                flex: 1,
+                                padding: '12px',
+                                fontSize: '13.5px',
+                                fontWeight: '700',
+                                border: sleepType === 'day' 
+                                  ? (hasManuallySetSleepType ? '1.5px solid #2F6B4F' : '1.5px dashed #2F6B4F')
+                                  : '1.5px solid #E2EFE7',
+                                borderRadius: '12px',
+                                background: sleepType === 'day' 
+                                  ? (hasManuallySetSleepType ? '#F0F9F4' : '#F7FAF8')
+                                  : '#FFFFFF',
+                                color: sleepType === 'day' ? '#2F6B4F' : '#55655B',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onClick={() => handleSelectSleepType('day')}
+                            >
+                              Ngủ ngày
+                            </button>
+                            <button
+                              type="button"
+                              style={{
+                                flex: 1,
+                                padding: '12px',
+                                fontSize: '13.5px',
+                                fontWeight: '700',
+                                border: sleepType === 'night' 
+                                  ? (hasManuallySetSleepType ? '1.5px solid #2F6B4F' : '1.5px dashed #2F6B4F')
+                                  : '1.5px solid #E2EFE7',
+                                borderRadius: '12px',
+                                background: sleepType === 'night' 
+                                  ? (hasManuallySetSleepType ? '#F0F9F4' : '#F7FAF8')
+                                  : '#FFFFFF',
+                                color: sleepType === 'night' ? '#2F6B4F' : '#55655B',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onClick={() => handleSelectSleepType('night')}
+                            >
+                              Ngủ đêm
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Ghi chú */}
+                        <div>
+                          <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                            Ghi chú nếu cần
+                          </label>
+                          <textarea
+                            style={{
+                              width: '100%',
+                              minHeight: '80px',
+                              padding: '12px 14px',
+                              borderRadius: '14px',
+                              border: '1px solid #E2EFE7',
+                              fontSize: '16px', // iOS safe zoom
+                              fontFamily: 'inherit',
+                              outline: 'none',
+                              backgroundColor: '#FBFDFB',
+                              boxSizing: 'border-box',
+                              resize: 'none'
+                            }}
+                            placeholder="Ví dụ: Bé ngủ ngắn, tỉnh giữa giấc."
+                            value={sleepNote}
+                            onChange={e => setSleepNote(e.target.value)}
+                          />
+                        </div>
+
+                        {/* Footer Nút Lưu */}
+                        <button
+                          type="button"
+                          style={{
+                            width: '100%',
+                            padding: '16px',
+                            borderRadius: '100px',
+                            background: (getManualDuration() > 0 && manualStartStr && manualEndStr) ? '#2F6B4F' : '#C2D1C8',
+                            color: 'white',
+                            border: 'none',
+                            fontSize: '15px',
+                            fontWeight: '700',
+                            marginTop: '10px',
+                            cursor: (getManualDuration() > 0 && manualStartStr && manualEndStr) ? 'pointer' : 'not-allowed',
+                            boxShadow: (getManualDuration() > 0 && manualStartStr && manualEndStr) ? '0 8px 24px rgba(47, 107, 79, 0.25)' : 'none',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                          }}
+                          onClick={handleSaveSleep}
+                          disabled={isSavingSleep || getManualDuration() <= 0 || !manualStartStr || !manualEndStr}
+                        >
+                          {isSavingSleep ? 'Đang lưu...' : 'Lưu giấc ngủ'}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  <button className="submit-tracker-log-btn-full neon-timer-action" onClick={handleSaveSleep}>
-                    Kết thúc & Lưu
-                  </button>
+                  {/* 🚨 Custom Confirmation Dialog for Resetting stopwatch */}
+                  {showSleepResetConfirm && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'rgba(0, 0, 0, 0.4)',
+                      backdropFilter: 'blur(3px)',
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      justifyContent: 'center',
+                      zIndex: 999,
+                      borderRadius: '28px 28px 0 0'
+                    }} onClick={() => setShowSleepResetConfirm(false)}>
+                      <div style={{
+                        background: '#FFFFFF',
+                        width: '100%',
+                        padding: '24px 20px 34px',
+                        borderRadius: '24px 24px 0 0',
+                        boxSizing: 'border-box',
+                        textAlign: 'center',
+                        boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.15)'
+                      }} onClick={e => e.stopPropagation()}>
+                        <div style={{ width: '40px', height: '4px', background: '#E2EFE7', borderRadius: '10px', margin: '0 auto 16px' }} />
+                        <h4 style={{ fontSize: '17px', color: '#1A3326', fontWeight: '700', margin: '0 0 8px' }}>
+                          Làm lại giấc ngủ?
+                        </h4>
+                        <p style={{ fontSize: '13.5px', color: '#687E70', margin: '0 0 24px', fontWeight: '500', lineHeight: '1.4' }}>
+                          Thời gian đang ghi nhận sẽ được xóa.
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <button
+                            type="button"
+                            style={{
+                              width: '100%',
+                              padding: '14px',
+                              borderRadius: '100px',
+                              background: '#2F6B4F',
+                              color: '#FFFFFF',
+                              fontWeight: '700',
+                              fontSize: '14.5px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              boxShadow: '0 4px 12px rgba(47, 107, 79, 0.15)'
+                            }}
+                            onClick={() => {
+                              setSleepActive(false);
+                              setSleepSecs(0);
+                              setSleepStartTime(null);
+                              setSleepEndTime(null);
+                              setSleepFlowState('idle');
+                              setShowSleepResetConfirm(false);
+                            }}
+                          >
+                            Làm lại
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              width: '100%',
+                              padding: '14px',
+                              borderRadius: '100px',
+                              background: '#FFFFFF',
+                              color: '#55655B',
+                              fontWeight: '700',
+                              fontSize: '14.5px',
+                              border: '1.5px solid #E2EFE7',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => setShowSleepResetConfirm(false)}
+                          >
+                            Tiếp tục ghi nhận
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 3. DIAPER BOTTOM SHEET */}
             {activeBottomSheet === 'diaper' && (() => {
