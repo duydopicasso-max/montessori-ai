@@ -3108,30 +3108,37 @@ ${logsDesc}`;
   };
 
   // Keyboard helper visual viewport listeners
-  const [viewportStyle, setViewportStyle] = useState({});
-  const [chatViewportStyle, setChatViewportStyle] = useState({});
+  // Use refs + direct DOM manipulation instead of useState to avoid re-renders
+  // that cause inputs to lose focus when the keyboard opens/closes (the flicker bug).
+  const bottomSheetPanelRef = useRef(null);
+  const chatPanelRef = useRef(null);
 
   useEffect(() => {
     if (!activeBottomSheet || !window.visualViewport) {
-      setViewportStyle({});
+      if (bottomSheetPanelRef.current) {
+        bottomSheetPanelRef.current.style.bottom = '';
+        bottomSheetPanelRef.current.style.maxHeight = '';
+      }
       return;
     }
+    const panel = bottomSheetPanelRef.current;
     const handleResize = () => {
+      if (!panel) return;
       const vv = window.visualViewport;
       const offsetTop = vv ? (vv.offsetTop || 0) : 0;
       const height = vv ? (vv.height || window.innerHeight) : window.innerHeight;
       if (window.innerWidth < 640) {
         const bottomOffset = Math.max(0, window.innerHeight - (offsetTop + height));
         if (bottomOffset > 40) {
-          setViewportStyle({
-            bottom: `${bottomOffset}px`,
-            maxHeight: `${height * 0.9}px`
-          });
+          panel.style.bottom = `${bottomOffset}px`;
+          panel.style.maxHeight = `${height * 0.9}px`;
         } else {
-          setViewportStyle({});
+          panel.style.bottom = '';
+          panel.style.maxHeight = '';
         }
       } else {
-        setViewportStyle({});
+        panel.style.bottom = '';
+        panel.style.maxHeight = '';
       }
     };
     window.visualViewport.addEventListener('resize', handleResize);
@@ -3145,25 +3152,30 @@ ${logsDesc}`;
 
   useEffect(() => {
     if (!isChatOpen || !window.visualViewport) {
-      setChatViewportStyle({});
+      if (chatPanelRef.current) {
+        chatPanelRef.current.style.bottom = '';
+        chatPanelRef.current.style.maxHeight = '';
+      }
       return;
     }
+    const panel = chatPanelRef.current;
     const handleResize = () => {
+      if (!panel) return;
       const vv = window.visualViewport;
       const offsetTop = vv ? (vv.offsetTop || 0) : 0;
       const height = vv ? (vv.height || window.innerHeight) : window.innerHeight;
       if (window.innerWidth < 640) {
         const bottomOffset = Math.max(0, window.innerHeight - (offsetTop + height));
         if (bottomOffset > 40) {
-          setChatViewportStyle({
-            bottom: `${bottomOffset}px`,
-            maxHeight: `${height * 0.9}px`
-          });
+          panel.style.bottom = `${bottomOffset}px`;
+          panel.style.maxHeight = `${height * 0.9}px`;
         } else {
-          setChatViewportStyle({});
+          panel.style.bottom = '';
+          panel.style.maxHeight = '';
         }
       } else {
-        setChatViewportStyle({});
+        panel.style.bottom = '';
+        panel.style.maxHeight = '';
       }
     };
     window.visualViewport.addEventListener('resize', handleResize);
@@ -3175,13 +3187,15 @@ ${logsDesc}`;
     };
   }, [isChatOpen]);
 
-  // Focus centering auto-scroll
+  // Focus centering auto-scroll — uses scrollIntoView only, no state changes
   const handleFocusCapture = (e) => {
     const target = e.target;
     if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+      // Use block:'nearest' to avoid scrolling the viewport (which could trigger
+      // the visualViewport scroll listener and cause a re-render/flicker)
       setTimeout(() => {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 250);
+        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 300);
     }
   };
 
@@ -3571,7 +3585,7 @@ ${logsDesc}`;
       {isChatOpen && createPortal(
         <>
           <div className="chat-slide-up-modal-overlay" onClick={handleAttemptCloseChat} />
-          <div className="chat-slide-up-content-panel animate-slide-up" style={chatViewportStyle} onFocusCapture={handleFocusCapture}>
+          <div ref={chatPanelRef} className="chat-slide-up-content-panel animate-slide-up" onFocusCapture={handleFocusCapture}>
             
             {/* Chat Header inside sliding panel */}
             <header className="chat-sliding-header">
@@ -3678,7 +3692,7 @@ ${logsDesc}`;
       {activeBottomSheet && createPortal(
         <>
           <div className="bottom-sheet-backdrop-overlay" onClick={handleAttemptCloseSheet} />
-          <div className="bottom-sheet-content-panel animate-slide-up" style={viewportStyle} onFocusCapture={handleFocusCapture}>
+          <div ref={bottomSheetPanelRef} className="bottom-sheet-content-panel animate-slide-up" onFocusCapture={handleFocusCapture}>
             
             {/* Sliding Header top notch bar */}
             <div className="sheet-drag-handle-pill" />
