@@ -176,12 +176,23 @@ body.overlay-open .bottom-nav {
   letter-spacing: 0.1px;
   white-space: nowrap;
 }
-/* Active state: green icon + green label */
-.nav-tab.active { color: #2F6B4F; }
+/* Active state: green icon + green label + pastel green capsule background */
+.nav-tab.active {
+  color: #2F6B4F;
+  background-color: #F0F9F4;
+  border: 1px solid #D2EBE1;
+  border-radius: 14px;
+}
 .nav-tab.active .nav-tab-icon svg { stroke: #2F6B4F; }
 .nav-tab.active .nav-tab-label { color: #2F6B4F; font-weight: 700; }
 .nav-tab.active .nav-tab-icon { transform: translateY(-1px); }
-.nav-tab:active { transform: scale(0.92); }
+.nav-tab:active, .nav-tab:focus {
+  transform: scale(0.92);
+  outline: none;
+}
+.nav-tab:focus-visible {
+  outline: 2px solid #D2EBE1;
+}
 
 /* mini-photo util */
 .mini-photo {

@@ -147,6 +147,12 @@ const TimelineDiaperIcon = () => (
     <path d="M4 13c2.5-1.5 5-2 8-2s5.5.5 8 2"/>
   </svg>
 );
+const TimelineCameraIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+);
 const TimelineSunIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="4"/>
@@ -356,6 +362,7 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   // Real-time local baby/mom logs
   const [nutritionLogs, setNutritionLogs] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
+  const [memories, setMemories] = useState([]);
   const [headerAvatarError, setHeaderAvatarError] = useState(false);
 
   // Screen loading state simulation (Skeleton Loader Shimmer)
@@ -466,13 +473,22 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   };
 
   const getDetailedAgeLabel = () => {
-    if (ageInfo.years > 0) {
-      return `${ageInfo.years} tuổi ${ageInfo.months} tháng`;
+    if (!dob) {
+      return 'Chưa cập nhật ngày sinh';
     }
-    if (ageInfo.months > 0) {
-      return `${ageInfo.months} tháng ${ageInfo.days} ngày`;
+    const years = ageInfo?.years || 0;
+    const months = ageInfo?.months || 0;
+    const days = ageInfo?.days || 0;
+    const babyAgeMonths = years * 12 + months;
+
+    if (babyAgeMonths < 12) {
+      if (months === 0) {
+        return days > 0 ? `${days} ngày tuổi` : 'Mới sinh';
+      }
+      return `${months} tháng tuổi`;
+    } else {
+      return `${years} tuổi ${months} tháng`;
     }
-    return `${ageInfo.days} ngày tuổi`;
   };
 
   const getAgeString = () => {
@@ -610,9 +626,18 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
       setActivityLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (err) => console.error(err));
 
+    const momentsQuery = query(
+      collection(db, 'users', userId, 'babies', babyId, 'moments'),
+      orderBy('createdAt', 'desc')
+    );
+    const unsubMoments = onSnapshot(momentsQuery, (snap) => {
+      setMemories(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => console.error(err));
+
     return () => {
       unsubNutrition();
       unsubActivity();
+      unsubMoments();
     };
   }, [userId, babyId]);
 
@@ -871,7 +896,7 @@ ${logsDesc}`;
 
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     const logData = {
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayLocalyyyymmdd(),
       time: formattedTime,
       type: nutriTab,
       amountMl: (nutriTab === 'breast_pump') ? (pumpLeftMl + pumpRightMl) : (nutriTab === 'formula') ? Number(nutriMl) : 0,
@@ -879,7 +904,8 @@ ${logsDesc}`;
       breastTimeRight: nutriTab === 'breast_direct' ? Math.round(breastRightSec / 60) : 0,
       foodDetails: nutriTab === 'solid' ? solidDetails : nutriTab === 'breast_pump' ? `Vắt sữa: Trái ${pumpLeftMl}ml, Phải ${pumpRightMl}ml` : '',
       suaMe: nutriTab === 'formula' ? nutriSuaMe : true,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      childId: babyId || ''
     };
 
     try {
@@ -900,12 +926,13 @@ ${logsDesc}`;
     let durationMin = Math.round(sleepSecs / 60) || 1;
 
     const logData = {
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayLocalyyyymmdd(),
       time: formattedTime,
       type: 'sleep',
       sleepDurationMin: durationMin,
       note: `Bé đã ngủ. Cách vào giấc: ${sleepTag}. Thời lượng: ${durationMin} phút`,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      childId: babyId || ''
     };
 
     try {
@@ -922,17 +949,34 @@ ${logsDesc}`;
   const handleSaveDiaper = async () => {
     if (!userId) return;
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-    const typeLabel = diaperType === 'pee' ? 'Tã ướt' : diaperType === 'poop' ? 'Tã bẩn' : 'Cả hai';
+    const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
 
-    const logData = {
-      date: new Date().toISOString().split('T')[0],
-      time: formattedTime,
-      type: 'diaper',
-      diaperType,
-      diaperStatus: diaperColor,
-      note: `Thay tã: ${typeLabel}. Màu phân: ${diaperDesc}`,
-      createdAt: serverTimestamp()
-    };
+    let logData = {};
+    if (babyAgeMonths >= 18) {
+      const typeLabel = diaperType === 'diaper' ? 'Thay tã' : diaperType === 'potty' ? 'Ngồi bô' : 'Đi vệ sinh';
+      logData = {
+        date: getTodayLocalyyyymmdd(),
+        time: formattedTime,
+        type: 'diaper',
+        diaperType,
+        diaperStatus: 'normal',
+        note: `Vệ sinh: ${typeLabel}. ${diaperDesc ? `Ghi chú: ${diaperDesc}` : ''}`,
+        createdAt: serverTimestamp(),
+        childId: babyId || ''
+      };
+    } else {
+      const typeLabel = diaperType === 'pee' ? 'Tã ướt' : diaperType === 'poop' ? 'Tã bẩn' : 'Cả hai';
+      logData = {
+        date: getTodayLocalyyyymmdd(),
+        time: formattedTime,
+        type: 'diaper',
+        diaperType,
+        diaperStatus: diaperColor,
+        note: `Thay tã: ${typeLabel}. Màu phân: ${diaperDesc}`,
+        createdAt: serverTimestamp(),
+        childId: babyId || ''
+      };
+    }
 
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
@@ -949,13 +993,14 @@ ${logsDesc}`;
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
     const logData = {
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayLocalyyyymmdd(),
       time: formattedTime,
       type: 'growth',
       weightKg: Number(growthWeight),
       heightCm: Number(growthHeight),
       note: `Cân nặng: ${growthWeight}kg, Chiều cao: ${growthHeight}cm`,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      childId: babyId || ''
     };
 
     try {
@@ -1648,7 +1693,7 @@ ${logsDesc}`;
     if (weeks < 16) {
       return 'Chờ tuần 16+ để đếm máy';
     }
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayLocalyyyymmdd();
     const todayKicks = activityLogs.filter(l => l.type === 'preg_kick' && l.date === todayStr);
     const totalCount = todayKicks.reduce((sum, log) => sum + (log.kickCount || 0), 0);
     
@@ -1666,7 +1711,7 @@ ${logsDesc}`;
   };
 
   const getContractionsStatusText = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayLocalyyyymmdd();
     const todayContras = activityLogs.filter(l => l.type === 'preg_contraction' && l.date === todayStr);
     if (todayContras.length === 0) return 'Hôm nay: 0 cơn';
     const totalCount = todayContras.reduce((sum, log) => sum + (log.contraCount || 0), 0);
@@ -1705,8 +1750,9 @@ ${logsDesc}`;
   // Build vertical sorted list of timeline items
   const timelineItems = (() => {
     const list = [];
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayLocalyyyymmdd();
 
+    // 1. Feeding (Nutrition Logs) today
     nutritionLogs.filter(log => log.date === todayStr).forEach(log => {
       let desc = '';
       let typeLabel = 'Ăn uống';
@@ -1723,6 +1769,8 @@ ${logsDesc}`;
       } else if (log.type === 'solid') {
         desc = `Ăn dặm: ${log.foodDetails}`;
         icon = '🥣';
+      } else {
+        desc = 'Đã ghi nhận một cữ ăn';
       }
 
       list.push({
@@ -1736,6 +1784,7 @@ ${logsDesc}`;
       });
     });
 
+    // 2. Activities (Sleep, Diaper, Growth, etc.) today
     activityLogs.filter(log => log.date === todayStr).forEach(log => {
       let desc = log.note || '';
       let typeLabel = '';
@@ -1743,22 +1792,53 @@ ${logsDesc}`;
       let colorClass = '';
 
       if (log.type === 'diaper') {
-        typeLabel = 'Tã';
-        icon = '🧷';
         colorClass = 'timeline-diaper';
-        if (log.diaperType === 'pee') { desc = 'Thay tã - Ướt'; icon = '💦'; }
-        else if (log.diaperType === 'poop') { desc = 'Thay tã - Bẩn'; icon = '💩'; }
-        else { desc = 'Thay tã - Cả hai'; icon = '🧷'; }
+        let baseDesc = 'Đã ghi nhận thay tã';
+        if (log.diaperType === 'potty') {
+          typeLabel = 'Tập bô';
+          icon = '🚽';
+          baseDesc = 'Đã ghi nhận ngồi bô';
+        } else if (log.diaperType === 'toilet') {
+          typeLabel = 'Vệ sinh';
+          icon = '🚻';
+          baseDesc = 'Đã ghi nhận đi vệ sinh';
+        } else {
+          typeLabel = 'Vệ sinh';
+          icon = '🧷';
+          if (log.diaperType === 'pee') baseDesc = 'Thay tã - Ướt';
+          else if (log.diaperType === 'poop') baseDesc = 'Thay tã - Bẩn';
+          else if (log.diaperType === 'both') baseDesc = 'Thay tã - Cả hai';
+        }
+
+        let rawNote = '';
+        if (log.note) {
+          if (log.note.includes('Ghi chú: ')) {
+            rawNote = log.note.split('Ghi chú: ')[1];
+          } else if (log.note.includes('Màu phân: ') && log.diaperType !== 'potty' && log.diaperType !== 'toilet') {
+            rawNote = log.note;
+          } else {
+            const cleaned = log.note.replace(/^Vệ sinh: [^.]+\.\s*/, '').replace(/^Thay tã: [^.]+\.\s*/, '');
+            if (cleaned && cleaned !== log.note) {
+              rawNote = cleaned;
+            }
+          }
+        }
+        
+        if (rawNote && rawNote.trim() && rawNote.trim() !== 'undefined' && rawNote.trim() !== 'null') {
+          desc = `${baseDesc} · ${rawNote.trim()}`;
+        } else {
+          desc = baseDesc;
+        }
       } else if (log.type === 'sleep') {
         typeLabel = 'Ngủ';
         icon = '🌙';
         colorClass = 'timeline-sleep';
         desc = `Đã ngủ: ${log.sleepDurationMin} phút`;
       } else if (log.type === 'growth') {
-        typeLabel = 'Tăng trưởng';
+        typeLabel = 'Phát triển';
         icon = '⚖️';
         colorClass = 'timeline-growth';
-        desc = `Đo chỉ số: ${log.weightKg}kg, ${log.heightCm}cm`;
+        desc = log.weightKg ? `Cân nặng gần nhất: ${log.weightKg} kg` : `Chiều cao: ${log.heightCm} cm`;
       } else if (log.type === 'preg_kick') {
         typeLabel = 'Thai máy';
         icon = '💓';
@@ -1824,6 +1904,46 @@ ${logsDesc}`;
           createdAt: log.createdAt?.toDate() || new Date()
         });
       }
+    });
+
+    // 3. Memories (Moments) today (max 3, other ones linked to Moments tab)
+    const todayMoments = memories
+      .map(log => {
+        if (!log.createdAt) return null;
+        const dt = log.createdAt?.toDate ? log.createdAt.toDate() : new Date(log.createdAt);
+        if (isNaN(dt.getTime())) return null;
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        const logDate = `${year}-${month}-${day}`;
+        return { log, dt, logDate };
+      })
+      .filter(x => x && x.logDate === todayStr)
+      .sort((a, b) => b.dt - a.dt);
+
+    const momentsToShow = todayMoments.slice(0, 3);
+    const hasMoreMoments = todayMoments.length > 3;
+
+    momentsToShow.forEach(({ log, dt }, idx) => {
+      let desc = '';
+      if (log.caption && log.caption.trim()) {
+        desc = log.caption.trim();
+      } else if (log.tag && log.tag.trim()) {
+        desc = log.tag.trim();
+      } else {
+        desc = 'Đã lưu một khoảnh khắc mới';
+      }
+
+      list.push({
+        id: log.id,
+        time: dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        typeLabel: 'Khoảnh khắc',
+        desc,
+        thumbnailUrl: log.url || null,
+        colorClass: 'timeline-moments',
+        createdAt: dt,
+        hasMoreMomentsLink: hasMoreMoments && (idx === momentsToShow.length - 1)
+      });
     });
 
     return list.sort((a, b) => b.createdAt - a.createdAt);
@@ -2300,7 +2420,35 @@ ${logsDesc}`;
   };
   
   const renderBabyGrid = () => {
-    const babyAgeMonths = ageInfo?.years * 12 + ageInfo?.months || 0;
+    const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
+    
+    // Calculate custom diaper card details based on baby age
+    const todayStr = getTodayLocalyyyymmdd();
+    const diaperLogs = activityLogs.filter(l => l.type === 'diaper');
+    const todayDiapers = diaperLogs.filter(l => l.date === todayStr);
+
+    let diaperCardTitle = 'Thay tã';
+    let diaperCardStatus = 'Chưa có ghi nhận hôm nay';
+    let diaperCardButtonText = 'Ghi nhận tã';
+
+    if (babyAgeMonths >= 18) {
+      diaperCardTitle = babyAgeMonths <= 36 ? 'Vệ sinh / Tập bô' : 'Vệ sinh';
+      diaperCardButtonText = 'Ghi nhận';
+      if (todayDiapers.length > 0) {
+        diaperCardStatus = `Lần gần nhất: ${todayDiapers[0].time || 'Vừa xong'}`;
+      } else {
+        diaperCardStatus = 'Chưa có ghi nhận hôm nay';
+      }
+    } else {
+      diaperCardTitle = 'Thay tã';
+      diaperCardButtonText = 'Ghi nhận tã';
+      if (todayDiapers.length > 0) {
+        diaperCardStatus = `Thay cuối: ${todayDiapers[0].time || 'Vừa xong'}`;
+      } else {
+        diaperCardStatus = 'Chưa có ghi nhận hôm nay';
+      }
+    }
+
     return (
       <div className="dashboard-trackers-grid">
         {/* CARD 1: Ăn uống */}
@@ -2327,22 +2475,30 @@ ${logsDesc}`;
           </button>
         </div>
 
-        {/* CARD 3: Thay tã (Mờ 0.6 và hiện "Bé lớn: Tập đi toilet 🚽" nếu >= 24 tháng) */}
-        <div className="tracker-item-card pink-light" style={{ opacity: babyAgeMonths >= 24 ? 0.6 : 1 }}>
+        {/* CARD 3: Thay tã / Vệ sinh / Tập bô */}
+        <div className="tracker-item-card pink-light">
           <div className="tracker-card-icon">
             <DiaperIcon />
           </div>
-          <h4 className="tracker-card-name">Thay tã</h4>
+          <h4 className="tracker-card-name">{diaperCardTitle}</h4>
           <span className="tracker-card-status-text">
-            {babyAgeMonths >= 24 ? 'Bé lớn: Tập đi toilet 🚽' : getLastDiaperText()}
+            {diaperCardStatus}
           </span>
           <button 
             type="button" 
             className="tracker-action-trigger-btn" 
-            disabled={babyAgeMonths >= 24}
-            onClick={() => setActiveBottomSheet('diaper')}
+            onClick={() => {
+              setActiveBottomSheet('diaper');
+              if (babyAgeMonths >= 18) {
+                setDiaperType('diaper');
+                setDiaperDesc('');
+              } else {
+                setDiaperType('pee');
+                setDiaperDesc('Tã ướt bình thường');
+              }
+            }}
           >
-            {babyAgeMonths >= 24 ? 'Đang tập toilet' : 'Ghi nhận tã'}
+            {diaperCardButtonText}
           </button>
         </div>
 
@@ -2390,7 +2546,7 @@ ${logsDesc}`;
         };
       } else if (babyAgeMonths >= 12 && babyAgeMonths < 24) {
         return {
-          text: `${headerBabyName} tập rót hạt khô từ cốc này sang cốc khác bằng cốc nhựa nhỏ Montessori để rèn khéo léo.`,
+          text: `${headerBabyName} tập rót nui lớn hoặc pom-pom to từ cốc này sang cốc khác bằng cốc nhựa nhỏ Montessori để rèn luyện khéo léo. Mẹ luôn quan sát bé khi chơi nhé!`,
           meta: '5–7 phút · Dễ thực hiện tại nhà',
           action: handleSuggestionAction
         };
@@ -2890,63 +3046,129 @@ ${logsDesc}`;
 
       {/* ⏰ DAILY TIMELINE */}
       {(!status || status !== 'pregnant' ? babies.length > 0 : true) && (
-        <section className="daily-timeline-section">
-          <h3 className="timeline-title-headline">Dòng thời gian hôm nay</h3>
-          <div className="timeline-outer-scroll-wrapper">
-            {timelineItems.length === 0 ? (
-              <div className="timeline-empty-state-box">
-                <span className="empty-state-icon">📝</span>
-                <h4>Chưa có ghi nhận hôm nay</h4>
-                {status === 'pregnant' ? (
-                  <>
-                    <p>Mẹ bầu hãy ghi nhận cảm xúc hoặc chỉ số sức khỏe hôm nay để trợ lý Montessori AI đồng hành tốt nhất!</p>
-                    <button className="timeline-first-action-btn" onClick={() => setActiveBottomSheet('preg_emotion')}>
-                      + Ghi nhận đầu tiên
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p>Mẹ hãy ghi nhận hoạt động ăn uống, ngủ nghỉ của bé để trợ lý Montessori AI theo dõi sức khỏe tốt nhất!</p>
-                    <button className="timeline-first-action-btn" onClick={() => setActiveBottomSheet('nutrition')}>
-                      + Ghi nhận đầu tiên
-                    </button>
-                  </>
-                )}
+        <>
+          {status !== 'pregnant' && !dob && (
+            <div className="premium-alert-banner" style={{
+              margin: '0 20px 16px',
+              padding: '12px 16px',
+              background: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              cursor: 'pointer'
+            }} onClick={() => setActiveTab('baby')}>
+              <span style={{ fontSize: '18px' }}>🌱</span>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <h5 style={{ margin: 0, fontSize: '13px', fontWeight: '700', color: '#B45309' }}>Cập nhật ngày sinh cho bé</h5>
+                <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#D97706' }}>Mẹ hãy thêm ngày sinh của bé trong Hồ sơ để trợ lý cá nhân hóa gợi ý tốt nhất nhé!</p>
               </div>
-            ) : (
-              <div className="timeline-vertical-path-line">
-                {timelineItems.map((item, index) => {
-                  /* Map type → SVG icon component */
-                  let NodeIcon;
-                  if (item.colorClass === 'timeline-nutrition') NodeIcon = TimelineBottleIcon;
-                  else if (item.colorClass === 'timeline-sleep') NodeIcon = TimelineMoonIcon;
-                  else if (item.colorClass === 'timeline-diaper') NodeIcon = TimelineDiaperIcon;
-                  else if (item.colorClass === 'timeline-growth') NodeIcon = TimelineGrowthIcon;
-                  else if (item.colorClass === 'timeline-weight') NodeIcon = TimelineWeightIcon;
-                  else if (item.colorClass === 'timeline-clinic') NodeIcon = TimelineClinicIcon;
-                  else if (item.colorClass === 'timeline-emotion') NodeIcon = TimelineEmotionIcon;
-                  else if (item.colorClass === 'timeline-vitamin') NodeIcon = TimelineVitaminIcon;
-                  else NodeIcon = TimelineSunIcon;
+              <span style={{ fontSize: '14px', color: '#D97706' }}>→</span>
+            </div>
+          )}
+          
+          <section className="daily-timeline-section">
+            <h3 className="timeline-title-headline">Dòng thời gian hôm nay</h3>
+            <div className="timeline-outer-scroll-wrapper">
+              {timelineItems.length === 0 ? (
+                <div className="timeline-empty-state-box">
+                  <span className="empty-state-icon">📝</span>
+                  <h4>Chưa có ghi nhận hôm nay</h4>
+                  {status === 'pregnant' ? (
+                    <>
+                      <p>Mẹ bầu hãy ghi nhận cảm xúc hoặc chỉ số sức khỏe hôm nay để trợ lý Montessori AI đồng hành tốt nhất!</p>
+                      <button className="timeline-first-action-btn" onClick={() => setActiveBottomSheet('preg_emotion')}>
+                        + Ghi nhận đầu tiên
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p>Mẹ hãy ghi nhận hoạt động ăn uống, ngủ nghỉ của bé để trợ lý Montessori AI theo dõi sức khỏe tốt nhất!</p>
+                      <button className="timeline-first-action-btn" onClick={() => setActiveBottomSheet('nutrition')}>
+                        + Ghi nhận đầu tiên
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="timeline-vertical-path-line">
+                  {timelineItems.map((item, index) => {
+                    /* Map type → SVG icon component */
+                    let NodeIcon;
+                    if (item.colorClass === 'timeline-nutrition') NodeIcon = TimelineBottleIcon;
+                    else if (item.colorClass === 'timeline-sleep') NodeIcon = TimelineMoonIcon;
+                    else if (item.colorClass === 'timeline-diaper') NodeIcon = TimelineDiaperIcon;
+                    else if (item.colorClass === 'timeline-growth') NodeIcon = TimelineGrowthIcon;
+                    else if (item.colorClass === 'timeline-weight') NodeIcon = TimelineWeightIcon;
+                    else if (item.colorClass === 'timeline-clinic') NodeIcon = TimelineClinicIcon;
+                    else if (item.colorClass === 'timeline-emotion') NodeIcon = TimelineEmotionIcon;
+                    else if (item.colorClass === 'timeline-vitamin') NodeIcon = TimelineVitaminIcon;
+                    else if (item.colorClass === 'timeline-moments') NodeIcon = TimelineCameraIcon;
+                    else NodeIcon = TimelineSunIcon;
 
-                  return (
-                    <div key={item.id || index} className="timeline-record-node">
-                      <div className="timeline-node-time-col">
-                        <span className="node-time-txt">{item.time}</span>
+                    return (
+                      <div key={item.id || index} className="timeline-record-node">
+                        <div className="timeline-node-time-col">
+                          <span className="node-time-txt">{item.time}</span>
+                        </div>
+                        <div className={`timeline-node-icon-dot ${item.colorClass}`}>
+                          <NodeIcon />
+                        </div>
+                        <div className="timeline-node-details-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between', width: '100%' }}>
+                          <div style={{ flex: 1, textAlign: 'left' }}>
+                            <h4 className="node-details-title">{item.typeLabel}</h4>
+                            <p className="node-details-desc" style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              margin: 0
+                            }}>{item.desc}</p>
+                            {item.hasMoreMomentsLink && (
+                              <span 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTab('moments');
+                                }} 
+                                style={{ 
+                                  color: '#2F6B4F', 
+                                  fontWeight: '700', 
+                                  fontSize: '11px', 
+                                  cursor: 'pointer', 
+                                  display: 'inline-block', 
+                                  marginTop: '6px',
+                                  textDecoration: 'underline'
+                                }}
+                              >
+                                Xem thêm trong Khoảnh khắc →
+                              </span>
+                            )}
+                          </div>
+                          {item.thumbnailUrl && (
+                            <img 
+                              src={item.thumbnailUrl} 
+                              alt="thumbnail" 
+                              style={{
+                                width: '44px',
+                                height: '44px',
+                                objectFit: 'cover',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(0,0,0,0.05)',
+                                flexShrink: 0
+                              }}
+                            />
+                          )}
+                        </div>
                       </div>
-                      <div className={`timeline-node-icon-dot ${item.colorClass}`}>
-                        <NodeIcon />
-                      </div>
-                      <div className="timeline-node-details-card">
-                        <h4 className="node-details-title">{item.typeLabel}</h4>
-                        <p className="node-details-desc">{item.desc}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+        </>
       )}
 
       {/* 💬 FLOATING ASSISTANT BUTTON — fixed bottom-right */}
@@ -3227,45 +3449,97 @@ ${logsDesc}`;
             )}
 
             {/* 3. DIAPER BOTTOM SHEET */}
-            {activeBottomSheet === 'diaper' && (
-              <div className="tracker-sheet-viewport">
-                <h3 className="tracker-sheet-title">Ghi nhận thay tã</h3>
+            {activeBottomSheet === 'diaper' && (() => {
+              const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
+              const sheetTitle = babyAgeMonths >= 18 
+                ? (babyAgeMonths <= 36 ? 'Ghi nhận Vệ sinh / Tập bô' : 'Ghi nhận Vệ sinh') 
+                : 'Ghi nhận thay tã';
 
-                <div className="diaper-types-toggles-row">
-                  <button type="button" className={`diaper-card-large-btn ${diaperType === 'pee' ? 'active' : ''}`} onClick={() => { setDiaperType('pee'); setDiaperDesc('Tã ướt bình thường'); }}>
-                    <span className="diaper-icon">💦</span>
-                    <span className="diaper-label">Tã ướt</span>
-                  </button>
-                  <button type="button" className={`diaper-card-large-btn ${diaperType === 'poop' ? 'active' : ''}`} onClick={() => { setDiaperType('poop'); setDiaperDesc('Tã bẩn màu vàng mustard'); }}>
-                    <span className="diaper-icon">💩</span>
-                    <span className="diaper-label">Tã bẩn</span>
-                  </button>
-                  <button type="button" className={`diaper-card-large-btn ${diaperType === 'both' ? 'active' : ''}`} onClick={() => { setDiaperType('both'); setDiaperDesc('Tã vừa ướt vừa bẩn'); }}>
-                    <span className="diaper-icon">🧷</span>
-                    <span className="diaper-label">Cả hai</span>
+              return (
+                <div className="tracker-sheet-viewport">
+                  <h3 className="tracker-sheet-title">{sheetTitle}</h3>
+
+                  {babyAgeMonths >= 18 ? (
+                    <div className="diaper-types-toggles-row" style={{ marginBottom: '20px' }}>
+                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'diaper' ? 'active' : ''}`} onClick={() => { setDiaperType('diaper'); }}>
+                        <span className="diaper-icon">💦</span>
+                        <span className="diaper-label">Thay tã</span>
+                      </button>
+                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'potty' ? 'active' : ''}`} onClick={() => { setDiaperType('potty'); }}>
+                        <span className="diaper-icon">🚽</span>
+                        <span className="diaper-label">Ngồi bô</span>
+                      </button>
+                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'toilet' ? 'active' : ''}`} onClick={() => { setDiaperType('toilet'); }}>
+                        <span className="diaper-icon">🚻</span>
+                        <span className="diaper-label">Đi vệ sinh</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="diaper-types-toggles-row">
+                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'pee' ? 'active' : ''}`} onClick={() => { setDiaperType('pee'); setDiaperDesc('Tã ướt bình thường'); }}>
+                        <span className="diaper-icon">💦</span>
+                        <span className="diaper-label">Tã ướt</span>
+                      </button>
+                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'poop' ? 'active' : ''}`} onClick={() => { setDiaperType('poop'); setDiaperDesc('Tã bẩn màu vàng mustard'); }}>
+                        <span className="diaper-icon">💩</span>
+                        <span className="diaper-label">Tã bẩn</span>
+                      </button>
+                      <button type="button" className={`diaper-card-large-btn ${diaperType === 'both' ? 'active' : ''}`} onClick={() => { setDiaperType('both'); setDiaperDesc('Tã vừa ướt vừa bẩn'); }}>
+                        <span className="diaper-icon">🧷</span>
+                        <span className="diaper-label">Cả hai</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {babyAgeMonths >= 18 ? (
+                    <div style={{ marginBottom: '20px', width: '100%', textAlign: 'left' }}>
+                      <label style={{ fontSize: '13px', color: '#4E6856', display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                        Ghi chú thêm (tùy chọn):
+                      </label>
+                      <input
+                        type="text"
+                        className="tracker-input-note-premium"
+                        value={diaperDesc}
+                        onChange={(e) => setDiaperDesc(e.target.value)}
+                        placeholder="Mẹ ghi chú thêm (ví dụ: tự lập, tè nhiều...)"
+                        style={{
+                          width: '100%',
+                          padding: '12px 14px',
+                          borderRadius: '14px',
+                          border: '1px solid #E2EFE7',
+                          fontSize: '13.5px',
+                          outline: 'none',
+                          backgroundColor: '#FBFDFB',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <p style={{ fontSize: '11px', color: '#8A8A8A', marginTop: '6px', fontStyle: 'italic' }}>
+                        * Ghi nhận vệ sinh phù hợp với độ tuổi của bé, không bắt buộc tập bô cưỡng ép.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="diaper-stool-color-spectrum-wrapper">
+                      <h4 className="stool-spectrum-label-heading">Màu sắc theo dõi tiêu hóa:</h4>
+                      <div className="stool-color-row-chips">
+                        {[
+                          { color: 'yellow', label: 'Vàng tươi', hex: '#FFEB3B' },
+                          { color: 'mustard', label: 'Mù tạt', hex: '#E5A93B' },
+                          { color: 'green', label: 'Xanh phân xu', hex: '#689F38' },
+                          { color: 'brown', label: 'Nâu sẫm', hex: '#5D4037' }
+                        ].map(item => (
+                          <button key={item.color} type="button" className={`stool-color-chip ${diaperColor === item.color ? 'active' : ''}`} style={{ backgroundColor: item.hex }} onClick={() => { setDiaperColor(item.color); setDiaperDesc(item.label); }} title={item.label} />
+                        ))}
+                      </div>
+                      <p className="selected-stool-feedback">Tình trạng phân: <b>{diaperDesc}</b></p>
+                    </div>
+                  )}
+
+                  <button className="submit-tracker-log-btn-full" onClick={handleSaveDiaper}>
+                    {babyAgeMonths >= 18 ? 'Lưu ghi nhận' : 'Lưu thay tã'}
                   </button>
                 </div>
-
-                <div className="diaper-stool-color-spectrum-wrapper">
-                  <h4 className="stool-spectrum-label-heading">Màu sắc theo dõi tiêu hóa:</h4>
-                  <div className="stool-color-row-chips">
-                    {[
-                      { color: 'yellow', label: 'Vàng tươi', hex: '#FFEB3B' },
-                      { color: 'mustard', label: 'Mù tạt', hex: '#E5A93B' },
-                      { color: 'green', label: 'Xanh phân xu', hex: '#689F38' },
-                      { color: 'brown', label: 'Nâu sẫm', hex: '#5D4037' }
-                    ].map(item => (
-                      <button key={item.color} type="button" className={`stool-color-chip ${diaperColor === item.color ? 'active' : ''}`} style={{ backgroundColor: item.hex }} onClick={() => { setDiaperColor(item.color); setDiaperDesc(item.label); }} title={item.label} />
-                    ))}
-                  </div>
-                  <p className="selected-stool-feedback">Tình trạng phân: <b>{diaperDesc}</b></p>
-                </div>
-
-                <button className="submit-tracker-log-btn-full" onClick={handleSaveDiaper}>
-                  Lưu thay tã
-                </button>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 4. GROWTH BOTTOM SHEET */}
             {activeBottomSheet === 'growth' && (

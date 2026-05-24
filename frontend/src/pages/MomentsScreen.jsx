@@ -91,6 +91,7 @@ export default function MomentsScreen({ profile }) {
           width:      result.width,
           height:     result.height,
           createdAt:  serverTimestamp(),
+          childId:    babyId || ''
         };
         const ref = await addDoc(
           collection(db, 'users', userId, 'babies', babyId, 'moments'),
