@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { getAgeInMonths } from '../data/whoData.js';
@@ -59,7 +59,7 @@ function getPlayGroup(ageMonths) {
 }
 
 export default function BabyProfileScreen({ profile }) {
-  const babies = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
+  const babies = useMemo(() => [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0)), [profile?.babies]);
   const userId  = profile?.user?.uid;
   const [selectedBaby, setSelectedBaby] = useState(0);
   const [tab, setTab] = useState('medical');

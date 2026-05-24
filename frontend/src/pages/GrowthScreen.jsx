@@ -4,7 +4,7 @@
  * - user.status === "parent"    → Theo dõi Tăng trưởng (WHO)
  * - Skeleton loading, rich empty states, full data isolation
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ComposedChart, Area, Line, XAxis, YAxis,
@@ -150,9 +150,11 @@ const removePendingFromLocalStorage = (visitId) => {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
 export default function GrowthScreen({ profile, setActiveTab, pendingAction, onConsumePendingAction }) {
-  const userStatus = profile?.status || 'born';
+  // 'born' is a legacy status value that should be treated as 'parent'
+  const rawStatus = profile?.status || 'parent';
+  const userStatus = rawStatus === 'born' ? 'parent' : rawStatus;
   const userId     = profile?.user?.uid;
-  const babies     = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
+  const babies     = useMemo(() => [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0)), [profile?.babies]);
 
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
@@ -512,6 +514,11 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   /* ── Load data ── */
   const loadData = useCallback(async () => {
     if (!userId) { setLoading(false); return; }
+    // If parent but babies not yet loaded from subcollection, wait — don't show blank
+    if (userStatus === 'parent' && babies.length === 0) {
+      // Keep loading state, babies will arrive via onSnapshot and trigger re-run
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -582,7 +589,16 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     loadData();
     setShowMeasureForm(false);
     setShowVisitForm(false);
-  }, [loadData]);
+  }, [userId, userStatus, babies]);
+
+  // Safety: if parent status but babies still empty after 6s, stop loading to prevent infinite spinner
+  useEffect(() => {
+    if (userStatus !== 'parent' || babies.length > 0) return;
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [userStatus, babies.length]);
 
   /* ── Consume pending action from App (e.g. navigate here + open CheckupSheet) ── */
   useEffect(() => {
@@ -1961,7 +1977,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         </div>
 
         {/* ── PARENT VIEW ── */}
-        {!loading && !error && userStatus === 'parent' && (
+        {!loading && !error && userStatus === 'parent' && babies.length > 0 && (
           <ParentView
             selectedBaby={selectedBaby}
             setSelectedBaby={setSelectedBaby}
@@ -1999,6 +2015,31 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
             setMeasureFormBabyIndex={setMeasureFormBabyIndex}
             setShowMeasureDateCalendar={setShowMeasureDateCalendar}
           />
+        )}
+
+        {/* ── EMPTY STATE: parent but no baby data yet ── */}
+        {!loading && !error && userStatus === 'parent' && babies.length === 0 && (
+          <div className="empty-card" style={{ margin: '24px 16px' }}>
+            <div className="empty-icon-wrap">
+              <svg width={48} height={48} viewBox="0 0 24 24" fill="none"
+                stroke="#C8E8D4" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+              </svg>
+            </div>
+            <p className="empty-title">Chưa có hồ sơ bé</p>
+            <p className="empty-sub">
+              Dữ liệu bé chưa được tải. Mẹ thử tải lại trang hoặc kiểm tra kết nối mạng nhé.
+            </p>
+            <button
+              type="button"
+              className="primary-btn"
+              style={{ width: 'auto', padding: '11px 24px' }}
+              onClick={loadData}
+            >
+              Thử lại
+            </button>
+          </div>
         )}
       </div>
     </div>

@@ -3,7 +3,7 @@
  * 🌿 Dashboard-centric hub with slide-up sheets
  * 💬 Chat AI integrated in slide-up modal (no FAB overlay)
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
@@ -346,7 +346,7 @@ export function getPregnancyMontessoriSuggestion(weeks) {
 export default function ChatScreen({ profile, setActiveTab, setGrowthPendingAction }) {
   const status = profile?.status || 'born';
   const userId = profile?.user?.uid;
-  const babies = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
+  const babies = useMemo(() => [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0)), [profile?.babies]);
   const baby = babies[0] || {};
   const babyId = baby.id || (baby.name || 'baby-0').toLowerCase().replace(/\s+/g, '-');
   const dob = baby?.dob || '';
@@ -1957,7 +1957,7 @@ ${logsDesc}`;
   const handleTransitionToBorn = async () => {
     if (!userId) return;
     try {
-      await updateDoc(doc(db, 'users', userId), { status: 'born' });
+      await updateDoc(doc(db, 'users', userId), { status: 'parent' });
       triggerChime();
       setIsTransitionCardDismissed(true);
       alert("Chúc mừng mẹ và bé! 🎉 Trạng thái đã được chuyển sang nuôi con. Hãy cập nhật thông tin của bé yêu trong tab Hồ sơ nhé!");

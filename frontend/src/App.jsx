@@ -141,6 +141,9 @@ export default function App() {
   useEffect(() => {
     let profileUnsub = null;
     let babiesUnsub = null;
+    // Track whether subcollection babies have been loaded at least once
+    let babiesLoadedFromSubcollection = false;
+
     const authUnsub = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setAuthUser(firebaseUser);
@@ -148,14 +151,24 @@ export default function App() {
           if (snap.exists()) {
             const data = snap.data();
             setProfile(prev => {
-              const currentBabies = prev?.babies || [];
-              return { user: firebaseUser, babies: currentBabies, ...data };
+              // If subcollection babies have been loaded, keep them; otherwise
+              // use the babies from the user doc as a temporary fallback
+              const subcollectionBabies = prev?.babies || [];
+              const fallbackBabies = babiesLoadedFromSubcollection
+                ? subcollectionBabies
+                : (data.babies || subcollectionBabies);
+              // Remove 'babies' from data spread to avoid overriding subcollection data
+              const { babies: _ignoredBabies, ...restData } = data;
+              return { user: firebaseUser, babies: fallbackBabies, ...restData };
             });
 
             if (!babiesUnsub) {
               const babiesRef = collection(db, 'users', firebaseUser.uid, 'babies');
               babiesUnsub = onSnapshot(babiesRef, (babiesSnap) => {
-                const babiesList = babiesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const babiesList = babiesSnap.docs
+                  .map(d => ({ id: d.id, ...d.data() }))
+                  .sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
+                babiesLoadedFromSubcollection = true;
                 setProfile(prev => {
                   if (!prev) return null;
                   return { ...prev, babies: babiesList };
@@ -175,6 +188,7 @@ export default function App() {
       } else {
         setAuthUser(null);
         setProfile(null);
+        babiesLoadedFromSubcollection = false;
         setLoading(false);
         if (profileUnsub) profileUnsub();
         if (babiesUnsub) { babiesUnsub(); babiesUnsub = null; }

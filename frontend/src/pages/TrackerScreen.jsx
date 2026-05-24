@@ -4,7 +4,7 @@
  * Hỗ trợ chuyển đổi giao diện linh hoạt giữa Mẹ bầu (Pregnancy Logs) và Em bé (Baby Logs).
  * Tích hợp Web Audio API phát tiếng chuông Kalimba êm ái khi lưu thành công.
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, serverTimestamp, getDocs } from 'firebase/firestore';
 import { db } from '../firebase.js';
@@ -32,7 +32,7 @@ const VACCINE_SCHEDULE = [
 export default function TrackerScreen({ profile }) {
   const status = profile?.status || 'born';
   const userId = profile?.user?.uid;
-  const babies = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
+  const babies = useMemo(() => [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0)), [profile?.babies]);
   const baby = babies[0] || {};
   
   // Tính toán slug ID thống nhất với BabyProfileScreen
