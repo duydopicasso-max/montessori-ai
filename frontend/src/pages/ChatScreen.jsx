@@ -1024,6 +1024,11 @@ ${logsDesc}`;
   const handleSaveKick = async () => {
     if (!userId) return;
     
+    if (kickCount === 0) {
+      showToast("Mẹ hãy ghi nhận ít nhất 1 lần thai máy trước khi lưu nhé.");
+      return;
+    }
+    
     setIsSavingKick(true);
     setSaveKickError(false);
 
@@ -3324,17 +3329,19 @@ ${logsDesc}`;
                 {/* Twin notice */}
                 {isTwin && (
                   <div className="twin-kick-notice" style={{
-                    backgroundColor: '#FEFDF2',
-                    border: '1px solid #F6E2A3',
+                    backgroundColor: '#FFFDF4',
+                    border: '1px solid #F6ECD1',
                     padding: '10px 12px',
                     borderRadius: '12px',
                     marginBottom: '16px',
                     display: 'flex',
-                    gap: '8px',
+                    gap: '10px',
                     alignItems: 'flex-start'
                   }}>
-                    <span style={{ fontSize: '15px' }}>💡</span>
-                    <p style={{ fontSize: '13px', color: '#7A6335', margin: 0, lineHeight: '1.4' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7D683B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/>
+                    </svg>
+                    <p style={{ fontSize: '13px', color: '#7D683B', margin: 0, lineHeight: '1.4' }}>
                       Với thai đôi, mẹ có thể ghi nhận cảm nhận chung. Nếu phân biệt được vị trí của từng bé, mẹ có thể ghi chú thêm.
                     </p>
                   </div>
@@ -3348,41 +3355,52 @@ ${logsDesc}`;
                   borderRadius: '12px',
                   marginBottom: '16px',
                   display: 'flex',
-                  gap: '8px',
+                  gap: '10px',
                   alignItems: 'center'
                 }}>
-                  <span style={{ fontSize: '14px', color: '#5FAF82' }}>💡</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5FAF82" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/>
+                  </svg>
                   <p style={{ fontSize: '13px', color: '#4E6856', margin: 0, lineHeight: '1.4' }}>
                     Mẹ hãy chọn lúc thư giãn và bấm mỗi khi cảm nhận bé cử động.
                   </p>
                 </div>
 
                 <div className="pregnancy-timer-box text-center" style={{ marginTop: '16px' }}>
-                  {/* Timer & Count displays */}
+                  {/* Grid layout to completely prevent text collision */}
                   <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    backgroundColor: '#F8F9FA',
-                    padding: '12px 16px',
-                    borderRadius: '16px',
-                    border: '1px solid #EEEEEE',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '12px',
                     marginBottom: '20px'
                   }}>
-                    <div style={{ textAlign: 'left' }}>
-                      <span style={{ fontSize: '12.5px', color: '#777777', display: 'block', marginBottom: '2px' }}>Thời gian buổi đếm</span>
-                      <strong style={{ fontSize: '15px', color: '#333333' }}>
+                    <div style={{
+                      backgroundColor: '#F8F9FA',
+                      padding: '12px',
+                      borderRadius: '16px',
+                      border: '1px solid #EEEEEE',
+                      textAlign: 'center'
+                    }}>
+                      <span style={{ fontSize: '12px', color: '#666666', display: 'block', marginBottom: '4px' }}>Thời gian đếm</span>
+                      <strong style={{ fontSize: '14.5px', color: '#333333', display: 'block' }}>
                         {Math.floor(kickSecs / 60)} phút {kickSecs % 60} giây
                       </strong>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '12.5px', color: '#777777', display: 'block', marginBottom: '2px' }}>Số lần thai máy</span>
-                      <strong style={{ fontSize: '15px', color: '#2E7D32' }}>
+                    <div style={{
+                      backgroundColor: '#F8F9FA',
+                      padding: '12px',
+                      borderRadius: '16px',
+                      border: '1px solid #EEEEEE',
+                      textAlign: 'center'
+                    }}>
+                      <span style={{ fontSize: '12px', color: '#666666', display: 'block', marginBottom: '4px' }}>Số lần máy</span>
+                      <strong style={{ fontSize: '14.5px', color: '#2E7D32', display: 'block' }}>
                         {kickCount} lần
                       </strong>
                     </div>
                   </div>
 
-                  {/* Main circular button */}
+                  {/* Main circular button with heartbeat wave SVG instead of baby emoji */}
                   <button
                     type="button"
                     className="kick-button-tap-modern animate-pulse-subtle"
@@ -3398,7 +3416,7 @@ ${logsDesc}`;
                       background: 'radial-gradient(circle, #E8F5E9 0%, #C8E6C9 100%)',
                       border: '2px solid #81C784',
                       color: '#2E7D32',
-                      fontSize: '17px',
+                      fontSize: '15px',
                       fontFamily: 'inherit',
                       fontWeight: '700',
                       display: 'flex',
@@ -3415,11 +3433,13 @@ ${logsDesc}`;
                       WebkitTapHighlightColor: 'transparent'
                     }}
                   >
-                    <span style={{ fontSize: '24px' }}>👶</span>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '4px' }}>
+                      <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
                     <span>Bé máy (+1)</span>
                   </button>
 
-                  {/* Action buttons row */}
+                  {/* Action buttons row with SVG icons instead of emojis */}
                   <div style={{
                     display: 'flex',
                     gap: '8px',
@@ -3428,25 +3448,38 @@ ${logsDesc}`;
                     <button
                       type="button"
                       className="timer-flat-pill-btn"
+                      disabled={kickSecs === 0 && kickCount === 0}
                       onClick={() => setKickActive(!kickActive)}
                       style={{
                         flex: 1,
                         padding: '10px 8px',
                         fontSize: '12.5px',
                         borderRadius: '12px',
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #DDDDDD',
-                        color: '#333333',
+                        backgroundColor: (kickSecs === 0 && kickCount === 0) ? '#FAFAFA' : '#FFFFFF',
+                        border: (kickSecs === 0 && kickCount === 0) ? '1px solid #EEEEEE' : '1px solid #DDDDDD',
+                        color: (kickSecs === 0 && kickCount === 0) ? '#BBBBBB' : '#333333',
                         fontWeight: '500',
-                        cursor: 'pointer'
+                        cursor: (kickSecs === 0 && kickCount === 0) ? 'not-allowed' : 'pointer',
+                        opacity: (kickSecs === 0 && kickCount === 0) ? 0.6 : 1
                       }}
                     >
-                      {kickActive ? '⏸️ Tạm dừng' : '▶️ Tiếp tục'}
+                      {kickActive ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center', width: '100%' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="14" y="4" width="4" height="16" rx="1" /><rect x="6" y="4" width="4" height="16" rx="1" /></svg>
+                          Tạm dừng
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center', width: '100%' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          Tiếp tục
+                        </span>
+                      )}
                     </button>
                     
                     <button
                       type="button"
                       className="timer-flat-pill-btn"
+                      disabled={kickCount === 0}
                       onClick={() => {
                         setKickActive(false);
                         setKickCount(0);
@@ -3457,14 +3490,18 @@ ${logsDesc}`;
                         padding: '10px 8px',
                         fontSize: '12.5px',
                         borderRadius: '12px',
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #DDDDDD',
-                        color: '#333333',
+                        backgroundColor: kickCount > 0 ? '#FFFFFF' : '#FAFAFA',
+                        border: kickCount > 0 ? '1px solid #DDDDDD' : '1px solid #EEEEEE',
+                        color: kickCount > 0 ? '#333333' : '#BBBBBB',
                         fontWeight: '500',
-                        cursor: 'pointer'
+                        cursor: kickCount > 0 ? 'pointer' : 'not-allowed',
+                        opacity: kickCount > 0 ? 1 : 0.6
                       }}
                     >
-                      🔄 Đếm lại
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center', width: '100%' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" /></svg>
+                        Đếm lại
+                      </span>
                     </button>
 
                     <button
@@ -3481,30 +3518,35 @@ ${logsDesc}`;
                         borderRadius: '12px',
                         backgroundColor: kickCount > 0 ? '#FFFFFF' : '#FAFAFA',
                         border: kickCount > 0 ? '1px solid #DDDDDD' : '1px solid #EEEEEE',
-                        color: kickCount > 0 ? '#666666' : '#BBBBBB',
+                        color: kickCount > 0 ? '#333333' : '#BBBBBB',
                         fontWeight: '500',
                         cursor: kickCount > 0 ? 'pointer' : 'not-allowed',
                         opacity: kickCount > 0 ? 1 : 0.6
                       }}
                     >
-                      ↩️ Hoàn tác (-1)
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center', width: '100%' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" /></svg>
+                        Hoàn tác (-1)
+                      </span>
                     </button>
                   </div>
 
-                  {/* Safety note card */}
+                  {/* Safety note card with premium soft warm cream colors & amber stroke SVG */}
                   <div className="kick-safety-card" style={{
-                    backgroundColor: '#FFF8F8',
-                    border: '1px solid #FFEBEB',
+                    backgroundColor: '#FFFDF4',
+                    border: '1px solid #F6ECD1',
                     padding: '12px 14px',
                     borderRadius: '16px',
                     marginBottom: '24px',
                     display: 'flex',
-                    gap: '8px',
+                    gap: '10px',
                     alignItems: 'flex-start',
                     textAlign: 'left'
                   }}>
-                    <span style={{ fontSize: '15px' }}>⚠️</span>
-                    <p style={{ fontSize: '12.5px', color: '#9E3A3A', margin: 0, lineHeight: '1.45' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D4A33C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '2px' }}>
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/>
+                    </svg>
+                    <p style={{ fontSize: '12.5px', color: '#7D683B', margin: 0, lineHeight: '1.45' }}>
                       Nếu mẹ cảm thấy thai máy giảm rõ rệt hoặc khác thường so với mọi ngày, hãy liên hệ bác sĩ/cơ sở y tế.
                     </p>
                   </div>
@@ -3516,21 +3558,21 @@ ${logsDesc}`;
                     </div>
                   )}
 
-                  {/* Save button */}
+                  {/* Save button (disabled if kickCount === 0) */}
                   <button
                     className="submit-tracker-log-btn-full"
                     onClick={handleSaveKick}
-                    disabled={isSavingKick}
+                    disabled={isSavingKick || kickCount === 0}
                     style={{
                       width: '100%',
-                      backgroundColor: '#5FAF82',
+                      backgroundColor: kickCount > 0 ? '#5FAF82' : '#C2DBCB',
                       color: '#FFFFFF',
                       border: 'none',
                       borderRadius: '14px',
                       padding: '14px',
                       fontSize: '15px',
                       fontWeight: '600',
-                      cursor: isSavingKick ? 'not-allowed' : 'pointer',
+                      cursor: (isSavingKick || kickCount === 0) ? 'not-allowed' : 'pointer',
                       opacity: isSavingKick ? 0.7 : 1,
                       transition: 'all 0.25s ease'
                     }}
