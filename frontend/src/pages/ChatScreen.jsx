@@ -3683,21 +3683,6 @@ ${logsDesc}`;
             {/* Sliding Header top notch bar */}
             <div className="sheet-drag-handle-pill" />
 
-            {/* DEBUG: Test button — remove after fix confirmed */}
-            <button
-              style={{
-                background: '#2F6B4F', color: 'white', border: 'none', borderRadius: '8px',
-                padding: '8px 16px', fontSize: '13px', fontWeight: '700', marginBottom: '8px',
-                cursor: 'pointer', touchAction: 'manipulation', pointerEvents: 'auto',
-                WebkitUserSelect: 'none', userSelect: 'none', display: 'block', width: '100%'
-              }}
-              onClick={() => alert('✅ React click hoạt động! Vấn đề là CSS, không phải JS')}
-              onTouchEnd={(e) => { e.preventDefault(); alert('✅ Touch hoạt động!'); }}
-            >
-              🔍 Test: Bấm vào đây (debug)
-            </button>
-
-
             {/* 1. NUTRITION BOTTOM SHEET */}
             {activeBottomSheet === 'nutrition' && (() => {
               const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);

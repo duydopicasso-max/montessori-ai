@@ -1712,8 +1712,8 @@
   overscroll-behavior: contain;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  /* pan-y: allows scroll + tap. auto: ensures all pointer events pass through */
-  touch-action: pan-y;
+  /* manipulation: allows scroll + tap without double-tap delay, preventing click interception on iOS */
+  touch-action: manipulation;
   pointer-events: auto;
 }
 
