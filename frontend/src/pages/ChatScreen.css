@@ -1382,7 +1382,7 @@
   background: rgba(10, 22, 15, 0.55);
   z-index: 99990;
   pointer-events: auto;
-  animation: overlay-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* NO animation — same reason as bottom-sheet-backdrop-overlay */
 }
 
 @keyframes overlay-fade-in {
@@ -1664,7 +1664,8 @@
   inset: 0;
   background: rgba(10, 22, 15, 0.5);
   z-index: 99992;
-  animation: overlay-fade-in 0.25s ease;
+  /* NO animation here — animating this causes it to intercept pointer events
+     during re-renders (opacity 0 but still capturing clicks), causing flicker */
   touch-action: auto;
   pointer-events: auto;
 }
@@ -1692,6 +1693,8 @@
   transform: translate3d(0, 0, 0);
   -webkit-transform: translate3d(0, 0, 0);
   will-change: transform;
+  /* Prevent click events from reaching the backdrop overlay below */
+  isolation: isolate;
 }
 
 .sheet-drag-handle-pill {

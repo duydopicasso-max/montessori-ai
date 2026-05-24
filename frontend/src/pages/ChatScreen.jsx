@@ -3585,7 +3585,7 @@ ${logsDesc}`;
       {isChatOpen && createPortal(
         <>
           <div className="chat-slide-up-modal-overlay" onClick={handleAttemptCloseChat} />
-          <div ref={chatPanelRef} className="chat-slide-up-content-panel animate-slide-up" onFocusCapture={handleFocusCapture}>
+          <div ref={chatPanelRef} className="chat-slide-up-content-panel animate-slide-up" onClick={e => e.stopPropagation()} onFocusCapture={handleFocusCapture}>
             
             {/* Chat Header inside sliding panel */}
             <header className="chat-sliding-header">
@@ -3692,7 +3692,7 @@ ${logsDesc}`;
       {activeBottomSheet && createPortal(
         <>
           <div className="bottom-sheet-backdrop-overlay" onClick={handleAttemptCloseSheet} />
-          <div ref={bottomSheetPanelRef} className="bottom-sheet-content-panel animate-slide-up" onFocusCapture={handleFocusCapture}>
+          <div ref={bottomSheetPanelRef} className="bottom-sheet-content-panel animate-slide-up" onClick={e => e.stopPropagation()} onFocusCapture={handleFocusCapture}>
             
             {/* Sliding Header top notch bar */}
             <div className="sheet-drag-handle-pill" />
