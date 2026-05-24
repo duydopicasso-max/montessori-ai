@@ -1668,6 +1668,7 @@
   animation: overlay-fade-in 0.25s ease;
   /* touch-action: auto — allow tap/click to close via onClick */
   touch-action: auto;
+  pointer-events: auto !important;
 }
 
 .bottom-sheet-content-panel {
@@ -1684,6 +1685,9 @@
   padding: 8px 20px 24px;
   /* manipulation: allows tap/click but prevents double-tap zoom delay */
   touch-action: manipulation;
+  pointer-events: auto !important;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
 }
 
 .sheet-drag-handle-pill {

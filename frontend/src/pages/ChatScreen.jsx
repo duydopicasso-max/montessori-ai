@@ -3118,11 +3118,13 @@ ${logsDesc}`;
     }
     const handleResize = () => {
       const vv = window.visualViewport;
+      const offsetTop = vv ? (vv.offsetTop || 0) : 0;
+      const height = vv ? (vv.height || window.innerHeight) : window.innerHeight;
       if (window.innerWidth < 640) {
-        const bottomOffset = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
+        const bottomOffset = Math.max(0, window.innerHeight - (offsetTop + height));
         setViewportStyle({
-          bottom: `${bottomOffset}px`,
-          maxHeight: `${vv.height * 0.9}px`
+          bottom: isNaN(bottomOffset) ? '0px' : `${bottomOffset}px`,
+          maxHeight: isNaN(height) ? '80vh' : `${height * 0.9}px`
         });
       } else {
         setViewportStyle({});
@@ -3144,11 +3146,13 @@ ${logsDesc}`;
     }
     const handleResize = () => {
       const vv = window.visualViewport;
+      const offsetTop = vv ? (vv.offsetTop || 0) : 0;
+      const height = vv ? (vv.height || window.innerHeight) : window.innerHeight;
       if (window.innerWidth < 640) {
-        const bottomOffset = Math.max(0, window.innerHeight - (vv.offsetTop + vv.height));
+        const bottomOffset = Math.max(0, window.innerHeight - (offsetTop + height));
         setChatViewportStyle({
-          bottom: `${bottomOffset}px`,
-          maxHeight: `${vv.height * 0.9}px`
+          bottom: isNaN(bottomOffset) ? '0px' : `${bottomOffset}px`,
+          maxHeight: isNaN(height) ? '90vh' : `${height * 0.9}px`
         });
       } else {
         setChatViewportStyle({});
