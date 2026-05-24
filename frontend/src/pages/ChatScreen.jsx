@@ -3972,15 +3972,23 @@ ${logsDesc}`;
 
                         <div className="double-breast-stopwatches" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                           <div className="breast-watch-card" style={{ flex: 1, background: '#F8FAF9', padding: '14px', borderRadius: '14px', border: '1px solid #E2EFE7', textAlign: 'center' }}>
-                            <div className="side-watch-title" style={{ fontSize: '11.5px', color: '#687E70', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Bên trái</div>
-                            <div className="side-watch-time" style={{ fontSize: '18px', color: '#2F6B4F', fontWeight: '800' }}>
-                              ⏱️ {Math.floor(breastLeftSec / 60)}m {breastLeftSec % 60}s
+                            <div className="side-watch-title" style={{ fontSize: '11.5px', color: '#687E70', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Bên trái</div>
+                            <div className="side-watch-time" style={{ fontSize: '18px', color: '#2F6B4F', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F6B4F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                              </svg>
+                              <span>{Math.floor(breastLeftSec / 60)}m {breastLeftSec % 60}s</span>
                             </div>
                           </div>
                           <div className="breast-watch-card" style={{ flex: 1, background: '#F8FAF9', padding: '14px', borderRadius: '14px', border: '1px solid #E2EFE7', textAlign: 'center' }}>
-                            <div className="side-watch-title" style={{ fontSize: '11.5px', color: '#687E70', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Bên phải</div>
-                            <div className="side-watch-time" style={{ fontSize: '18px', color: '#2F6B4F', fontWeight: '800' }}>
-                              ⏱️ {Math.floor(breastRightSec / 60)}m {breastRightSec % 60}s
+                            <div className="side-watch-title" style={{ fontSize: '11.5px', color: '#687E70', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Bên phải</div>
+                            <div className="side-watch-time" style={{ fontSize: '18px', color: '#2F6B4F', fontWeight: '800', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F6B4F" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                              </svg>
+                              <span>{Math.floor(breastRightSec / 60)}m {breastRightSec % 60}s</span>
                             </div>
                           </div>
                         </div>
@@ -3994,17 +4002,17 @@ ${logsDesc}`;
                               padding: '14px 20px',
                               fontSize: '14px',
                               fontWeight: '700',
-                              border: 'none',
+                              border: breastDirectTimerActive ? '1.5px solid #2F6B4F' : 'none',
                               borderRadius: '100px',
-                              background: breastDirectTimerActive ? '#D97706' : '#2F6B4F',
-                              color: 'white',
+                              background: breastDirectTimerActive ? '#E8F5EE' : '#2F6B4F',
+                              color: breastDirectTimerActive ? '#2F6B4F' : 'white',
                               cursor: 'pointer',
-                              boxShadow: breastDirectTimerActive ? '0 4px 14px rgba(217, 119, 6, 0.25)' : '0 4px 14px rgba(47, 107, 79, 0.25)',
+                              boxShadow: breastDirectTimerActive ? 'none' : '0 4px 14px rgba(47, 107, 79, 0.2)',
                               transition: 'all 0.2s ease'
                             }}
                             onClick={() => setBreastDirectTimerActive(!breastDirectTimerActive)}
                           >
-                            {breastDirectTimerActive ? '⏸️ Dừng bú' : '▶️ Bắt đầu bú'}
+                            {breastDirectTimerActive ? 'Dừng bú' : 'Bắt đầu bú'}
                           </button>
                           <button
                             type="button"
@@ -4015,18 +4023,20 @@ ${logsDesc}`;
                               fontWeight: '600',
                               border: '1.5px solid #E2EFE7',
                               borderRadius: '100px',
-                              background: 'white',
-                              color: '#55655B',
-                              cursor: 'pointer',
+                              background: (breastLeftSec + breastRightSec === 0) ? '#F7FAF8' : 'white',
+                              color: (breastLeftSec + breastRightSec === 0) ? '#B0C0B5' : '#55655B',
+                              cursor: (breastLeftSec + breastRightSec === 0) ? 'not-allowed' : 'pointer',
+                              opacity: (breastLeftSec + breastRightSec === 0) ? 0.6 : 1,
                               transition: 'all 0.2s ease'
                             }}
+                            disabled={breastLeftSec + breastRightSec === 0}
                             onClick={() => {
                               setBreastLeftSec(0);
                               setBreastRightSec(0);
                               setBreastDirectTimerActive(false);
                             }}
                           >
-                            🔄 Nhập lại
+                            Làm lại
                           </button>
                         </div>
                       </div>
@@ -4034,8 +4044,8 @@ ${logsDesc}`;
 
                     {/* Nút nhắc nhở nhẹ nếu chưa điền thông tin */}
                     {!isSaveEnabled && !isSavingNutri && (
-                      <p style={{ fontSize: '11.5px', color: '#B45309', margin: '12px 0 0', fontStyle: 'italic', textAlign: 'center' }}>
-                        * Mẹ ghi nhận ít nhất một thông tin trước khi lưu nhé.
+                      <p style={{ fontSize: '12.5px', color: '#7A8E82', margin: '12px 0 0', fontStyle: 'italic', textAlign: 'center' }}>
+                        * {nutriTab === 'breastfeeding' ? 'Mẹ ghi nhận thời gian bú trước khi lưu nhé.' : 'Mẹ ghi nhận ít nhất một thông tin trước khi lưu nhé.'}
                       </p>
                     )}
 
