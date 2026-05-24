@@ -32,16 +32,10 @@
 }
 
 /* ── Modal Portal Root ── */
-/* All React portals render here — outside #root stacking context */
+/* Plain container — NO position/z-index/isolation that would create stacking context */
+/* Portal children use position:fixed with high z-index in ROOT stacking context */
 #modal-root {
-  position: fixed;
-  inset: 0;
-  /* pointer-events: none on the container; children restore via pointer-events: auto */
-  pointer-events: none;
-  /* z-index must be above all app content */
-  z-index: 9000;
-  /* isolation prevents any parent stacking context from interfering */
-  isolation: isolate;
+  /* intentionally empty — no styling */
 }
 
 

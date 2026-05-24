@@ -1379,9 +1379,8 @@
 .chat-slide-up-modal-overlay {
   position: fixed;
   inset: 0;
-  /* Removed backdrop-filter: causes iOS WebKit composite layer bug that blocks touch events */
   background: rgba(10, 22, 15, 0.55);
-  z-index: 1;
+  z-index: 99990;
   pointer-events: auto;
   animation: overlay-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1397,7 +1396,7 @@
   left: 0;
   right: 0;
   margin: 0 auto;
-  z-index: 2;
+  z-index: 99991;
   height: 90%;
   width: 100%;
   max-width: 680px;
@@ -1409,6 +1408,7 @@
   box-shadow: 0 -15px 50px rgba(14, 29, 20, 0.15);
   transform-origin: bottom center;
   pointer-events: auto;
+  touch-action: manipulation;
 }
 
 .animate-slide-up {
@@ -1662,9 +1662,8 @@
 .bottom-sheet-backdrop-overlay {
   position: fixed;
   inset: 0;
-  /* Removed backdrop-filter: causes iOS WebKit composite layer bug that blocks touch events */
   background: rgba(10, 22, 15, 0.5);
-  z-index: 3;
+  z-index: 99992;
   animation: overlay-fade-in 0.25s ease;
   touch-action: auto;
   pointer-events: auto;
@@ -1676,7 +1675,7 @@
   left: 0;
   right: 0;
   margin: 0 auto;
-  z-index: 4;
+  z-index: 99993;
   height: auto;
   max-height: 75%;
   width: 100%;
@@ -1692,6 +1691,7 @@
   pointer-events: auto;
   transform: translate3d(0, 0, 0);
   -webkit-transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .sheet-drag-handle-pill {
@@ -1712,8 +1712,9 @@
   overscroll-behavior: contain;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  /* pan-y allows vertical swipe scroll + tap/click on children */
+  /* pan-y: allows scroll + tap. auto: ensures all pointer events pass through */
   touch-action: pan-y;
+  pointer-events: auto;
 }
 
 .tracker-sheet-viewport::-webkit-scrollbar {
