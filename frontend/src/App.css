@@ -20,6 +20,7 @@
   animation: spin 0.7s linear infinite;
 }
 
+
 /* ── App Shell ── */
 .app-shell {
   display: flex;
@@ -29,6 +30,20 @@
   overflow: hidden;
   position: relative;
 }
+
+/* ── Modal Portal Root ── */
+/* All React portals render here — outside #root stacking context */
+#modal-root {
+  position: fixed;
+  inset: 0;
+  /* pointer-events: none on the container; children restore via pointer-events: auto */
+  pointer-events: none;
+  /* z-index must be above all app content */
+  z-index: 9000;
+  /* isolation prevents any parent stacking context from interfering */
+  isolation: isolate;
+}
+
 
 /* ── Top App Bar ── */
 .top-bar {

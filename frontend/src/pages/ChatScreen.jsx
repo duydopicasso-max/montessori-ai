@@ -3669,7 +3669,7 @@ ${logsDesc}`;
 
           </div>
         </>,
-        document.body
+        document.getElementById('modal-root') || document.body
       )}
 
       {/* ──────────────────────────────────────────────────────── */}
@@ -6521,7 +6521,7 @@ ${logsDesc}`;
 
           </div>
         </>,
-        document.body
+        document.getElementById('modal-root') || document.body
       )}
 
       {/* ── IOS-STYLE CONFIRM CLOSE DIALOG ── */}
@@ -6540,7 +6540,7 @@ ${logsDesc}`;
             </div>
           </div>
         </div>,
-        document.body
+        document.getElementById('modal-root') || document.body
       )}
 
 
@@ -6555,7 +6555,7 @@ ${logsDesc}`;
           onCancel={() => setShowVisitDateCalendar(false)}
           dateType="visitDate"
         />,
-        document.body
+        document.getElementById('modal-root') || document.body
       )}
 
       {showNextApptDateCalendar && createPortal(
@@ -6568,7 +6568,7 @@ ${logsDesc}`;
           onCancel={() => setShowNextApptDateCalendar(false)}
           dateType="nextAppointmentDate"
         />,
-        document.body
+        document.getElementById('modal-root') || document.body
       )}
 
     </div>
