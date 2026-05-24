@@ -411,7 +411,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
   /* ── Save baby measurement ── */
   const handleSaveMeasure = async () => {
-    if (!userId || !babyId) return;
+    if (!userId || !babyId || saving) return;
     setSaving(true);
     try {
       const entry = {
@@ -2468,14 +2468,6 @@ function ParentView({
           <button 
             className="primary-btn" 
             disabled={saving} 
-            onTouchStart={e => {
-              e.preventDefault();
-              handleSaveMeasure();
-            }}
-            onMouseDown={e => {
-              e.preventDefault();
-              handleSaveMeasure();
-            }}
             onClick={handleSaveMeasure}
           >
             {saving ? 'Đang lưu...' : 'Lưu lần đo'}

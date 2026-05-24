@@ -715,6 +715,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
 
   /* ── Save ── */
   const handleSave = async () => {
+    if (saving) return;
     if (!validate()) return;
     setSaving(true);
     setSaveError(false);
@@ -801,9 +802,10 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
       };
       // Save asynchronously in the background
       try {
-        onSave(entry);
+        await onSave(entry);
       } catch (e) {
         console.error("Error in onSave checkup:", e);
+        throw e;
       }
 
       if (nextAppointment && enableReminder) {
@@ -1272,14 +1274,6 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
             <button
               className="checkup-save-btn"
               disabled={saving || !!nextApptPast}
-              onTouchStart={e => {
-                e.preventDefault();
-                handleSave();
-              }}
-              onMouseDown={e => {
-                e.preventDefault();
-                handleSave();
-              }}
               onClick={handleSave}
             >
               {saving ? (

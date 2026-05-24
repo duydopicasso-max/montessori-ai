@@ -969,7 +969,7 @@ ${logsDesc}`;
 
   // Pregnancy Logs: Weight
   const handleSavePregWeight = async () => {
-    if (!userId) return;
+    if (!userId || isSavingWeight) return;
     const wNum = Number(pregWeight);
     if (isNaN(wNum) || wNum < 30 || wNum > 200) return;
     setIsSavingWeight(true);
@@ -988,30 +988,34 @@ ${logsDesc}`;
     };
 
     // ── Ghi vào activityLogs (nhật ký hoạt động) ──
-    addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
+    const saveActivity = addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
       .then(() => {
         triggerChime();
         showToast("Đã lưu cân nặng hôm nay");
       })
       .catch(err => {
         console.error("Error background saving weight:", err);
+        setSaveWeightError(true);
       });
 
     // ── Đồng bộ vào pregnancyVisits để GrowthScreen đọc được ──
-    {
+    const syncVisit = (async () => {
       const visitRef = doc(db, 'users', userId, 'pregnancyVisits', `weight_${todayStr}`);
-      setDoc(visitRef, {
+      await setDoc(visitRef, {
         date: todayStr,
         motherWeight: wNum,
         type: 'weight_only',
         source: 'chat_weight_tracker',
         updatedAt: serverTimestamp()
-      }, { merge: true }).catch(err => console.error('Error syncing weight to pregnancyVisits:', err));
-    }
+      }, { merge: true });
+    })().catch(err => console.error('Error syncing weight to pregnancyVisits:', err));
 
     // Close sheet immediately
     handleCleanCloseSheet('preg_weight');
-    setIsSavingWeight(false);
+
+    Promise.all([saveActivity, syncVisit]).finally(() => {
+      setIsSavingWeight(false);
+    });
   };
 
   // Pregnancy Logs: Kick
@@ -1263,7 +1267,7 @@ ${logsDesc}`;
   }, [activeBottomSheet, activityLogs, profile]);
 
   const handleSaveVitamins = async () => {
-    if (!userId) return;
+    if (!userId || isSavingVitamins) return;
     setIsSavingVitamins(true);
     setSaveVitaminsError(false);
 
@@ -1297,18 +1301,22 @@ ${logsDesc}`;
       : addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData);
 
     // Save in background
-    savePromise
+    const saveTask = savePromise
       .then(() => {
         triggerChime();
         showToast("Đã lưu ghi nhận hôm nay");
       })
       .catch(err => {
         console.error("Error background saving vitamins/water:", err);
+        setSaveVitaminsError(true);
       });
 
     // Close sheet immediately
     handleCleanCloseSheet('preg_reminders');
-    setIsSavingVitamins(false);
+
+    saveTask.finally(() => {
+      setIsSavingVitamins(false);
+    });
   };
 
   const getVitaminStatusText = () => {
@@ -1364,7 +1372,7 @@ ${logsDesc}`;
 
   // Pregnancy Logs: Clinic Checkup
   const handleSavePregClinic = async () => {
-    if (!userId) return;
+    if (!userId || isSavingClinic) return;
 
     setSaveClinicError(false);
     setShowValidationWarning(false);
@@ -1416,7 +1424,7 @@ ${logsDesc}`;
     };
 
     // Save in background
-    addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
+    const saveTask = addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
       .then(() => {
         triggerChime();
         if (nextApptDate && reminderEnabled) {
@@ -1427,13 +1435,17 @@ ${logsDesc}`;
       })
       .catch(err => {
         console.error("Error background saving clinic visit:", err);
+        setSaveClinicError(true);
       });
 
     // Close sheet immediately
     handleCleanCloseSheet('preg_clinic');
     setClinicNote('');
     setNextApptDate('');
-    setIsSavingClinic(false);
+
+    saveTask.finally(() => {
+      setIsSavingClinic(false);
+    });
   };
 
   const [activeChipLabel, setActiveChipLabel] = useState(null);
@@ -1514,7 +1526,7 @@ ${logsDesc}`;
 
   // Pregnancy Logs: Emotion Tracker
   const handleSavePregEmotion = async () => {
-    if (!userId) return;
+    if (!userId || isSavingEmotion) return;
     
     // Validation: if both emotions and notes are empty, return silently
     if (selectedEmotions.length === 0 && !emotionNote.trim()) {
@@ -1550,9 +1562,10 @@ ${logsDesc}`;
     };
 
     // Save in background silently
-    addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
+    const saveTask = addDoc(collection(db, 'users', userId, 'babies', babyId, 'activityLogs'), logData)
       .catch(err => {
         console.error("Error background saving pregnancy emotion log:", err);
+        setSaveEmotionError(true);
       });
 
     // Close and reset states immediately
@@ -1560,7 +1573,10 @@ ${logsDesc}`;
     setSelectedEmotions([]);
     setEmotionIntensity('Vừa');
     setEmotionNote('');
-    setIsSavingEmotion(false);
+
+    saveTask.finally(() => {
+      setIsSavingEmotion(false);
+    });
   };
 
   // Overdue status transition
@@ -4199,14 +4215,6 @@ ${logsDesc}`;
 
                       <button
                         className="submit-tracker-log-btn-full"
-                        onTouchStart={e => {
-                          e.preventDefault();
-                          handleSavePregClinic();
-                        }}
-                        onMouseDown={e => {
-                          e.preventDefault();
-                          handleSavePregClinic();
-                        }}
                         onClick={handleSavePregClinic}
                         disabled={isSavingClinic}
                         style={{ marginTop: '10px' }}
@@ -4367,14 +4375,6 @@ ${logsDesc}`;
                     {/* Save button */}
                     <button
                       className="submit-tracker-log-btn-full"
-                      onTouchStart={e => {
-                        e.preventDefault();
-                        handleSavePregEmotion();
-                      }}
-                      onMouseDown={e => {
-                        e.preventDefault();
-                        handleSavePregEmotion();
-                      }}
                       onClick={handleSavePregEmotion}
                       disabled={isSavingEmotion}
                       style={{ marginTop: '10px' }}
