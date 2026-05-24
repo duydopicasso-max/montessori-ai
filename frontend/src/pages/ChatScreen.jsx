@@ -346,9 +346,9 @@ export function getPregnancyMontessoriSuggestion(weeks) {
 export default function ChatScreen({ profile, setActiveTab, setGrowthPendingAction }) {
   const status = profile?.status || 'born';
   const userId = profile?.user?.uid;
-  const babies = profile?.babies || [];
+  const babies = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
   const baby = babies[0] || {};
-  const babyId = (baby.name || 'baby-0').toLowerCase().replace(/\s+/g, '-');
+  const babyId = baby.id || (baby.name || 'baby-0').toLowerCase().replace(/\s+/g, '-');
   const dob = baby?.dob || '';
   const pregnancyInfo = profile?.pregnancyInfo || baby?.pregnancyInfo;
   const babyCount = profile?.numBabies || 1;
@@ -1995,9 +1995,16 @@ ${logsDesc}`;
 
   const getLastGrowthText = () => {
     const growthLogs = activityLogs.filter(l => l.type === 'growth');
-    if (growthLogs.length === 0) return 'Cân nặng: -- kg';
+    if (growthLogs.length === 0) return 'Chưa có số đo';
     const last = growthLogs[0];
-    return `Cân nặng: ${last.weightKg} kg`;
+    const parts = [];
+    if (last.weightKg) parts.push(`Cân nặng: ${last.weightKg} kg`);
+    if (last.heightCm) parts.push(`Chiều cao: ${last.heightCm} cm`);
+    if (parts.length === 0) {
+      if (last.headCircumferenceCm) return `Chu vi đầu: ${last.headCircumferenceCm} cm`;
+      return 'Chưa có số đo';
+    }
+    return parts.join(' · ');
   };
 
   const getLastKickText = () => {
@@ -2227,7 +2234,7 @@ ${logsDesc}`;
         typeLabel = 'Phát triển';
         icon = '⚖️';
         colorClass = 'timeline-growth';
-        desc = log.weightKg ? `Cân nặng gần nhất: ${log.weightKg} kg` : `Chiều cao: ${log.heightCm} cm`;
+        desc = log.note || (log.weightKg ? `Cân nặng gần nhất: ${log.weightKg} kg` : `Chiều cao: ${log.heightCm} cm`);
       } else if (log.type === 'preg_kick') {
         typeLabel = 'Thai máy';
         icon = '💓';

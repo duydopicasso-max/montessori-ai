@@ -32,11 +32,11 @@ const VACCINE_SCHEDULE = [
 export default function TrackerScreen({ profile }) {
   const status = profile?.status || 'born';
   const userId = profile?.user?.uid;
-  const babies = profile?.babies || [];
+  const babies = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
   const baby = babies[0] || {};
   
   // Tính toán slug ID thống nhất với BabyProfileScreen
-  const babyId = (baby.name || 'baby-0').toLowerCase().replace(/\s+/g, '-');
+  const babyId = baby.id || (baby.name || 'baby-0').toLowerCase().replace(/\s+/g, '-');
   const dob = baby?.dob || '';
   const pregnancyInfo = profile?.pregnancyInfo || baby?.pregnancyInfo;
 

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { signInWithPopup } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, collection } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase.js';
 import AppDatePicker from '../components/AppDatePicker.jsx';
 import './OnboardingScreen.css';
@@ -33,16 +33,21 @@ export default function OnboardingScreen({ onComplete }) {
   const [showDueDateCalendar, setShowDueDateCalendar] = useState(false);
   const [activeDobCalendarIdx, setActiveDobCalendarIdx] = useState(null);
 
+  const calcBMI = (w, h) => {
+    if (!w || !h) return null;
+    const hM = h / 100;
+    return parseFloat((w / (hM * hM)).toFixed(2));
+  };
+
   function createEmptyBaby(label = 'Bé') {
     return {
       label,
       name: '',
-      gender: '',
-      // Pregnant fields
+      gender: 'girl',
+      // Fetus fields
       currentWeight: '', headCircumference: '', currentLength: '',
-      // Born extra fields
-      dob: '', birthWeight: '', birthLength: '',
-      currentWeightBorn: '', currentLengthBorn: '',
+      // Born fields
+      dob: '', birthWeight: '', birthHeight: '', birthHeadCircumference: '',
     };
   }
 
@@ -75,35 +80,100 @@ export default function OnboardingScreen({ onComplete }) {
   async function handleSave() {
     setSaving(true);
     try {
-      const profileData = {
-        momName,
-        status,
-        numBabies,
-        babies: babies.map(b => ({ ...b })),
-        ...(status === 'pregnant' ? { pregnancyInfo } : {}),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+      const dbStatus = status === 'born' ? 'parent' : 'pregnant';
 
+      // 1. Save each baby doc and first growth log if applicable
+      const savedBabies = [];
+      for (let i = 0; i < babies.length; i++) {
+        const baby = babies[i];
+        
+        // Generate unique baby ID
+        const babyDocRef = doc(collection(db, 'users', user.uid, 'babies'));
+        const bId = babyDocRef.id;
+        const childKey = i === 0 ? 'baby-a' : i === 1 ? 'baby-b' : 'baby-c';
+        const childOrder = i;
+        const babyName = baby.name.trim() || (numBabies > 1 ? baby.label : 'Bé yêu');
+        const bDob = baby.dob || new Date().toISOString().split('T')[0];
+
+        const babyDocData = {
+          id: bId,
+          childKey,
+          childOrder,
+          name: babyName,
+          gender: baby.gender || 'girl',
+          ...(dbStatus === 'pregnant' ? {
+            currentWeight: parseFloat(baby.currentWeight) || null,
+            currentLength: parseFloat(baby.currentLength) || null,
+            headCircumference: parseFloat(baby.headCircumference) || null,
+            pregnancyInfo
+          } : {
+            dob: bDob,
+            birthWeight: parseFloat(baby.birthWeight) || null,
+            birthHeight: parseFloat(baby.birthHeight) || null,
+            birthHeadCircumference: parseFloat(baby.birthHeadCircumference) || null,
+          }),
+          createdAt: serverTimestamp(),
+        };
+
+        await setDoc(babyDocRef, babyDocData);
+
+        if (dbStatus === 'parent') {
+          const bWeight = parseFloat(baby.birthWeight) || null;
+          const bHeight = parseFloat(baby.birthHeight) || null;
+          const bHead = parseFloat(baby.birthHeadCircumference) || null;
+
+          if (bWeight !== null || bHeight !== null || bHead !== null) {
+            const logRef = doc(collection(db, 'users', user.uid, 'babies', bId, 'growthLogs'));
+            await setDoc(logRef, {
+              date: bDob,
+              weight: bWeight,
+              height: bHeight,
+              head: bHead,
+              bmi: calcBMI(bWeight, bHeight),
+              note: 'Chỉ số lúc sinh',
+              createdAt: serverTimestamp()
+            });
+
+            // Also write to activityLogs for Home card and timeline
+            const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            const activityLogRef = doc(collection(db, 'users', user.uid, 'babies', bId, 'activityLogs'));
+            await setDoc(activityLogRef, {
+              date: bDob,
+              time: formattedTime,
+              type: 'growth',
+              weightKg: bWeight,
+              heightCm: bHeight,
+              headCircumferenceCm: bHead,
+              note: 'Chỉ số lúc sinh',
+              createdAt: serverTimestamp(),
+              childId: bId
+            });
+          }
+        }
+
+        savedBabies.push({
+          id: bId,
+          childKey,
+          childOrder,
+          label: numBabies > 1 ? baby.label : 'Bé yêu',
+          name: babyName,
+          gender: baby.gender || 'girl',
+          dob: bDob
+        });
+      }
+
+      // 2. Save user profile doc with babies array
       await setDoc(doc(db, 'users', user.uid), {
         momName,
-        status,
+        status: dbStatus,
         numBabies,
+        babies: savedBabies,
         email: user.email,
         photoURL: user.photoURL,
         updatedAt: serverTimestamp(),
       });
 
-      for (const baby of babies) {
-        const babyId = baby.name.toLowerCase().replace(/\s+/g, '-') || `baby-${Date.now()}`;
-        await setDoc(doc(db, 'users', user.uid, 'babies', babyId), {
-          ...baby,
-          ...(status === 'pregnant' ? { pregnancyInfo } : {}),
-          createdAt: serverTimestamp(),
-        });
-      }
-
-      onComplete({ user, momName, status, numBabies, babies, pregnancyInfo });
+      onComplete({ user, momName, status: dbStatus, numBabies, babies: savedBabies, pregnancyInfo });
     } catch (e) {
       setError('Lưu thất bại: ' + e.message);
     } finally {
@@ -278,24 +348,19 @@ export default function OnboardingScreen({ onComplete }) {
                       </div>
                       <div className="metrics-grid">
                         <div className="metric-group">
-                          <label className="input-label">Cân nặng khi sinh (kg)</label>
+                          <label className="input-label">Cân nặng lúc sinh (kg)</label>
                           <input type="number" step="0.01" className="text-input" placeholder="3.2"
                             value={baby.birthWeight} onChange={e => updateBaby(idx, 'birthWeight', e.target.value)} />
                         </div>
                         <div className="metric-group">
-                          <label className="input-label">Cân nặng hiện tại (kg)</label>
-                          <input type="number" step="0.01" className="text-input" placeholder="5.0"
-                            value={baby.currentWeightBorn} onChange={e => updateBaby(idx, 'currentWeightBorn', e.target.value)} />
-                        </div>
-                        <div className="metric-group">
-                          <label className="input-label">Chiều dài khi sinh (cm)</label>
+                          <label className="input-label">Chiều dài lúc sinh (cm)</label>
                           <input type="number" step="0.1" className="text-input" placeholder="50"
-                            value={baby.birthLength} onChange={e => updateBaby(idx, 'birthLength', e.target.value)} />
+                            value={baby.birthHeight} onChange={e => updateBaby(idx, 'birthHeight', e.target.value)} />
                         </div>
                         <div className="metric-group">
-                          <label className="input-label">Chiều dài hiện tại (cm)</label>
-                          <input type="number" step="0.1" className="text-input" placeholder="60"
-                            value={baby.currentLengthBorn} onChange={e => updateBaby(idx, 'currentLengthBorn', e.target.value)} />
+                          <label className="input-label">Chu vi đầu lúc sinh (cm)</label>
+                          <input type="number" step="0.1" className="text-input" placeholder="34"
+                            value={baby.birthHeadCircumference} onChange={e => updateBaby(idx, 'birthHeadCircumference', e.target.value)} />
                         </div>
                       </div>
                     </>
@@ -360,9 +425,10 @@ export default function OnboardingScreen({ onComplete }) {
               {babies.map((b, i) => (
                 <div key={i} className="review-baby">
                   <div className="review-baby-title">{numBabies > 1 ? b.label : 'Bé'} {b.name && `— ${b.name}`}</div>
-                  {b.dob && <div className="review-row"><span>📅 Ngày sinh</span><strong>{b.dob}</strong></div>}
-                  {b.birthWeight && <div className="review-row"><span>⚖️ Khi sinh</span><strong>{b.birthWeight} kg</strong></div>}
-                  {b.currentWeightBorn && <div className="review-row"><span>⚖️ Hiện tại</span><strong>{b.currentWeightBorn} kg</strong></div>}
+                  {b.dob && <div className="review-row"><span>📅 Ngày sinh</span><strong>{fmtDisplay(b.dob)}</strong></div>}
+                  {b.birthWeight && <div className="review-row"><span>⚖️ Cân nặng lúc sinh</span><strong>{b.birthWeight} kg</strong></div>}
+                  {b.birthHeight && <div className="review-row"><span>📏 Chiều dài lúc sinh</span><strong>{b.birthHeight} cm</strong></div>}
+                  {b.birthHeadCircumference && <div className="review-row"><span>🧠 Chu vi đầu lúc sinh</span><strong>{b.birthHeadCircumference} cm</strong></div>}
                 </div>
               ))}
             </div>

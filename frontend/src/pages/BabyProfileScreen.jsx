@@ -59,13 +59,13 @@ function getPlayGroup(ageMonths) {
 }
 
 export default function BabyProfileScreen({ profile }) {
-  const babies  = profile?.babies || [];
+  const babies = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
   const userId  = profile?.user?.uid;
   const [selectedBaby, setSelectedBaby] = useState(0);
   const [tab, setTab] = useState('medical');
 
   const baby   = babies[selectedBaby] || {};
-  const babyId = (baby.name || `baby-${selectedBaby}`).toLowerCase().replace(/\s+/g, '-');
+  const babyId = baby.id || (baby.name || `baby-${selectedBaby}`).toLowerCase().replace(/\s+/g, '-');
   const ageMonths = getAgeInMonths(baby.dob || '');
   const playGroup = getPlayGroup(ageMonths);
 

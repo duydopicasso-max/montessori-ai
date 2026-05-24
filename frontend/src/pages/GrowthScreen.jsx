@@ -152,7 +152,7 @@ const removePendingFromLocalStorage = (visitId) => {
 export default function GrowthScreen({ profile, setActiveTab, pendingAction, onConsumePendingAction }) {
   const userStatus = profile?.status || 'born';
   const userId     = profile?.user?.uid;
-  const babies     = profile?.babies || [];
+  const babies     = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
 
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
@@ -211,7 +211,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
   const [measureForm, setMeasureForm] = useState({
     date: new Date().toISOString().split('T')[0],
-    weight: '', height: '', head: ''
+    weight: '', height: '', head: '', note: ''
   });
   const [saving, setSaving]       = useState(false);
   const [editField, setEditField] = useState(null);
@@ -328,11 +328,44 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const rawBaby  = babies[currentBabyIndex] || {};
   const override = babyOverrides[currentBabyIndex] || {};
   const baby     = { ...rawBaby, ...override };
-  const babyId   = (rawBaby.id || rawBaby.name || `baby-${currentBabyIndex}`)
-    .toLowerCase().replace(/\s+/g, '-');
+  const babyId   = rawBaby.id || rawBaby.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${currentBabyIndex}`;
   const gender    = baby.gender || 'girl';
   const dob       = baby.dob || '';
   const ageMonths = getAgeInMonths(dob);
+
+  const getPersonalizedSubtitle = () => {
+    if (userStatus === 'pregnant') {
+      return 'Tuần thai · Cân nặng mẹ · Chỉ số siêu âm · Lịch khám';
+    }
+    
+    // For twins/triplets in overview/compare
+    if (babies.length > 1 && (selectedBaby === 'overview' || selectedBaby === 'compare')) {
+      return 'Các bé · Theo dõi riêng từng bé';
+    }
+    
+    // For a single baby (or selected baby tab)
+    const activeIdx = typeof selectedBaby === 'number' ? selectedBaby : 0;
+    const currentActiveBaby = babies[activeIdx] || baby || {};
+    const babyName = currentActiveBaby.name || 'Bé yêu';
+    
+    const babyDob = currentActiveBaby.dob || '';
+    const babyAgeMonths = babyDob ? getAgeInMonths(babyDob) : 0;
+    
+    const babyAgeLabel = !babyDob ? '—'
+      : babyAgeMonths < 24 ? `${babyAgeMonths} tháng`
+      : `${Math.floor(babyAgeMonths / 12)} tuổi ${babyAgeMonths % 12} tháng`;
+      
+    let metricsLabel = 'Cân nặng · Chiều cao · Chu vi đầu';
+    if (babyAgeMonths <= 12) {
+      metricsLabel = 'Cân nặng · Chiều dài · Chu vi đầu';
+    } else if (babyAgeMonths > 12 && babyAgeMonths <= 36) {
+      metricsLabel = 'Cân nặng · Chiều cao · Mốc phát triển';
+    } else {
+      metricsLabel = 'Chiều cao · Cân nặng · Mốc phát triển';
+    }
+    
+    return `${babyName} · ${babyAgeLabel} · ${metricsLabel}`;
+  };
 
   // Initialize birth form names when pregnancyData is loaded
   useEffect(() => {
@@ -377,7 +410,12 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       const updatedBabies = [];
 
       for (let i = 0; i < confirmedBabyCount; i++) {
-        const bId = i === 0 ? 'baby-a' : i === 1 ? 'baby-b' : 'baby-c';
+        // Generate unique baby ID
+        const babyDocRef = doc(collection(db, 'users', userId, 'babies'));
+        const bId = babyDocRef.id;
+        const childKey = i === 0 ? 'baby-a' : i === 1 ? 'baby-b' : 'baby-c';
+        const childOrder = i;
+
         const babyName = birthNames[i].trim() || (confirmedBabyCount > 1 ? `Bé ${String.fromCharCode(65 + i)}` : 'Bé yêu');
         const babyDob = sameBirthDate ? birthDate : birthDates[i];
         const babyGender = birthGenders[i];
@@ -387,9 +425,10 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         const bHead = parseFloat(birthHeads[i]) || null;
 
         // 1. Create baby document under users/{userId}/babies/{bId}
-        const babyDocRef = doc(db, 'users', userId, 'babies', bId);
         batch.set(babyDocRef, {
           id: bId,
+          childKey,
+          childOrder,
           name: babyName,
           dob: babyDob,
           gender: babyGender,
@@ -413,10 +452,27 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
             note: 'Chỉ số lúc sinh',
             createdAt: serverTimestamp()
           });
+
+          // Also write to activityLogs
+          const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+          const activityLogRef = doc(collection(db, 'users', userId, 'babies', bId, 'activityLogs'));
+          batch.set(activityLogRef, {
+            date: babyDob,
+            time: formattedTime,
+            type: 'growth',
+            weightKg: bWeight,
+            heightCm: bHeight,
+            headCircumferenceCm: bHead,
+            note: 'Chỉ số lúc sinh',
+            createdAt: serverTimestamp(),
+            childId: bId
+          });
         }
 
         updatedBabies.push({
           id: bId,
+          childKey,
+          childOrder,
           label: confirmedBabyCount > 1 ? `Bé ${String.fromCharCode(65 + i)}` : 'Bé yêu',
           name: babyName,
           gender: babyGender,
@@ -463,7 +519,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         const logsMap = {};
         for (let i = 0; i < babies.length; i++) {
           const b = babies[i];
-          const bId = (b.id || b.name || `baby-${i}`).toLowerCase().replace(/\s+/g, '-');
+          const bId = b.id || b.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${i}`;
           const q = query(
             collection(db, 'users', userId, 'babies', bId, 'growthLogs'),
             orderBy('date', 'asc')
@@ -475,7 +531,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
         const activeIdx = typeof selectedBaby === 'number' ? selectedBaby : 0;
         const activeBaby = babies[activeIdx] || {};
-        const activeBabyId = (activeBaby.id || activeBaby.name || `baby-${activeIdx}`).toLowerCase().replace(/\s+/g, '-');
+        const activeBabyId = activeBaby.id || activeBaby.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${activeIdx}`;
         setLogs(logsMap[activeBabyId] || []);
 
         // Also load pregnancy history
@@ -517,7 +573,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     if (userStatus === 'parent' && Object.keys(babyLogs).length > 0) {
       const activeIdx = typeof selectedBaby === 'number' ? selectedBaby : 0;
       const activeBaby = babies[activeIdx] || {};
-      const activeBabyId = (activeBaby.id || activeBaby.name || `baby-${activeIdx}`).toLowerCase().replace(/\s+/g, '-');
+      const activeBabyId = activeBaby.id || activeBaby.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${activeIdx}`;
       setLogs(babyLogs[activeBabyId] || []);
     }
   }, [selectedBaby, babyLogs, userStatus, babies]);
@@ -608,14 +664,14 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const handleSaveMeasure = async () => {
     const targetIdx = babies.length > 1 ? measureFormBabyIndex : currentBabyIndex;
     const targetBaby = babies[targetIdx] || {};
-    const targetBabyId = (targetBaby.id || targetBaby.name || `baby-${targetIdx}`)
-      .toLowerCase().replace(/\s+/g, '-');
+    const targetBabyId = targetBaby.id || targetBaby.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${targetIdx}`;
 
     if (!userId || !targetBabyId || saving) return;
 
     const wVal = parseFloat(measureForm.weight) || null;
     const hVal = parseFloat(measureForm.height) || null;
     const headVal = parseFloat(measureForm.head) || null;
+    const noteVal = measureForm.note?.trim() || '';
 
     if (wVal === null && hVal === null && headVal === null) {
       alert("Mẹ nhập ít nhất một chỉ số trước khi lưu nhé.");
@@ -630,17 +686,46 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         height: hVal,
         head:   headVal,
         bmi:    calcBMI(wVal, hVal),
+        note:   noteVal,
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, 'users', userId, 'babies', targetBabyId, 'growthLogs'), entry);
+      
+      // 1. Write to growthLogs
+      const docRef = await addDoc(collection(db, 'users', userId, 'babies', targetBabyId, 'growthLogs'), entry);
+      const savedEntry = { id: docRef.id, ...entry };
+
+      // 2. Write to activityLogs for Home card and ChatScreen timeline
+      let detailParts = [];
+      if (wVal) detailParts.push(`${wVal} kg`);
+      if (hVal) detailParts.push(`${hVal} cm`);
+      if (headVal) detailParts.push(`${headVal} cm chu vi đầu`);
+      
+      const metricsText = detailParts.join(', ');
+      const activityNote = noteVal 
+        ? `Đã cập nhật số đo (${metricsText}) · ${noteVal}` 
+        : `Đã cập nhật số đo (${metricsText})`;
+
+      const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const activityLogRef = doc(collection(db, 'users', userId, 'babies', targetBabyId, 'activityLogs'));
+      await setDoc(activityLogRef, {
+        date: measureForm.date,
+        time: formattedTime,
+        type: 'growth',
+        weightKg: wVal,
+        heightCm: hVal,
+        headCircumferenceCm: headVal,
+        note: activityNote,
+        createdAt: serverTimestamp(),
+        childId: targetBabyId
+      });
       
       setBabyLogs(prev => {
         const currentLogs = prev[targetBabyId] || [];
-        const newLogs = [...currentLogs, entry].sort((a, b) => a.date.localeCompare(b.date));
+        const newLogs = [...currentLogs, savedEntry].sort((a, b) => a.date.localeCompare(b.date));
         return { ...prev, [targetBabyId]: newLogs };
       });
 
-      setMeasureForm({ date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '' });
+      setMeasureForm({ date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '', note: '' });
       setShowMeasureForm(false);
     } catch (e) { console.error(e); }
     finally { setSaving(false); }
@@ -804,13 +889,24 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     }));
 
     // ── Prepare user document babies array ──
+    const getOrCreateBabyId = (idx) => {
+      if (babies[idx]?.id) return babies[idx].id;
+      return doc(collection(db, 'users', userId, 'babies')).id;
+    };
+    const idA = getOrCreateBabyId(0);
+    const idB = getOrCreateBabyId(1);
+    const idC = getOrCreateBabyId(2);
+
     const updatedBabies = [];
     if (tempNumBabies >= 1) {
       updatedBabies.push({
-        id: 'baby-a',
+        id: idA,
+        childKey: 'baby-a',
+        childOrder: 0,
         label: 'Bé A',
         name: nameA || 'Bé A',
-        gender: babies[0]?.gender || '',
+        gender: babies[0]?.gender || 'girl',
+        dob: babies[0]?.dob || '',
         pregnancyInfo: {
           dueDate: tempEdd,
           babyName: nameA || 'Bé A'
@@ -819,10 +915,13 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     }
     if (tempNumBabies >= 2) {
       updatedBabies.push({
-        id: 'baby-b',
+        id: idB,
+        childKey: 'baby-b',
+        childOrder: 1,
         label: 'Bé B',
         name: nameB || 'Bé B',
-        gender: babies[1]?.gender || '',
+        gender: babies[1]?.gender || 'girl',
+        dob: babies[1]?.dob || '',
         pregnancyInfo: {
           dueDate: tempEdd,
           babyName: nameB || 'Bé B'
@@ -831,10 +930,13 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     }
     if (tempNumBabies === 3) {
       updatedBabies.push({
-        id: 'baby-c',
+        id: idC,
+        childKey: 'baby-c',
+        childOrder: 2,
         label: 'Bé C',
         name: nameC || 'Bé C',
-        gender: babies[2]?.gender || '',
+        gender: babies[2]?.gender || 'girl',
+        dob: babies[2]?.dob || '',
         pregnancyInfo: {
           dueDate: tempEdd,
           babyName: nameC || 'Bé C'
@@ -865,8 +967,11 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
     // 3. Đồng bộ subcollection babies
     if (tempNumBabies >= 1) {
-      const babyARef = doc(db, 'users', userId, 'babies', 'baby-a');
+      const babyARef = doc(db, 'users', userId, 'babies', idA);
       writePromises.push(setDoc(babyARef, {
+        id: idA,
+        childKey: 'baby-a',
+        childOrder: 0,
         label: 'Bé A',
         name: nameA || 'Bé A',
         pregnancyInfo: {
@@ -876,8 +981,11 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       }, { merge: true }));
     }
     if (tempNumBabies >= 2) {
-      const babyBRef = doc(db, 'users', userId, 'babies', 'baby-b');
+      const babyBRef = doc(db, 'users', userId, 'babies', idB);
       writePromises.push(setDoc(babyBRef, {
+        id: idB,
+        childKey: 'baby-b',
+        childOrder: 1,
         label: 'Bé B',
         name: nameB || 'Bé B',
         pregnancyInfo: {
@@ -887,8 +995,11 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       }, { merge: true }));
     }
     if (tempNumBabies === 3) {
-      const babyCRef = doc(db, 'users', userId, 'babies', 'baby-c');
+      const babyCRef = doc(db, 'users', userId, 'babies', idC);
       writePromises.push(setDoc(babyCRef, {
+        id: idC,
+        childKey: 'baby-c',
+        childOrder: 2,
         label: 'Bé C',
         name: nameC || 'Bé C',
         pregnancyInfo: {
@@ -1008,32 +1119,98 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   };
 
 
+  /* ── Chart data builder (WHO baby growth) ── */
+  const buildChartData = (type) => {
+    if (!dob) return [];
+    const whoRef = getWHOData(gender, type) || [];
+    
+    // Collect all ages (in months) from baby's actual logs
+    const actualAges = logs.map(l => {
+      if (!l.date) return null;
+      return Math.round((new Date(l.date) - new Date(dob)) / (1000 * 60 * 60 * 24 * 30.4375));
+    }).filter(val => val !== null);
+    
+    const whoAges = whoRef.map(r => r.month);
+    const allAges = Array.from(new Set([...whoAges, ...actualAges])).sort((a, b) => a - b);
+    
+    const maxActualAge = actualAges.length > 0 ? Math.max(...actualAges) : 0;
+    const limitAge = Math.max(12, maxActualAge + 3);
+    const filteredAges = allAges.filter(age => age <= limitAge);
+    
+    return filteredAges.map(month => {
+      const ref = whoRef.find(r => r.month === month);
+      
+      const matchLog = logs.find(l => {
+        if (!l.date) return false;
+        const lAge = Math.round((new Date(l.date) - new Date(dob)) / (1000 * 60 * 60 * 24 * 30.4375));
+        return lAge === month;
+      });
+      
+      const val = matchLog
+        ? (type === 'weight' ? matchLog.weight : type === 'height' ? matchLog.height : matchLog.head)
+        : null;
+        
+      return {
+        month,
+        label: `${month}th`,
+        lower: ref ? ref.sd_n2 : null,
+        band: ref ? parseFloat((ref.sd_p2 - ref.sd_n2).toFixed(2)) : null,
+        actual: val ? parseFloat(val) : null,
+      };
+    });
+  };
+
   /* ── Chart comparison data builder (multi-baby growth) ── */
   const buildComparisonChartData = (type) => {
     if (babies.length === 0) return [];
     const refGender = babies[0]?.gender || 'girl';
-    const whoRef = getWHOData(refGender, type);
-    return whoRef.map(ref => {
+    const whoRef = getWHOData(refGender, type) || [];
+    
+    // Collect ages from all babies' logs
+    const actualAges = [];
+    babies.forEach((b, i) => {
+      const bId = b.id || b.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${i}`;
+      const bDob = b.dob || '';
+      const bLogs = babyLogs[bId] || [];
+      bLogs.forEach(l => {
+        if (l.date && bDob) {
+          const lAge = Math.round((new Date(l.date) - new Date(bDob)) / (1000 * 60 * 60 * 24 * 30.4375));
+          actualAges.push(lAge);
+        }
+      });
+    });
+
+    const whoAges = whoRef.map(r => r.month);
+    const allAges = Array.from(new Set([...whoAges, ...actualAges])).sort((a, b) => a - b);
+
+    const maxActualAge = actualAges.length > 0 ? Math.max(...actualAges) : 0;
+    const limitAge = Math.max(12, maxActualAge + 3);
+    const filteredAges = allAges.filter(age => age <= limitAge);
+
+    return filteredAges.map(month => {
+      const ref = whoRef.find(r => r.month === month);
       const dataPoint = {
-        month:  ref.month,
-        label:  `${ref.month}th`,
-        lower:  ref.sd_n2,
-        band:   parseFloat((ref.sd_p2 - ref.sd_n2).toFixed(2)),
+        month,
+        label: `${month}th`,
+        lower: ref ? ref.sd_n2 : null,
+        band: ref ? parseFloat((ref.sd_p2 - ref.sd_n2).toFixed(2)) : null,
       };
+      
       babies.forEach((b, i) => {
-        const bId = (b.id || b.name || `baby-${i}`).toLowerCase().replace(/\s+/g, '-');
+        const bId = b.id || b.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${i}`;
         const bDob = b.dob || '';
         const bLogs = babyLogs[bId] || [];
         const matchLog = bLogs.find(l => {
           if (!l.date || !bDob) return false;
           const lAge = Math.round((new Date(l.date) - new Date(bDob)) / (1000 * 60 * 60 * 24 * 30.4375));
-          return Math.abs(lAge - ref.month) <= 1;
+          return lAge === month;
         });
         const val = matchLog
           ? (type === 'weight' ? matchLog.weight : type === 'height' ? matchLog.height : matchLog.head)
           : null;
         dataPoint[`actual_${i}`] = val ? parseFloat(val) : null;
       });
+      
       return dataPoint;
     });
   };
@@ -1066,9 +1243,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
               {userStatus === 'pregnant' ? 'Theo dõi Thai kỳ' : 'Theo dõi Tăng trưởng'}
             </h1>
             <p className="growth-subtitle">
-              {userStatus === 'pregnant'
-                ? 'Tuần thai · Cân nặng mẹ · Chỉ số siêu âm · Lịch khám'
-                : 'Chuẩn WHO Việt Nam · Cân nặng · Chiều cao · Chu vi đầu'}
+              {getPersonalizedSubtitle()}
             </p>
           </div>
         </div>
@@ -1474,7 +1649,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
               setShowMeasureDateCalendar(false);
             }}
             onCancel={() => setShowMeasureDateCalendar(false)}
-            dateType="birthDate"
+            dateType="measurementDate"
           />,
           document.body
         )}
@@ -3049,6 +3224,23 @@ function ParentView({
               value={measureForm.head}
               onChange={e => setMeasureForm(f => ({ ...f, head: e.target.value }))} />
           </div>
+          <div className="form-group form-group-full" style={{ gridColumn: 'span 2' }}>
+            <label>Ghi chú</label>
+            <input type="text" placeholder="Ví dụ: Bé khỏe mạnh, mọc răng..."
+              value={measureForm.note || ''}
+              onChange={e => setMeasureForm(f => ({ ...f, note: e.target.value }))}
+              style={{
+                width: '100%',
+                padding: '11px 14px',
+                borderRadius: '12px',
+                border: '2px solid var(--cream-dark)',
+                background: 'var(--surface-1)',
+                fontFamily: 'Nunito, sans-serif',
+                fontSize: '15px',
+                outline: 'none',
+                color: 'var(--text-primary)'
+              }} />
+          </div>
         </div>
         <button 
           type="button"
@@ -3068,7 +3260,7 @@ function ParentView({
       <>
         <div className="overview-grid" style={{ display: 'grid', gridTemplateColumns: babies.length > 1 ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr', gap: '14px' }}>
           {babies.map((b, idx) => {
-            const bId = (b.id || b.name || `baby-${idx}`).toLowerCase().replace(/\s+/g, '-');
+            const bId = b.id || b.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${idx}`;
             const bLogs = babyLogs[bId] || [];
             const bLatest = bLogs[bLogs.length - 1];
             const bWeight = parseFloat(bLatest?.weight || 0);
@@ -3152,83 +3344,183 @@ function ParentView({
     const compColors = ['#5FAF82', '#2F6B4F', '#A8C5B0'];
     const compChartData = buildComparisonChartData(chartTab);
     const hasAnyActual = compChartData.some(d => babies.some((_, i) => d[`actual_${i}`] != null));
+    const hasWHO = compChartData.some(d => d.lower != null && d.band != null);
+
+    // Get latest log for each baby
+    const latestLogs = babies.map((b, idx) => {
+      const bId = b.id || b.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${idx}`;
+      const bLogs = babyLogs[bId] || [];
+      return bLogs[bLogs.length - 1] || null;
+    });
+
+    const hasAll = latestLogs.every(l => l !== null);
+    const dates = latestLogs.map(l => l ? new Date(l.date) : null);
+
+    const isClose = (() => {
+      if (!hasAll) return false;
+      const timeValues = dates.map(d => d.getTime());
+      const minTime = Math.min(...timeValues);
+      const maxTime = Math.max(...timeValues);
+      const diffDays = (maxTime - minTime) / (1000 * 60 * 60 * 24);
+      return diffDays <= 14;
+    })();
+
+    const dateStrings = latestLogs.map(l => l ? fmtDate(l.date) : '—');
+    const allDatesSame = dateStrings.every((d, i, arr) => d === arr[0]);
+
+    const getTwinCompareDelta = (valA, valB, unit) => {
+      const a = parseFloat(valA);
+      const b = parseFloat(valB);
+      if (isNaN(a) || isNaN(b)) return '—';
+      const diff = a - b;
+      const nameA = babies[0]?.name || 'Bé A';
+      const nameB = babies[1]?.name || 'Bé B';
+      if (diff > 0) return `${nameA} lớn hơn ${nameB}: +${diff.toFixed(2).replace(/\.?0+$/, '')} ${unit}`;
+      if (diff < 0) return `${nameB} lớn hơn ${nameA}: +${Math.abs(diff).toFixed(2).replace(/\.?0+$/, '')} ${unit}`;
+      return 'Bằng nhau';
+    };
+
+    const getTripletCompareDelta = (valA, valB, valC, unit) => {
+      const a = parseFloat(valA);
+      const b = parseFloat(valB);
+      const c = parseFloat(valC);
+      if (isNaN(a) || isNaN(b) || isNaN(c)) return '—';
+      const vals = [a, b, c];
+      const maxVal = Math.max(...vals);
+      const minVal = Math.min(...vals);
+      const diff = maxVal - minVal;
+      if (diff === 0) return 'Bằng nhau';
+      return `Chênh lệch tối đa: ${diff.toFixed(2).replace(/\.?0+$/, '')} ${unit}`;
+    };
+
+    const getCompareDelta = (idx, unit) => {
+      const vals = latestLogs.map(l => l ? (idx === 0 ? l.weight : idx === 1 ? l.height : l.head) : null);
+      if (babies.length === 2) {
+        return getTwinCompareDelta(vals[0], vals[1], unit);
+      } else if (babies.length === 3) {
+        return getTripletCompareDelta(vals[0], vals[1], vals[2], unit);
+      }
+      return '—';
+    };
 
     return (
       <>
         {/* Comparison Table */}
         <div className="growth-card comparison-card">
-          <div className="card-header">
-            <span className="card-title">Bảng so sánh đối chiếu</span>
+          <div className="card-header" style={{ marginBottom: '12px' }}>
+            <span className="card-title">Bảng so sánh đối chiếu các bé</span>
           </div>
-          <div className="comparison-table-wrapper">
-            <table className="comparison-table">
-              <thead>
-                <tr>
-                  <th>Thông tin</th>
-                  {babies.map((b, idx) => (
-                    <th key={idx}>{b.name || `Bé ${String.fromCharCode(65 + idx)}`}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="comp-metric-name">Ngày sinh</td>
-                  {babies.map((b, idx) => (
-                    <td key={idx} className="comp-value">{fmtDate(b.dob) || '—'}</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="comp-metric-name">Tuổi</td>
-                  {babies.map((b, idx) => {
-                    const ageM = b.dob ? getAgeInMonths(b.dob) : 0;
-                    const ageLbl = !b.dob ? '—'
-                      : ageM < 24 ? `${ageM} tháng`
-                      : `${Math.floor(ageM / 12)} tuổi ${ageM % 12} tháng`;
-                    return <td key={idx} className="comp-value">{ageLbl}</td>;
-                  })}
-                </tr>
-                <tr>
-                  <td className="comp-metric-name">Giới tính</td>
-                  {babies.map((b, idx) => (
-                    <td key={idx} className="comp-value">{b.gender === 'boy' ? 'Bé trai' : 'Bé gái'}</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td className="comp-metric-name">Cân nặng gần nhất</td>
-                  {babies.map((b, idx) => {
-                    const bId = (b.id || b.name || `baby-${idx}`).toLowerCase().replace(/\s+/g, '-');
-                    const bLogs = babyLogs[bId] || [];
-                    const bLatest = bLogs[bLogs.length - 1];
-                    return <td key={idx} className="comp-value" style={{ fontWeight: 'bold', color: '#2F6B4F' }}>
-                      {bLatest?.weight ? `${bLatest.weight} kg` : '—'}
-                    </td>;
-                  })}
-                </tr>
-                <tr>
-                  <td className="comp-metric-name">Chiều cao gần nhất</td>
-                  {babies.map((b, idx) => {
-                    const bId = (b.id || b.name || `baby-${idx}`).toLowerCase().replace(/\s+/g, '-');
-                    const bLogs = babyLogs[bId] || [];
-                    const bLatest = bLogs[bLogs.length - 1];
-                    return <td key={idx} className="comp-value" style={{ fontWeight: 'bold', color: '#2F6B4F' }}>
-                      {bLatest?.height ? `${bLatest.height} cm` : '—'}
-                    </td>;
-                  })}
-                </tr>
-                <tr>
-                  <td className="comp-metric-name">Chu vi đầu gần nhất</td>
-                  {babies.map((b, idx) => {
-                    const bId = (b.id || b.name || `baby-${idx}`).toLowerCase().replace(/\s+/g, '-');
-                    const bLogs = babyLogs[bId] || [];
-                    const bLatest = bLogs[bLogs.length - 1];
-                    return <td key={idx} className="comp-value" style={{ fontWeight: 'bold', color: '#2F6B4F' }}>
-                      {bLatest?.head ? `${bLatest.head} cm` : '—'}
-                    </td>;
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+
+          {!isClose ? (
+            <div style={{ padding: '16px', textAlign: 'center', backgroundColor: '#F8FAF8', borderRadius: '16px', border: '1px dashed rgba(95, 175, 130, 0.3)' }}>
+              <p style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '700', color: '#2F6B4F' }}>
+                Chưa đủ dữ liệu để so sánh các bé
+              </p>
+              <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#666666', lineHeight: '1.4' }}>
+                Mẹ cần thêm số đo cho từng bé với các ngày đo gần nhau (trong vòng 14 ngày) để tiến hành đối chiếu chỉ số tăng trưởng.
+              </p>
+              <div style={{ textAlign: 'left', display: 'inline-block', fontSize: '12.5px', color: '#555' }}>
+                {babies.map((b, idx) => (
+                  <div key={idx} style={{ marginBottom: '4px' }}>
+                    · <strong>{b.name || `Bé ${String.fromCharCode(65 + idx)}`}</strong>: {dateStrings[idx] ? `Đo ngày ${dateStrings[idx]}` : 'Chưa có số đo'}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              {!allDatesSame && (
+                <div style={{ backgroundColor: '#F8FAF8', padding: '10px 12px', borderRadius: '12px', border: '1px solid #EEF2EF', marginBottom: '12px', fontSize: '12px', color: '#4F7C62', lineHeight: '1.4' }}>
+                  💡 Ngày đo của các bé chênh lệch không quá 14 ngày:
+                  <div style={{ marginTop: '4px', paddingLeft: '8px' }}>
+                    {babies.map((b, idx) => (
+                      <div key={idx}>· {b.name || `Bé ${String.fromCharCode(65 + idx)}`}: {dateStrings[idx]}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="comparison-table-wrapper">
+                <table className="comparison-table">
+                  <thead>
+                    <tr>
+                      <th align="left">Chỉ số</th>
+                      {babies.map((b, idx) => (
+                        <th key={idx} align="center">{b.name || `Bé ${String.fromCharCode(65 + idx)}`}</th>
+                      ))}
+                      <th align="right">Chênh lệch</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td align="left" className="comp-metric-name">Ngày sinh</td>
+                      {babies.map((b, idx) => (
+                        <td key={idx} align="center" className="comp-value">{fmtDate(b.dob) || '—'}</td>
+                      ))}
+                      <td align="right" className="comp-delta">—</td>
+                    </tr>
+                    {!allDatesSame && (
+                      <tr>
+                        <td align="left" className="comp-metric-name">Ngày đo</td>
+                        {babies.map((b, idx) => {
+                          const log = latestLogs[idx];
+                          return <td key={idx} align="center" className="comp-value">{log ? fmtDate(log.date) : '—'}</td>;
+                        })}
+                        <td align="right" className="comp-delta">—</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td align="left" className="comp-metric-name">Tuổi đo</td>
+                      {babies.map((b, idx) => {
+                        const log = latestLogs[idx];
+                        if (!log || !b.dob) return <td key={idx} align="center" className="comp-value">—</td>;
+                        const ageM = Math.round((new Date(log.date) - new Date(b.dob)) / (1000 * 60 * 60 * 24 * 30.4375));
+                        const ageLbl = ageM < 24 ? `${ageM} tháng` : `${Math.floor(ageM / 12)} tuổi ${ageM % 12} tháng`;
+                        return <td key={idx} align="center" className="comp-value">{ageLbl}</td>;
+                      })}
+                      <td align="right" className="comp-delta">—</td>
+                    </tr>
+                    <tr>
+                      <td align="left" className="comp-metric-name">Cân nặng</td>
+                      {babies.map((b, idx) => {
+                        const log = latestLogs[idx];
+                        return <td key={idx} align="center" className="comp-value" style={{ fontWeight: 'bold' }}>
+                          {log?.weight ? `${log.weight} kg` : '—'}
+                        </td>;
+                      })}
+                      <td align="right" className="comp-delta" style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>
+                        {getCompareDelta(0, 'kg')}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align="left" className="comp-metric-name">Chiều cao</td>
+                      {babies.map((b, idx) => {
+                        const log = latestLogs[idx];
+                        return <td key={idx} align="center" className="comp-value" style={{ fontWeight: 'bold' }}>
+                          {log?.height ? `${log.height} cm` : '—'}
+                        </td>;
+                      })}
+                      <td align="right" className="comp-delta" style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>
+                        {getCompareDelta(1, 'cm')}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align="left" className="comp-metric-name">Chu vi đầu</td>
+                      {babies.map((b, idx) => {
+                        const log = latestLogs[idx];
+                        return <td key={idx} align="center" className="comp-value" style={{ fontWeight: 'bold' }}>
+                          {log?.head ? `${log.head} cm` : '—'}
+                        </td>;
+                      })}
+                      <td align="right" className="comp-delta" style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>
+                        {getCompareDelta(2, 'cm')}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Comparison Chart */}
@@ -3256,10 +3548,12 @@ function ParentView({
                 {b.name || `Bé ${String.fromCharCode(65 + i)}`}
               </span>
             ))}
-            <span className="chart-legend-item">
-              <span className="legend-band" />
-              Vùng tham khảo WHO
-            </span>
+            {hasWHO && (
+              <span className="chart-legend-item">
+                <span className="legend-band" />
+                Vùng tham khảo WHO
+              </span>
+            )}
           </div>
 
           {hasAnyActual ? (
@@ -3277,12 +3571,16 @@ function ParentView({
                       return [`${v} ${unit}`, name];
                     }}
                   />
-                  <Area type="monotone" dataKey="lower" stackId="who"
-                    fill="rgba(240,236,230,0.6)" stroke="rgba(200,210,200,0.4)" strokeWidth={1}
-                    dot={false} name="lower" />
-                  <Area type="monotone" dataKey="band" stackId="who"
-                    fill="rgba(95,175,130,0.12)" stroke="rgba(95,175,130,0.3)" strokeWidth={1}
-                    dot={false} name="band" />
+                  {hasWHO && (
+                    <>
+                      <Area type="monotone" dataKey="lower" stackId="who"
+                        fill="rgba(240,236,230,0.6)" stroke="rgba(200,210,200,0.4)" strokeWidth={1}
+                        dot={false} name="lower" />
+                      <Area type="monotone" dataKey="band" stackId="who"
+                        fill="rgba(95,175,130,0.12)" stroke="rgba(95,175,130,0.3)" strokeWidth={1}
+                        dot={false} name="band" />
+                    </>
+                  )}
                   {babies.map((b, i) => {
                     const key = `actual_${i}`;
                     const color = compColors[i % compColors.length];
@@ -3329,7 +3627,90 @@ function ParentView({
   const hasChartData = logs.length >= 2 && dob;
   const chartData    = hasChartData ? buildChartData(chartTab) : [];
   const hasActual    = chartData.some(d => d.actual != null);
+  const hasWHO       = chartData.some(d => d.lower != null && d.band != null);
   const chartColors  = { weight: '#5FAF82', height: '#2F6B4F', head: '#A8C5B0' };
+
+  const renderBabyGrowthComparison = () => {
+    if (logs.length < 2) {
+      return (
+        <div className="growth-card comparison-card" style={{ padding: '16px', textAlign: 'center' }}>
+          <div className="card-header" style={{ marginBottom: '8px' }}>
+            <span className="card-title">So sánh với lần đo trước</span>
+          </div>
+          <p style={{ margin: '12px 0', fontSize: '13.5px', color: '#666666', fontWeight: '600' }}>
+            Chưa đủ dữ liệu để so sánh
+          </p>
+          <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#888888', lineHeight: '1.4' }}>
+            Mẹ cần ít nhất 2 lần đo để xem sự thay đổi.
+          </p>
+        </div>
+      );
+    }
+
+    const prev = logs[logs.length - 2];
+    const curr = logs[logs.length - 1];
+
+    const getDiffLabel = (currVal, prevVal, unit) => {
+      const c = parseFloat(currVal);
+      const p = parseFloat(prevVal);
+      if (isNaN(c) || isNaN(p)) return '—';
+      const diff = c - p;
+      if (diff > 0) return `+${diff.toFixed(2).replace(/\.?0+$/, '')} ${unit}`;
+      if (diff < 0) return `${diff.toFixed(2).replace(/\.?0+$/, '')} ${unit}`;
+      return 'Không đổi';
+    };
+
+    const formatVal = (val, unit) => {
+      const v = parseFloat(val);
+      return isNaN(v) ? '—' : `${v} ${unit}`;
+    };
+
+    return (
+      <div className="growth-card comparison-card">
+        <div className="card-header" style={{ marginBottom: '12px' }}>
+          <span className="card-title">So sánh với lần đo trước</span>
+        </div>
+        <div className="comparison-table-wrapper">
+          <table className="comparison-table">
+            <thead>
+              <tr>
+                <th align="left">Chỉ số</th>
+                <th align="center">Lần trước ({fmtDate(prev.date)})</th>
+                <th align="center">Mới nhất ({fmtDate(curr.date)})</th>
+                <th align="right">Thay đổi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td align="left" className="comp-metric-name">Cân nặng</td>
+                <td align="center" className="comp-value">{formatVal(prev.weight, 'kg')}</td>
+                <td align="center" className="comp-value">{formatVal(curr.weight, 'kg')}</td>
+                <td align="right" className="comp-delta" style={{ fontWeight: '600', color: '#2F6B4F' }}>
+                  {getDiffLabel(curr.weight, prev.weight, 'kg')}
+                </td>
+              </tr>
+              <tr>
+                <td align="left" className="comp-metric-name">Chiều cao</td>
+                <td align="center" className="comp-value">{formatVal(prev.height, 'cm')}</td>
+                <td align="center" className="comp-value">{formatVal(curr.height, 'cm')}</td>
+                <td align="right" className="comp-delta" style={{ fontWeight: '600', color: '#2F6B4F' }}>
+                  {getDiffLabel(curr.height, prev.height, 'cm')}
+                </td>
+              </tr>
+              <tr>
+                <td align="left" className="comp-metric-name">Chu vi đầu</td>
+                <td align="center" className="comp-value">{formatVal(prev.head, 'cm')}</td>
+                <td align="center" className="comp-value">{formatVal(curr.head, 'cm')}</td>
+                <td align="right" className="comp-delta" style={{ fontWeight: '600', color: '#2F6B4F' }}>
+                  {getDiffLabel(curr.head, prev.head, 'cm')}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -3388,6 +3769,36 @@ function ParentView({
         )}
       </div>
 
+      {/* ── BIRTH MEASUREMENTS CARD ── */}
+      {(baby.birthWeight || baby.birthHeight || baby.birthHeadCircumference) && (
+        <div className="growth-card birth-metrics-card" style={{ padding: '14px 16px', marginTop: '-6px', marginBottom: '14px', backgroundColor: '#F8FAF8', border: '1px solid #EEF2EF', borderRadius: '16px' }}>
+          <div className="card-header" style={{ marginBottom: '8px' }}>
+            <span className="card-title" style={{ fontSize: '13.5px', color: '#2F6B4F', fontWeight: '700' }}>Số đo lúc sinh</span>
+            <span className="card-date" style={{ fontSize: '11.5px', color: '#666666' }}>{fmtDate(dob)}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
+            <div style={{ padding: '8px 4px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #F0F2F0' }}>
+              <div style={{ fontSize: '11px', color: '#888' }}>Cân nặng</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#333', marginTop: '2px' }}>
+                {baby.birthWeight ? `${baby.birthWeight} kg` : '—'}
+              </div>
+            </div>
+            <div style={{ padding: '8px 4px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #F0F2F0' }}>
+              <div style={{ fontSize: '11px', color: '#888' }}>Chiều dài</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#333', marginTop: '2px' }}>
+                {baby.birthHeight ? `${baby.birthHeight} cm` : '—'}
+              </div>
+            </div>
+            <div style={{ padding: '8px 4px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #F0F2F0' }}>
+              <div style={{ fontSize: '11px', color: '#888' }}>Chu vi đầu</div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: '#333', marginTop: '2px' }}>
+                {baby.birthHeadCircumference ? `${baby.birthHeadCircumference} cm` : '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── LATEST MEASUREMENTS ── */}
       {hasData ? (
         <div className="growth-card">
@@ -3426,7 +3837,7 @@ function ParentView({
         <div className="empty-card">
           <div className="empty-icon-wrap"><GrowthPlaceholderIcon /></div>
           <p className="empty-title">Chưa có số đo của bé</p>
-          <p className="empty-sub">Thêm cân nặng, chiều cao và chu vi đầu để xem biểu đồ tăng trưởng.</p>
+          <p className="empty-sub">Thêm cân nặng, chiều cao và chu vi đầu để theo dõi sự phát triển của bé.</p>
           <button type="button" className="primary-btn" style={{ width: 'auto', padding: '11px 24px' }} onClick={() => {
             setMeasureFormBabyIndex(selectedBaby);
             setShowMeasureForm(true);
@@ -3438,6 +3849,9 @@ function ParentView({
 
       {/* ── MEASURE FORM ── */}
       {showMeasureForm && renderMeasureForm()}
+
+      {/* ── COMPARISON WITH PREVIOUS MEASUREMENT ── */}
+      {renderBabyGrowthComparison()}
 
       {/* ── TABBED GROWTH CHART ── */}
       <div className="growth-card">
@@ -3465,10 +3879,12 @@ function ParentView({
                   <span className="legend-dot" style={{ background: chartColors[chartTab] }} />
                   Chỉ số của bé
                 </span>
-                <span className="chart-legend-item">
-                  <span className="legend-band" />
-                  Vùng tham khảo WHO
-                </span>
+                {hasWHO && (
+                  <span className="chart-legend-item">
+                    <span className="legend-band" />
+                    Vùng tham khảo WHO
+                  </span>
+                )}
               </div>
             )}
             <ResponsiveContainer width="100%" height={240}>
@@ -3484,12 +3900,16 @@ function ParentView({
                     return [`${v} ${unit}`, 'Chỉ số bé'];
                   }}
                 />
-                <Area type="monotone" dataKey="lower" stackId="who"
-                  fill="rgba(240,236,230,0.6)" stroke="rgba(200,210,200,0.4)" strokeWidth={1}
-                  dot={false} name="lower" />
-                <Area type="monotone" dataKey="band" stackId="who"
-                  fill="rgba(95,175,130,0.12)" stroke="rgba(95,175,130,0.3)" strokeWidth={1}
-                  dot={false} name="band" />
+                {hasWHO && (
+                  <>
+                    <Area type="monotone" dataKey="lower" stackId="who"
+                      fill="rgba(240,236,230,0.6)" stroke="rgba(200,210,200,0.4)" strokeWidth={1}
+                      dot={false} name="lower" />
+                    <Area type="monotone" dataKey="band" stackId="who"
+                      fill="rgba(95,175,130,0.12)" stroke="rgba(95,175,130,0.3)" strokeWidth={1}
+                      dot={false} name="band" />
+                  </>
+                )}
                 {hasActual && (
                   <Line type="monotone" dataKey="actual" stroke={chartColors[chartTab]}
                     strokeWidth={2.5}
@@ -3546,6 +3966,7 @@ function ParentView({
         <div className="measure-list">
           {[...logs].reverse().map((l, i) => {
             const logAge = dob ? (() => {
+              if (l.date === dob || l.note === 'Chỉ số lúc sinh') return 'Lúc sinh';
               const months = Math.round(
                 (new Date(l.date) - new Date(dob)) / (1000 * 60 * 60 * 24 * 30.4375)
               );
@@ -3554,16 +3975,23 @@ function ParentView({
                 : `${Math.floor(months / 12)} tuổi ${months % 12} tháng`;
             })() : null;
             return (
-              <div key={l.id || i} className="measure-item">
-                <div className="measure-item-left">
-                  <span className="measure-date">{fmtDate(l.date) || '—'}</span>
-                  {logAge && <span className="measure-age">{logAge}</span>}
+              <div key={l.id || i} className="measure-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="measure-item-left">
+                    <span className="measure-date">{fmtDate(l.date) || '—'}</span>
+                    {logAge && <span className="measure-age">{logAge}</span>}
+                  </div>
+                  <div className="measure-item-right">
+                    {l.weight && <span className="measure-val">{l.weight} kg</span>}
+                    {l.height && <span className="measure-val">{l.height} cm</span>}
+                    {l.head   && <span className="measure-val head-val">{l.head} cm đầu</span>}
+                  </div>
                 </div>
-                <div className="measure-item-right">
-                  {l.weight && <span className="measure-val">{l.weight} kg</span>}
-                  {l.height && <span className="measure-val">{l.height} cm</span>}
-                  {l.head   && <span className="measure-val head-val">{l.head} cm đầu</span>}
-                </div>
+                {l.note && (
+                  <div className="measure-item-note" style={{ fontSize: '12.5px', color: '#687E70', fontStyle: 'italic', marginTop: '-2px', paddingLeft: '2px' }}>
+                    📝 {l.note}
+                  </div>
+                )}
               </div>
             );
           })}
