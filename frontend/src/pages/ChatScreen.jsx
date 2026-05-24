@@ -1493,8 +1493,18 @@ ${logsDesc}`;
   const isSavingVitaminsRef = useRef(false);
   const isSavingClinicRef = useRef(false);
   const isSavingEmotionRef = useRef(false);
+  const lastInitializedSheetRef = useRef(null);
 
   useEffect(() => {
+    if (!activeBottomSheet) {
+      lastInitializedSheetRef.current = null;
+      return;
+    }
+    if (lastInitializedSheetRef.current === activeBottomSheet) {
+      return;
+    }
+    lastInitializedSheetRef.current = activeBottomSheet;
+
     if (activeBottomSheet === 'nutrition') {
       const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
       if (babyAgeMonths >= 12) {
