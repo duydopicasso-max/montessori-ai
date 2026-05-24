@@ -554,6 +554,17 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   const [pumpLeftMl, setPumpLeftMl] = useState(60);
   const [pumpRightMl, setPumpRightMl] = useState(60);
 
+  // Redesigned Nutrition Sheet States
+  const [mealType, setMealType] = useState('breakfast'); // 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  const [appetite, setAppetite] = useState('good'); // 'good' | 'medium' | 'poor' | 'refused'
+  const [foodNote, setFoodNote] = useState('');
+  const [milkType, setMilkType] = useState('breast'); // 'breast' | 'formula' | 'fresh'
+  const [amountMl, setAmountMl] = useState('');
+  const [waterMl, setWaterMl] = useState('');
+  const [waterInputMode, setWaterInputMode] = useState('ml'); // 'ml' | 'cup'
+  const [isSavingNutri, setIsSavingNutri] = useState(false);
+  const [saveNutriError, setSaveNutriError] = useState(false);
+
   // B. Sleep Sheet inputs
   const [sleepActive, setSleepActive] = useState(false);
   const [sleepSecs, setSleepSecs] = useState(0);
@@ -890,32 +901,101 @@ ${logsDesc}`;
 
   // 3. Database Saving Methods (Saves dynamically into Firestore)
   // Nutrition Log save
+  // Nutrition Log save (Redesigned with unified models and validation)
   const handleSaveNutrition = async (e) => {
     if (e) e.preventDefault();
-    if (!userId) return;
+    if (!userId || isSavingNutri) return;
+
+    // 1. Validation check
+    let isValid = false;
+    if (nutriTab === 'meal') {
+      isValid = !!mealType || !!appetite || (!!foodNote && foodNote.trim() !== '');
+    } else if (nutriTab === 'milk') {
+      isValid = !!milkType && Number(amountMl) > 0;
+    } else if (nutriTab === 'water') {
+      isValid = Number(waterMl) > 0;
+    } else if (nutriTab === 'breastfeeding') {
+      isValid = (breastLeftSec + breastRightSec) > 0;
+    }
+
+    if (!isValid) {
+      showToast("Mẹ ghi nhận ít nhất một thông tin trước khi lưu nhé.");
+      return;
+    }
+
+    setIsSavingNutri(true);
+    setSaveNutriError(false);
 
     const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    
+    // Prepare log details & note strings
+    let logType = nutriTab; // 'meal' | 'milk' | 'water' | 'breastfeeding'
+    let note = '';
+    let toastMsg = 'Đã ghi nhận cữ ăn';
+
+    if (nutriTab === 'meal') {
+      const mealNames = { breakfast: 'bữa sáng', lunch: 'bữa trưa', dinner: 'bữa tối', snack: 'bữa phụ' };
+      const mealName = mealNames[mealType] || 'bữa ăn';
+      note = `Đã ghi nhận ${mealName}`;
+      if (foodNote && foodNote.trim()) {
+        note += ` · ${foodNote.trim()}`;
+      }
+      toastMsg = 'Đã lưu bữa ăn';
+    } else if (nutriTab === 'milk') {
+      const milkNames = { breast: 'sữa mẹ', formula: 'sữa công thức', fresh: 'sữa tươi' };
+      const milkName = milkNames[milkType] || 'sữa';
+      note = `Đã ghi nhận cữ ${milkName} ${amountMl} ml`;
+      toastMsg = 'Đã lưu cữ sữa';
+    } else if (nutriTab === 'water') {
+      note = `Đã ghi nhận uống nước ${waterMl} ml`;
+      toastMsg = 'Đã lưu nước uống';
+    } else if (nutriTab === 'breastfeeding') {
+      const totalMin = Math.round((breastLeftSec + breastRightSec) / 60) || 1;
+      note = `Đã ghi nhận cữ bú ${totalMin} phút`;
+      toastMsg = 'Đã lưu cữ bú';
+    }
+
     const logData = {
       date: getTodayLocalyyyymmdd(),
       time: formattedTime,
-      type: nutriTab,
-      amountMl: (nutriTab === 'breast_pump') ? (pumpLeftMl + pumpRightMl) : (nutriTab === 'formula') ? Number(nutriMl) : 0,
-      breastTimeLeft: nutriTab === 'breast_direct' ? Math.round(breastLeftSec / 60) : 0,
-      breastTimeRight: nutriTab === 'breast_direct' ? Math.round(breastRightSec / 60) : 0,
-      foodDetails: nutriTab === 'solid' ? solidDetails : nutriTab === 'breast_pump' ? `Vắt sữa: Trái ${pumpLeftMl}ml, Phải ${pumpRightMl}ml` : '',
-      suaMe: nutriTab === 'formula' ? nutriSuaMe : true,
+      type: logType,
+      mealType: nutriTab === 'meal' ? mealType : null,
+      appetite: nutriTab === 'meal' ? appetite : null,
+      foodNote: nutriTab === 'meal' ? foodNote.trim() : null,
+      milkType: nutriTab === 'milk' ? milkType : null,
+      amountMl: nutriTab === 'milk' ? Number(amountMl) : null,
+      waterMl: nutriTab === 'water' ? Number(waterMl) : null,
+      breastLeftSeconds: nutriTab === 'breastfeeding' ? breastLeftSec : 0,
+      breastRightSeconds: nutriTab === 'breastfeeding' ? breastRightSec : 0,
+      totalBreastfeedingSeconds: nutriTab === 'breastfeeding' ? (breastLeftSec + breastRightSec) : 0,
+      note,
       createdAt: serverTimestamp(),
+      loggedAt: serverTimestamp(),
       childId: babyId || ''
     };
 
     try {
       await addDoc(collection(db, 'users', userId, 'babies', babyId, 'nutritionLogs'), logData);
       triggerChime();
+      showToast(toastMsg);
       handleCleanCloseSheet('nutrition');
-      // Reset
-      setBreastLeftSec(0); setBreastRightSec(0); setBreastDirectTimerActive(false); setSolidDetails('');
+      
+      // Reset inputs
+      setMealType('breakfast');
+      setAppetite('good');
+      setFoodNote('');
+      setMilkType('breast');
+      setAmountMl('');
+      setWaterMl('');
+      setWaterInputMode('ml');
+      setBreastLeftSec(0);
+      setBreastRightSec(0);
+      setBreastDirectTimerActive(false);
     } catch (err) {
       console.error(err);
+      setSaveNutriError(true);
+    } finally {
+      setIsSavingNutri(false);
     }
   };
 
@@ -1269,8 +1349,38 @@ ${logsDesc}`;
   const isSavingEmotionRef = useRef(false);
 
   useEffect(() => {
-    if (activeBottomSheet === 'preg_reminders') {
-      const todayStr = new Date().toISOString().split('T')[0];
+    if (activeBottomSheet === 'nutrition') {
+      const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
+      if (babyAgeMonths >= 12) {
+        setNutriTab('meal');
+      } else {
+        setNutriTab('breastfeeding');
+      }
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 10) {
+        setMealType('breakfast');
+      } else if (hour >= 10 && hour < 14) {
+        setMealType('lunch');
+      } else if (hour >= 14 && hour < 17) {
+        setMealType('snack');
+      } else if (hour >= 17 && hour < 21) {
+        setMealType('dinner');
+      } else {
+        setMealType('breakfast');
+      }
+      setAppetite('good');
+      setFoodNote('');
+      setMilkType('breast');
+      setAmountMl('');
+      setWaterMl('');
+      setWaterInputMode('ml');
+      setBreastLeftSec(0);
+      setBreastRightSec(0);
+      setBreastDirectTimerActive(false);
+      setSaveNutriError(false);
+      setIsSavingNutri(false);
+    } else if (activeBottomSheet === 'preg_reminders') {
+      const todayStr = getTodayLocalyyyymmdd();
       const todayLog = activityLogs.find(l => l.type === 'preg_reminders' && l.date === todayStr);
       if (todayLog) {
         const loadedVits = {
@@ -1769,8 +1879,28 @@ ${logsDesc}`;
       } else if (log.type === 'solid') {
         desc = `Ăn dặm: ${log.foodDetails}`;
         icon = '🥣';
+      } else if (log.type === 'meal') {
+        const mealNames = { breakfast: 'bữa sáng', lunch: 'bữa trưa', dinner: 'bữa tối', snack: 'bữa phụ' };
+        const mealName = mealNames[log.mealType] || 'bữa ăn';
+        desc = `Đã ghi nhận ${mealName}`;
+        if (log.foodNote && log.foodNote.trim()) {
+          desc += ` · ${log.foodNote.trim()}`;
+        }
+        icon = '🥣';
+      } else if (log.type === 'milk') {
+        const milkNames = { breast: 'sữa mẹ', formula: 'sữa công thức', fresh: 'sữa tươi' };
+        const milkName = milkNames[log.milkType] || 'sữa';
+        desc = `Đã ghi nhận cữ ${milkName} ${log.amountMl} ml`;
+        icon = '🍼';
+      } else if (log.type === 'water') {
+        desc = `Đã ghi nhận uống nước ${log.waterMl} ml`;
+        icon = '🥤';
+      } else if (log.type === 'breastfeeding') {
+        const totalMin = Math.round(log.totalBreastfeedingSeconds / 60) || 1;
+        desc = `Đã ghi nhận cữ bú ${totalMin} phút`;
+        icon = '🤱';
       } else {
-        desc = 'Đã ghi nhận một cữ ăn';
+        desc = log.note || 'Đã ghi nhận một cữ ăn';
       }
 
       list.push({
@@ -3299,109 +3429,642 @@ ${logsDesc}`;
             <div className="sheet-drag-handle-pill" />
 
             {/* 1. NUTRITION BOTTOM SHEET */}
-            {activeBottomSheet === 'nutrition' && (
-              <div className="tracker-sheet-viewport">
-                <h3 className="tracker-sheet-title">Ghi nhận ăn uống</h3>
-                
-                {/* 3 tabs selector */}
-                <div className="tracker-subtabs-row">
-                  <button className={`subtab-chip ${nutriTab === 'breast_direct' ? 'active' : ''}`} onClick={() => setNutriTab('breast_direct')}>
-                    🤱 Bú mẹ
-                  </button>
-                  <button className={`subtab-chip ${nutriTab === 'formula' ? 'active' : ''}`} onClick={() => setNutriTab('formula')}>
-                    🍼 Bú bình
-                  </button>
-                  <button className={`subtab-chip ${nutriTab === 'solid' ? 'active' : ''}`} onClick={() => setNutriTab('solid')}>
-                    🥣 Ăn dặm
-                  </button>
+            {activeBottomSheet === 'nutrition' && (() => {
+              const babyAgeMonths = (ageInfo?.years || 0) * 12 + (ageInfo?.months || 0);
+              const sheetTitle = 'Ghi nhận ăn uống';
+              const childName = baby?.name || '';
+              const sheetSubtitle = childName ? `Hôm nay ${childName} ăn gì rồi mẹ?` : 'Hôm nay bé ăn gì rồi mẹ?';
+
+              // Build Segmented Tabs list dynamically based on child's age
+              const tabsList = [];
+              if (babyAgeMonths < 6) {
+                tabsList.push({ id: 'breastfeeding', label: 'Bú mẹ' });
+                tabsList.push({ id: 'milk', label: 'Bú bình' });
+              } else if (babyAgeMonths < 12) {
+                tabsList.push({ id: 'breastfeeding', label: 'Bú mẹ' });
+                tabsList.push({ id: 'milk', label: 'Bú bình' });
+                tabsList.push({ id: 'meal', label: 'Ăn dặm' });
+              } else {
+                tabsList.push({ id: 'meal', label: 'Bữa ăn' });
+                tabsList.push({ id: 'milk', label: 'Sữa' });
+                tabsList.push({ id: 'water', label: 'Nước' });
+                tabsList.push({ id: 'breastfeeding', label: 'Bú mẹ' });
+              }
+
+              // Active save button logic
+              let isSaveEnabled = false;
+              let saveBtnText = 'Lưu cữ ăn';
+              if (nutriTab === 'meal') {
+                isSaveEnabled = !!mealType || !!appetite || (!!foodNote && foodNote.trim() !== '');
+                saveBtnText = babyAgeMonths >= 12 ? 'Lưu bữa ăn' : 'Lưu cữ ăn';
+              } else if (nutriTab === 'milk') {
+                isSaveEnabled = !!milkType && Number(amountMl) > 0;
+                saveBtnText = 'Lưu cữ sữa';
+              } else if (nutriTab === 'water') {
+                isSaveEnabled = Number(waterMl) > 0;
+                saveBtnText = 'Lưu nước uống';
+              } else if (nutriTab === 'breastfeeding') {
+                isSaveEnabled = (breastLeftSec + breastRightSec) > 0;
+                saveBtnText = 'Lưu cữ bú';
+              }
+
+              const currentTimeString = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+              return (
+                <div className="tracker-sheet-viewport" style={{ maxHeight: '82vh', overflowY: 'auto', paddingBottom: '30px' }}>
+                  <h3 className="tracker-sheet-title" style={{ marginBottom: '4px' }}>{sheetTitle}</h3>
+                  <p className="tracker-sheet-subtitle" style={{ fontSize: '13.5px', color: '#687E70', margin: '0 0 20px', fontWeight: '500' }}>
+                    {sheetSubtitle}
+                  </p>
+                  
+                  {/* Segmented Control Tabs */}
+                  <div className="tracker-subtabs-row" style={{ display: 'flex', background: '#EEF2EF', padding: '4px', borderRadius: '16px', gap: '4px', marginBottom: '24px' }}>
+                    {tabsList.map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        className={`subtab-chip ${nutriTab === tab.id ? 'active' : ''}`}
+                        style={{
+                          flex: 1,
+                          padding: '10px 4px',
+                          border: 'none',
+                          background: nutriTab === tab.id ? '#FFFFFF' : 'transparent',
+                          color: nutriTab === tab.id ? '#2F6B4F' : '#5C6E64',
+                          fontWeight: '700',
+                          fontSize: '13px',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          boxShadow: nutriTab === tab.id ? '0 4px 12px rgba(47, 107, 79, 0.08)' : 'none',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                        onClick={() => setNutriTab(tab.id)}
+                        disabled={isSavingNutri}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Errors / Warnings */}
+                  {saveNutriError && (
+                    <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '12px', color: '#B91C1C', fontSize: '12.5px', marginBottom: '16px', textAlign: 'left' }}>
+                      Chưa thể lưu cữ ăn. Mẹ thử lại sau một chút nhé.
+                    </div>
+                  )}
+
+                  <div className="tracker-sheet-form-body" style={{ opacity: isSavingNutri ? 0.6 : 1, pointerEvents: isSavingNutri ? 'none' : 'auto' }}>
+                    
+                    {/* 🥣 TAB: MEAL (Bữa ăn / Ăn dặm) */}
+                    {nutriTab === 'meal' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', textAlign: 'left' }}>
+                        {/* Section 1: Bữa nào? */}
+                        <div>
+                          <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                            Bữa nào?
+                          </label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {[
+                              { id: 'breakfast', label: 'Bữa sáng' },
+                              { id: 'lunch', label: 'Bữa trưa' },
+                              { id: 'dinner', label: 'Bữa tối' },
+                              { id: 'snack', label: 'Bữa phụ' }
+                            ].map(item => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                style={{
+                                  padding: '9px 16px',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  borderRadius: '100px',
+                                  border: mealType === item.id ? '1.5px solid #2F6B4F' : '1.5px solid #E2EFE7',
+                                  background: mealType === item.id ? '#F0F9F4' : '#FFFFFF',
+                                  color: mealType === item.id ? '#2F6B4F' : '#55655B',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => setMealType(item.id)}
+                              >
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Section 2: Bé ăn thế nào? */}
+                        <div>
+                          <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                            Bé ăn thế nào?
+                          </label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {[
+                              { id: 'good', label: 'Ăn tốt' },
+                              { id: 'medium', label: 'Ăn vừa' },
+                              { id: 'poor', label: 'Ăn ít' },
+                              { id: 'refused', label: 'Từ chối' }
+                            ].map(item => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                style={{
+                                  padding: '9px 16px',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  borderRadius: '100px',
+                                  border: appetite === item.id 
+                                    ? (item.id === 'refused' ? '1.5px solid #D97706' : '1.5px solid #2F6B4F')
+                                    : '1.5px solid #E2EFE7',
+                                  background: appetite === item.id 
+                                    ? (item.id === 'refused' ? '#FFFBEB' : '#F0F9F4')
+                                    : '#FFFFFF',
+                                  color: appetite === item.id 
+                                    ? (item.id === 'refused' ? '#D97706' : '#2F6B4F')
+                                    : '#55655B',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => setAppetite(item.id)}
+                              >
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Section 3: Món ăn / ghi chú */}
+                        <div>
+                          <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                            Món ăn / ghi chú
+                          </label>
+                          <textarea
+                            style={{
+                              width: '100%',
+                              minHeight: '84px',
+                              padding: '12px 14px',
+                              borderRadius: '14px',
+                              border: '1px solid #E2EFE7',
+                              fontSize: '16px', // iOS zoom safe minimum
+                              fontFamily: 'inherit',
+                              outline: 'none',
+                              backgroundColor: '#FBFDFB',
+                              boxSizing: 'border-box',
+                              resize: 'none'
+                            }}
+                            value={foodNote}
+                            onChange={e => setFoodNote(e.target.value)}
+                            placeholder="Ví dụ: Cơm, trứng, canh rau. Bé ăn được nửa bát."
+                          />
+                        </div>
+
+                        {/* Section 4: Thời gian */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F4FAF6', padding: '12px 16px', borderRadius: '12px' }}>
+                          <span style={{ fontSize: '13px', color: '#4E6856', fontWeight: '600' }}>Thời gian</span>
+                          <span style={{ fontSize: '13px', color: '#2F6B4F', fontWeight: '700' }}>Hôm nay · {currentTimeString}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 🍼 TAB: MILK (Sữa / Bú bình) */}
+                    {nutriTab === 'milk' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', textAlign: 'left' }}>
+                        {/* Section 1: Loại sữa */}
+                        <div>
+                          <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                            Loại sữa
+                          </label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {[
+                              { id: 'breast', label: 'Sữa mẹ' },
+                              { id: 'formula', label: 'Sữa công thức' },
+                              ...(babyAgeMonths >= 12 ? [{ id: 'fresh', label: 'Sữa tươi' }] : [])
+                            ].map(item => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                style={{
+                                  padding: '9px 16px',
+                                  fontSize: '13px',
+                                  fontWeight: '600',
+                                  borderRadius: '100px',
+                                  border: milkType === item.id ? '1.5px solid #2F6B4F' : '1.5px solid #E2EFE7',
+                                  background: milkType === item.id ? '#F0F9F4' : '#FFFFFF',
+                                  color: milkType === item.id ? '#2F6B4F' : '#55655B',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => setMilkType(item.id)}
+                              >
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Section 2: Lượng sữa (Input + Quick Chips) */}
+                        <div>
+                          <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700', display: 'block', marginBottom: '8px' }}>
+                            Lượng sữa (ml)
+                          </label>
+                          <div style={{ position: 'relative', width: '100%', marginBottom: '12px' }}>
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              style={{
+                                width: '100%',
+                                padding: '12px 14px',
+                                paddingRight: '48px',
+                                borderRadius: '14px',
+                                border: '1px solid #E2EFE7',
+                                fontSize: '16px', // iOS zoom safe minimum
+                                outline: 'none',
+                                backgroundColor: '#FBFDFB',
+                                boxSizing: 'border-box'
+                              }}
+                              placeholder="Nhập số ml"
+                              value={amountMl}
+                              onChange={e => setAmountMl(e.target.value)}
+                            />
+                            <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '13.5px', fontWeight: '700', color: '#8A8A8A' }}>
+                              ml
+                            </span>
+                          </div>
+                          
+                          {/* Quick selection ml chips */}
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {['60', '120', '180', '240'].map(val => (
+                              <button
+                                key={val}
+                                type="button"
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  borderRadius: '8px',
+                                  border: '1px solid #E2EFE7',
+                                  background: amountMl === val ? '#F0F9F4' : '#F7FAF8',
+                                  color: amountMl === val ? '#2F6B4F' : '#55655B',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => setAmountMl(val)}
+                              >
+                                {val} ml
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Optional notes */}
+                        <div>
+                          <label style={{ fontSize: '13px', color: '#4E6856', fontWeight: '600', display: 'block', marginBottom: '6px' }}>
+                            Ghi chú thêm (tùy chọn)
+                          </label>
+                          <input
+                            type="text"
+                            style={{
+                              width: '100%',
+                              padding: '10px 12px',
+                              borderRadius: '10px',
+                              border: '1px solid #E2EFE7',
+                              fontSize: '14px',
+                              outline: 'none',
+                              backgroundColor: '#FBFDFB',
+                              boxSizing: 'border-box'
+                            }}
+                            placeholder="Ghi chú thêm nếu cần"
+                            value={foodNote}
+                            onChange={e => setFoodNote(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 🥤 TAB: WATER (Nước) */}
+                    {nutriTab === 'water' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', textAlign: 'left' }}>
+                        {/* Section 1: Bé uống bao nhiêu nước? */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <label style={{ fontSize: '13.5px', color: '#4E6856', fontWeight: '700' }}>
+                              Bé uống bao nhiêu nước?
+                            </label>
+                            
+                            {/* Toggle ml / ly */}
+                            <div style={{ display: 'inline-flex', background: '#EEF2EF', padding: '2px', borderRadius: '8px' }}>
+                              <button
+                                type="button"
+                                style={{
+                                  padding: '3px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: '700',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  background: waterInputMode === 'ml' ? 'white' : 'transparent',
+                                  color: waterInputMode === 'ml' ? '#2F6B4F' : '#5C6E64',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => setWaterInputMode('ml')}
+                              >
+                                ml
+                              </button>
+                              <button
+                                type="button"
+                                style={{
+                                  padding: '3px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: '700',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  background: waterInputMode === 'cup' ? 'white' : 'transparent',
+                                  color: waterInputMode === 'cup' ? '#2F6B4F' : '#5C6E64',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => setWaterInputMode('cup')}
+                              >
+                                Ly nhỏ
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Water input field */}
+                          {waterInputMode === 'ml' ? (
+                            <div style={{ position: 'relative', width: '100%', marginBottom: '12px' }}>
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                style={{
+                                  width: '100%',
+                                  padding: '12px 14px',
+                                  paddingRight: '48px',
+                                  borderRadius: '14px',
+                                  border: '1px solid #E2EFE7',
+                                  fontSize: '16px', // iOS zoom safe minimum
+                                  outline: 'none',
+                                  backgroundColor: '#FBFDFB',
+                                  boxSizing: 'border-box'
+                                }}
+                                placeholder="Nhập số ml"
+                                value={waterMl}
+                                onChange={e => setWaterMl(e.target.value)}
+                              />
+                              <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '13.5px', fontWeight: '700', color: '#8A8A8A' }}>
+                                ml
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{ position: 'relative', width: '100%', marginBottom: '12px' }}>
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  style={{
+                                    width: '100%',
+                                    padding: '12px 14px',
+                                    paddingRight: '48px',
+                                    borderRadius: '14px',
+                                    border: '1px solid #E2EFE7',
+                                    fontSize: '16px', // iOS zoom safe minimum
+                                    outline: 'none',
+                                    backgroundColor: '#FBFDFB',
+                                    boxSizing: 'border-box'
+                                  }}
+                                  placeholder="Nhập số ly"
+                                  value={Math.round(Number(waterMl) / 50) || ''}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setWaterMl(val > 0 ? String(val * 50) : '');
+                                  }}
+                                />
+                                <span style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', fontSize: '13.5px', fontWeight: '700', color: '#8A8A8A' }}>
+                                  ly
+                                </span>
+                              </div>
+                              <p style={{ fontSize: '12.5px', color: '#687E70', margin: '-6px 0 14px 4px', fontStyle: 'italic', fontWeight: '500' }}>
+                                * 1 ly nhỏ ≈ 50ml
+                              </p>
+                            </>
+                          )}
+                          
+                          {/* Quick selection water chips */}
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {waterInputMode === 'ml' ? (
+                              ['50', '100', '150', '200'].map(val => (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  style={{
+                                    padding: '6px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    borderRadius: '8px',
+                                    border: '1px solid #E2EFE7',
+                                    background: waterMl === val ? '#F0F9F4' : '#F7FAF8',
+                                    color: waterMl === val ? '#2F6B4F' : '#55655B',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onClick={() => setWaterMl(val)}
+                                >
+                                  {val} ml
+                                </button>
+                              ))
+                            ) : (
+                              [
+                                { id: '50', label: '1 ly (50ml)' },
+                                { id: '100', label: '2 ly (100ml)' },
+                                { id: '150', label: '3 ly (150ml)' },
+                                { id: '200', label: '4 ly (200ml)' }
+                              ].map(item => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  style={{
+                                    padding: '6px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    borderRadius: '8px',
+                                    border: '1px solid #E2EFE7',
+                                    background: waterMl === item.id ? '#F0F9F4' : '#F7FAF8',
+                                    color: waterMl === item.id ? '#2F6B4F' : '#55655B',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onClick={() => setWaterMl(item.id)}
+                                >
+                                  {item.label}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Optional notes */}
+                        <div>
+                          <label style={{ fontSize: '13px', color: '#4E6856', fontWeight: '600', display: 'block', marginBottom: '6px' }}>
+                            Ghi chú thêm (tùy chọn)
+                          </label>
+                          <input
+                            type="text"
+                            style={{
+                              width: '100%',
+                              padding: '10px 12px',
+                              borderRadius: '10px',
+                              border: '1px solid #E2EFE7',
+                              fontSize: '14px',
+                              outline: 'none',
+                              backgroundColor: '#FBFDFB',
+                              boxSizing: 'border-box'
+                            }}
+                            placeholder="Ghi chú thêm nếu cần"
+                            value={foodNote}
+                            onChange={e => setFoodNote(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 🤱 TAB: BREASTFEEDING (Bú mẹ) */}
+                    {nutriTab === 'breastfeeding' && (
+                      <div className="direct-breast-stopwatch-group" style={{ width: '100%' }}>
+                        <div className="breast-side-selector-row" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                          <button
+                            type="button"
+                            className={`side-choice-btn ${breastSide === 'left' ? 'active' : ''}`}
+                            style={{
+                              flex: 1,
+                              padding: '12px',
+                              fontSize: '13.5px',
+                              fontWeight: '700',
+                              border: breastSide === 'left' ? '1.5px solid #2F6B4F' : '1.5px solid #E2EFE7',
+                              borderRadius: '12px',
+                              background: breastSide === 'left' ? '#F0F9F4' : '#FFFFFF',
+                              color: breastSide === 'left' ? '#2F6B4F' : '#55655B',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onClick={() => setBreastSide('left')}
+                          >
+                            Bên trái
+                          </button>
+                          <button
+                            type="button"
+                            className={`side-choice-btn ${breastSide === 'right' ? 'active' : ''}`}
+                            style={{
+                              flex: 1,
+                              padding: '12px',
+                              fontSize: '13.5px',
+                              fontWeight: '700',
+                              border: breastSide === 'right' ? '1.5px solid #2F6B4F' : '1.5px solid #E2EFE7',
+                              borderRadius: '12px',
+                              background: breastSide === 'right' ? '#F0F9F4' : '#FFFFFF',
+                              color: breastSide === 'right' ? '#2F6B4F' : '#55655B',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onClick={() => setBreastSide('right')}
+                          >
+                            Bên phải
+                          </button>
+                        </div>
+
+                        <div className="double-breast-stopwatches" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                          <div className="breast-watch-card" style={{ flex: 1, background: '#F8FAF9', padding: '14px', borderRadius: '14px', border: '1px solid #E2EFE7', textAlign: 'center' }}>
+                            <div className="side-watch-title" style={{ fontSize: '11.5px', color: '#687E70', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Bên trái</div>
+                            <div className="side-watch-time" style={{ fontSize: '18px', color: '#2F6B4F', fontWeight: '800' }}>
+                              ⏱️ {Math.floor(breastLeftSec / 60)}m {breastLeftSec % 60}s
+                            </div>
+                          </div>
+                          <div className="breast-watch-card" style={{ flex: 1, background: '#F8FAF9', padding: '14px', borderRadius: '14px', border: '1px solid #E2EFE7', textAlign: 'center' }}>
+                            <div className="side-watch-title" style={{ fontSize: '11.5px', color: '#687E70', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Bên phải</div>
+                            <div className="side-watch-time" style={{ fontSize: '18px', color: '#2F6B4F', fontWeight: '800' }}>
+                              ⏱️ {Math.floor(breastRightSec / 60)}m {breastRightSec % 60}s
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="watch-timer-actions-row" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                          <button
+                            type="button"
+                            className={`timer-trigger-pulse-btn ${breastDirectTimerActive ? 'running' : ''}`}
+                            style={{
+                              flex: 1,
+                              padding: '14px 20px',
+                              fontSize: '14px',
+                              fontWeight: '700',
+                              border: 'none',
+                              borderRadius: '100px',
+                              background: breastDirectTimerActive ? '#D97706' : '#2F6B4F',
+                              color: 'white',
+                              cursor: 'pointer',
+                              boxShadow: breastDirectTimerActive ? '0 4px 14px rgba(217, 119, 6, 0.25)' : '0 4px 14px rgba(47, 107, 79, 0.25)',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onClick={() => setBreastDirectTimerActive(!breastDirectTimerActive)}
+                          >
+                            {breastDirectTimerActive ? '⏸️ Dừng bú' : '▶️ Bắt đầu bú'}
+                          </button>
+                          <button
+                            type="button"
+                            className="timer-reset-flat-btn"
+                            style={{
+                              padding: '14px 24px',
+                              fontSize: '13.5px',
+                              fontWeight: '600',
+                              border: '1.5px solid #E2EFE7',
+                              borderRadius: '100px',
+                              background: 'white',
+                              color: '#55655B',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onClick={() => {
+                              setBreastLeftSec(0);
+                              setBreastRightSec(0);
+                              setBreastDirectTimerActive(false);
+                            }}
+                          >
+                            🔄 Nhập lại
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Nút nhắc nhở nhẹ nếu chưa điền thông tin */}
+                    {!isSaveEnabled && !isSavingNutri && (
+                      <p style={{ fontSize: '11.5px', color: '#B45309', margin: '12px 0 0', fontStyle: 'italic', textAlign: 'center' }}>
+                        * Mẹ ghi nhận ít nhất một thông tin trước khi lưu nhé.
+                      </p>
+                    )}
+
+                    {/* STICKY FOOTER SAVE BUTTON */}
+                    <button
+                      className="submit-tracker-log-btn-full"
+                      style={{
+                        width: '100%',
+                        padding: '16px',
+                        borderRadius: '100px',
+                        background: isSaveEnabled ? '#2F6B4F' : '#C2D1C8',
+                        color: 'white',
+                        border: 'none',
+                        fontSize: '15px',
+                        fontWeight: '700',
+                        marginTop: '20px',
+                        cursor: isSaveEnabled ? 'pointer' : 'not-allowed',
+                        boxShadow: isSaveEnabled ? '0 8px 24px rgba(47, 107, 79, 0.25)' : 'none',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }}
+                      onClick={handleSaveNutrition}
+                      disabled={isSavingNutri || !isSaveEnabled}
+                    >
+                      {isSavingNutri ? 'Đang lưu...' : saveBtnText}
+                    </button>
+                  </div>
                 </div>
-
-                <div className="tracker-sheet-form-body">
-                  {/* Tab Bú mẹ: Timer Left / Right */}
-                  {nutriTab === 'breast_direct' && (
-                    <div className="direct-breast-stopwatch-group">
-                      <div className="breast-side-selector-row">
-                        <button type="button" className={`side-choice-btn ${breastSide === 'left' ? 'active' : ''}`} onClick={() => setBreastSide('left')}>
-                          Bầu ngực Trái (L)
-                        </button>
-                        <button type="button" className={`side-choice-btn ${breastSide === 'right' ? 'active' : ''}`} onClick={() => setBreastSide('right')}>
-                          Bầu ngực Phải (R)
-                        </button>
-                      </div>
-
-                      <div className="double-breast-stopwatches">
-                        <div className="breast-watch-card">
-                          <div className="side-watch-title">Lực bú Trái</div>
-                          <div className="side-watch-time">⏱️ {Math.floor(breastLeftSec / 60)}m {breastLeftSec % 60}s</div>
-                        </div>
-                        <div className="breast-watch-card">
-                          <div className="side-watch-title">Lực bú Phải</div>
-                          <div className="side-watch-time">⏱️ {Math.floor(breastRightSec / 60)}m {breastRightSec % 60}s</div>
-                        </div>
-                      </div>
-
-                      <div className="watch-timer-actions-row">
-                        <button type="button" className={`timer-trigger-pulse-btn ${breastDirectTimerActive ? 'running' : ''}`} onClick={() => setBreastDirectTimerActive(!breastDirectTimerActive)}>
-                          {breastDirectTimerActive ? '⏸️ Tạm Dừng' : '▶️ Bắt Đầu Bú'}
-                        </button>
-                        <button type="button" className="timer-reset-flat-btn" onClick={() => { setBreastLeftSec(0); setBreastRightSec(0); setBreastDirectTimerActive(false); }}>
-                          🔄 Nhập lại
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tab Bú bình: Volume Ml scrolling slider */}
-                  {nutriTab === 'formula' && (
-                    <div className="formula-bottle-scroll-ruler">
-                      <label className="ruler-input-label">Thời gian: Hôm nay, 10:30 Sáng</label>
-                      
-                      <div className="premium-scroll-vertical-ruler-simulation">
-                        <div className="ruler-vertical-numbers">
-                          <span>130</span>
-                          <span>140</span>
-                          <span className="selected-ruler-val">150</span>
-                          <span>160</span>
-                          <span>170</span>
-                        </div>
-                        <div className="ruler-display-box-value">
-                          <h3>{nutriMl} <span className="ml-label">ml</span></h3>
-                        </div>
-                      </div>
-
-                      <div className="styled-ruler-slider-container">
-                        <input type="range" min="30" max="300" step="5" value={nutriMl} className="styled-range-slider-ruler" onChange={e => setNutriMl(Number(e.target.value))} />
-                        <div className="slider-ticks-decoration">
-                          {Array.from({ length: 11 }).map((_, i) => <span key={i} className="ruler-tick-mark" />)}
-                        </div>
-                      </div>
-
-                      {/* Milk classification toggle */}
-                      <div className="milk-type-selection-toggle-pills">
-                        <button type="button" className={`milk-toggle-pill ${nutriSuaMe ? 'active' : ''}`} onClick={() => setNutriSuaMe(true)}>
-                          💧 Sữa mẹ
-                        </button>
-                        <button type="button" className={`milk-toggle-pill ${!nutriSuaMe ? 'active' : ''}`} onClick={() => setNutriSuaMe(false)}>
-                          🥛 Sữa công thức
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tab Ăn dặm: Simple input */}
-                  {nutriTab === 'solid' && (
-                    <div className="solid-diet-input-block">
-                      <label className="solid-field-label">Chi tiết món ăn dặm của bé</label>
-                      <textarea className="solid-textarea-input" placeholder="Ví dụ: Bột ăn dặm vị rau củ, bí đỏ hấp nghiền, quả bơ dầm mịn..." value={solidDetails} onChange={e => setSolidDetails(e.target.value)} />
-                    </div>
-                  )}
-
-                  <button className="submit-tracker-log-btn-full" onClick={handleSaveNutrition}>
-                    Lưu cữ ăn
-                  </button>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 2. SLEEP BOTTOM SHEET (LOCAL DARK-MODE & NEON ACCENT) */}
             {activeBottomSheet === 'sleep' && (
