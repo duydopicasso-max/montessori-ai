@@ -207,28 +207,50 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
     }
   }
 
-  // Check if form is dirty
   const isDirty = () => {
-    const initialVisitDate = existingVisit?.date || todayISO();
-    const initialNotes = existingVisit?.notes || '';
-    const initialNextAppt = existingVisit?.nextAppointment || '';
-    const initialReminder = existingVisit?.reminder ?? true;
-    
-    const initialWeight = existingVisit?.motherWeight !== undefined && existingVisit?.motherWeight !== null ? String(existingVisit.motherWeight) : '';
-    const initialBpd = existingVisit?.bpd !== undefined && existingVisit?.bpd !== null ? String(existingVisit.bpd) : '';
-    const initialFl = existingVisit?.fl !== undefined && existingVisit?.fl !== null ? String(existingVisit.fl) : '';
-    const initialAc = existingVisit?.ac !== undefined && existingVisit?.ac !== null ? String(existingVisit.ac) : '';
-    const initialHc = existingVisit?.hc !== undefined && existingVisit?.hc !== null ? String(existingVisit.hc) : '';
-    const initialCrl = existingVisit?.crl !== undefined && existingVisit?.crl !== null ? String(existingVisit.crl) : '';
-    const initialEfw = existingVisit?.efw !== undefined && existingVisit?.efw !== null ? String(existingVisit.efw) : '';
-    const initialFhr = existingVisit?.fetalHeartRate !== undefined && existingVisit?.fetalHeartRate !== null ? String(existingVisit.fetalHeartRate) : '';
+    if (!existingVisit) {
+      // Trường hợp thêm mới khám thai: check xem mẹ có nhập bất kỳ thứ gì vào form không
+      const isDateChanged = visitDate !== todayISO();
+      const hasNotes = notes.trim() !== '';
+      const hasNextAppt = nextAppointment !== '';
+      const hasWeight = motherWeight !== '';
+      const hasManualAge = gestationalWeek !== '' || gestationalDay !== '';
+      
+      if (isTwin) {
+        return (
+          isDateChanged ||
+          hasNotes ||
+          hasNextAppt ||
+          hasWeight ||
+          hasManualAge ||
+          bpdA !== '' || flA !== '' || acA !== '' || hcA !== '' || crlA !== '' || efwA !== '' || fetalHeartRateA !== '' ||
+          bpdB !== '' || flB !== '' || acB !== '' || hcB !== '' || crlB !== '' || efwB !== '' || fetalHeartRateB !== ''
+        );
+      } else {
+        return (
+          isDateChanged ||
+          hasNotes ||
+          hasNextAppt ||
+          hasWeight ||
+          hasManualAge ||
+          bpd !== '' || fl !== '' || ac !== '' || hc !== '' || crl !== '' || efw !== '' || fetalHeartRate !== ''
+        );
+      }
+    }
 
-    const initialWeek = existingVisit?.gestationalWeek !== undefined && existingVisit?.gestationalWeek !== null ? String(existingVisit.gestationalWeek) : '';
-    const initialDay = existingVisit?.gestationalDay !== undefined && existingVisit?.gestationalDay !== null ? String(existingVisit.gestationalDay) : '';
+    // Trường hợp chỉnh sửa khám thai: So sánh với dữ liệu gốc của existingVisit
+    const initialVisitDate = existingVisit.date || todayISO();
+    const initialNotes = existingVisit.notes || '';
+    const initialNextAppt = existingVisit.nextAppointment || '';
+    const initialReminder = existingVisit.reminder ?? true;
+    
+    const initialWeight = existingVisit.motherWeight !== undefined && existingVisit.motherWeight !== null ? String(existingVisit.motherWeight) : '';
+    const initialWeek = existingVisit.gestationalWeek !== undefined && existingVisit.gestationalWeek !== null ? String(existingVisit.gestationalWeek) : '';
+    const initialDay = existingVisit.gestationalDay !== undefined && existingVisit.gestationalDay !== null ? String(existingVisit.gestationalDay) : '';
 
     if (isTwin) {
-      const bA = existingVisit?.babyMetrics?.baby_a || existingVisit?.babyA || {};
-      const bB = existingVisit?.babyMetrics?.baby_b || existingVisit?.babyB || {};
+      const bA = existingVisit.babyMetrics?.baby_a || existingVisit.babyA || {};
+      const bB = existingVisit.babyMetrics?.baby_b || existingVisit.babyB || {};
       
       const initialBpdA = bA.bpd !== undefined && bA.bpd !== null ? String(bA.bpd) : '';
       const initialFlA = bA.fl !== undefined && bA.fl !== null ? String(bA.fl) : '';
@@ -258,6 +280,14 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
         bpdB !== initialBpdB || flB !== initialFlB || acB !== initialAcB || hcB !== initialHcB || crlB !== initialCrlB || efwB !== initialEfwB || fetalHeartRateB !== initialFhrB
       );
     }
+
+    const initialBpd = existingVisit.bpd !== undefined && existingVisit.bpd !== null ? String(existingVisit.bpd) : '';
+    const initialFl = existingVisit.fl !== undefined && existingVisit.fl !== null ? String(existingVisit.fl) : '';
+    const initialAc = existingVisit.ac !== undefined && existingVisit.ac !== null ? String(existingVisit.ac) : '';
+    const initialHc = existingVisit.hc !== undefined && existingVisit.hc !== null ? String(existingVisit.hc) : '';
+    const initialCrl = existingVisit.crl !== undefined && existingVisit.crl !== null ? String(existingVisit.crl) : '';
+    const initialEfw = existingVisit.efw !== undefined && existingVisit.efw !== null ? String(existingVisit.efw) : '';
+    const initialFhr = existingVisit.fetalHeartRate !== undefined && existingVisit.fetalHeartRate !== null ? String(existingVisit.fetalHeartRate) : '';
 
     return (
       visitDate !== initialVisitDate ||
@@ -611,10 +641,19 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
   }, [open, showExplanation, calendarTarget, showConfirmClose]);
 
   const handleAttemptClose = () => {
-    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
-      window.history.back();
+    const dirty = isDirty();
+    if (dirty) {
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
+        window.history.back();
+      } else {
+        setShowConfirmClose(true);
+      }
     } else {
       onClose();
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'checkup-sheet')) {
+        window._overlayStack.pop('checkup-sheet');
+        window.history.back();
+      }
     }
   };
 

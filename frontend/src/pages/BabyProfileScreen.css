@@ -7,7 +7,30 @@
   border-bottom: 1px solid rgba(92,158,122,0.08);
   position: sticky; top: 0; z-index: 10;
 }
-.profile-title    { font-size: 22px; font-weight: 800; color: var(--text-primary); margin: 0 0 3px; letter-spacing: -0.5px; }
+.profile-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 3px;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.profile-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--sage);
+  flex-shrink: 0;
+}
+.profile-title-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
 .profile-subtitle { font-size: 13px; color: var(--text-muted); margin: 0; font-weight: 500; }
 
 .baby-tabs { display: flex; background: var(--warm-white); border-bottom: 1px solid rgba(92,158,122,0.08); padding: 0 20px; }
@@ -38,7 +61,30 @@
 
 .tab-header { display: flex; justify-content: space-between; align-items: center; }
 .tab-header-col { display: flex; flex-direction: column; gap: 3px; }
-.tab-title { font-size: 18px; font-weight: 800; color: var(--text-primary); margin: 0; letter-spacing: -0.3px; }
+.tab-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tab-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--sage);
+  flex-shrink: 0;
+}
+.tab-title-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
 .tab-sub   { font-size: 13px; color: var(--text-muted); margin: 0; font-weight: 500; }
 
 /* Buttons */
@@ -61,8 +107,18 @@
 .delete-btn {
   background: none; border: none; font-size: 16px; cursor: pointer;
   opacity: 0.4; padding: 5px; transition: all 0.2s; border-radius: var(--r-xs);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
 }
 .delete-btn:hover { opacity: 1; background: #FFF0F0; }
+.delete-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
 
 /* Form card */
 .form-card {
@@ -101,7 +157,22 @@
   color: var(--text-muted); text-align: center;
   font-size: 14px; line-height: 1.7; font-weight: 500;
 }
-.empty-icon { font-size: 48px; animation: float 3s ease-in-out infinite; }
+.empty-icon {
+  font-size: 48px;
+  animation: float 3s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: var(--sage);
+  margin: 0 auto;
+}
+.empty-icon svg {
+  width: 44px;
+  height: 44px;
+  display: block;
+}
 
 /* Medical Records */
 .records-list { display: flex; flex-direction: column; gap: 12px; }
@@ -244,5 +315,951 @@
 .cs-date-trigger-btn:hover {
   border-color: var(--sage);
   background: white;
+}
+
+/* ─── Profile Selector ─── */
+.profile-selector-wrap {
+  padding: 10px 20px 0;
+  background: var(--warm-white);
+}
+.profile-selector {
+  display: flex;
+  gap: 6px;
+  background: var(--surface-1);
+  padding: 4px;
+  border-radius: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.profile-selector::-webkit-scrollbar {
+  display: none;
+}
+.profile-selector-pill {
+  flex: 1;
+  min-width: 80px;
+  text-align: center;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all var(--t-base);
+  white-space: nowrap;
+}
+.profile-selector-pill.active {
+  background: white;
+  color: var(--sage-dark, #3b7454);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* ─── Navigation Tabs wrap ─── */
+.profile-tabs-wrap {
+  background: var(--warm-white);
+  border-bottom: 1px solid rgba(92,158,122,0.08);
+  position: sticky;
+  top: 60px;
+  z-index: 9;
+}
+.profile-tabs {
+  display: flex;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 4px;
+}
+.profile-tabs::-webkit-scrollbar {
+  display: none;
+}
+.profile-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--t-base);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.profile-tab-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+.profile-tab-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.profile-tab:hover {
+  color: var(--sage);
+}
+.profile-tab.active {
+  color: var(--sage-dark, #3b7454);
+  border-bottom-color: var(--sage);
+}
+.profile-tab.active .profile-tab-icon {
+  opacity: 1;
+  color: var(--sage);
+}
+.profile-tab-label {
+  font-weight: 800;
+}
+
+/* ─── Overview Tab ─── */
+.overview-card {
+  background: var(--warm-white);
+  border-radius: 24px;
+  padding: 24px;
+  border: 1px solid rgba(92,158,122,0.1);
+  box-shadow: 0 8px 30px rgba(92,158,122,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.overview-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: var(--grad-primary);
+}
+.overview-status-badge {
+  background: var(--mint-pale);
+  color: var(--sage-dark);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  margin-bottom: 12px;
+  letter-spacing: 0.2px;
+}
+.overview-twins-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 4px;
+  letter-spacing: -0.5px;
+}
+.overview-week-label {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+  font-weight: 600;
+}
+.overview-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+.overview-stat {
+  background: var(--surface-1);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0,0,0,0.02);
+}
+.overview-stat-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.overview-stat-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ─── Premium Buttons ─── */
+.primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  background: var(--grad-primary);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all var(--t-base) var(--ease-smooth);
+  box-shadow: 0 4px 16px rgba(92,158,122,0.2);
+}
+.primary-btn svg,
+.outline-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: block;
+}
+.primary-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(92,158,122,0.3);
+}
+.primary-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.primary-btn.save {
+  width: 100%;
+  padding: 14px;
+  border-radius: 16px;
+}
+.outline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1.5px solid var(--sage);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--sage-dark);
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all var(--t-base);
+}
+.outline-btn:hover {
+  background: rgba(92,158,122,0.06);
+}
+.outline-btn.small {
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+.text-link-subtle {
+  transition: color 0.2s ease;
+}
+.text-link-subtle:hover {
+  color: var(--sage-dark) !important;
+}
+
+/* ─── Birth Confirmation Card ─── */
+.birth-confirm-card {
+  background: #f4faf6;
+  border-radius: 24px;
+  padding: 24px;
+  border: 1px solid rgba(92,158,122,0.18);
+  box-shadow: 0 8px 25px rgba(92,158,122,0.03);
+  text-align: left;
+}
+.birth-confirm-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--sage-dark, #2b5c40);
+  margin: 0 0 6px;
+  letter-spacing: -0.2px;
+}
+.birth-confirm-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 500;
+}
+.birth-confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.secondary-dismiss-btn:hover {
+  background: rgba(0,0,0,0.02) !important;
+  border-color: #d1d1d6 !important;
+}
+
+/* ─── Form Card Improvements ─── */
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.ms-input, .ms-select, .ms-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid var(--cream-dark);
+  border-radius: 12px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  transition: all var(--t-base);
+  box-sizing: border-box;
+}
+.ms-input:focus, .ms-select:focus, .ms-textarea:focus {
+  border-color: var(--sage);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(92,158,122,0.08);
+}
+.ms-input::placeholder, .ms-textarea::placeholder {
+  color: var(--text-light, #c7c7cc);
+  font-weight: 500;
+}
+
+/* ─── Twin Ultrasound Tabs in Entry Form ─── */
+.ultrasound-section {
+  border: 1px solid rgba(92,158,122,0.12);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--surface-1);
+  margin: 4px 0;
+}
+.section-subtitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.ultrasound-tabs {
+  display: flex;
+  background: var(--cream-dark, #efeff4);
+  padding: 3px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.ultrasound-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  border-radius: 9px;
+  transition: all 0.2s;
+}
+.ultrasound-tab.active {
+  background: white;
+  color: var(--sage-dark);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.tab-check-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--sage);
+  color: white;
+}
+.tab-check-badge svg {
+  width: 10px;
+  height: 10px;
+}
+.metrics-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-label-small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.medical-note-hint {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  margin: 2px 0 8px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* ─── Fetus Comparison Table ─── */
+.comparison-table-wrapper {
+  background: var(--surface-1);
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid rgba(0,0,0,0.02);
+  margin-top: 8px;
+}
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.comparison-table th {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-align: right;
+  padding: 8px;
+  border-bottom: 1.5px solid var(--cream-dark);
+}
+.comparison-table th:first-child {
+  text-align: left;
+}
+.comparison-table td {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+}
+.comparison-table tr:last-child td {
+  border-bottom: none;
+}
+.comparison-table td:first-child {
+  text-align: left;
+}
+.comparison-table .metric-lbl {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.comparison-table .metric-diff {
+  color: var(--sage-dark);
+  font-weight: 800;
+}
+.comparison-hint {
+  font-size: 11.5px;
+  color: var(--sage-dark);
+  background: var(--mint-pale);
+  padding: 8px 12px;
+  border-radius: 10px;
+  margin: 12px 0 0;
+  line-height: 1.5;
+  font-weight: 700;
+}
+.record-card-notes {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 4px 0 8px;
+  font-weight: 500;
+}
+.record-card-notes.plain {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin: 8px 0 0;
+}
+.record-tag-badge {
+  display: inline-block;
+  background: var(--mint-pale);
+  color: var(--sage-dark);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  margin-left: 8px;
+}
+
+/* ─── Ghi chú Thai giáo (Thai giáo Montessori) ─── */
+.play-card.completed {
+  border-color: rgba(92,158,122,0.22);
+  background: #f7faf8;
+}
+.play-complete-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  border: 2px solid var(--cream-dark);
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  padding: 0;
+}
+.play-complete-checkbox.checked {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: white;
+}
+.play-complete-checkbox svg {
+  width: 14px;
+  height: 14px;
+}
+.play-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ─── Premium iOS-Style Bottom Drawers (Sheets) ─── */
+.ms-sheet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.25s ease-out;
+}
+.ms-sheet {
+  width: 100%;
+  max-width: 540px;
+  background: var(--warm-white);
+  border-radius: 28px 28px 0 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+  animation: slideUpSheet 0.35s cubic-bezier(0.15, 0.85, 0.35, 1);
+  box-sizing: border-box;
+}
+.ms-sheet-drag-handle {
+  width: 36px;
+  height: 5px;
+  background: #d1d1d6;
+  border-radius: 3px;
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+}
+.ms-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+.ms-detail-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+.ms-detail-close {
+  background: var(--cream-dark, #efeff4);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.ms-detail-close:hover {
+  background: #e5e5ea;
+}
+.ms-detail-close svg {
+  width: 14px;
+  height: 14px;
+}
+.ms-detail-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ms-detail-footer {
+  padding: 16px 20px 24px;
+  border-top: 1px solid rgba(0,0,0,0.04);
+}
+
+/* ─── Birth Confirmation Modal Elements ─── */
+.birth-baby-section {
+  border: 1px solid rgba(92,158,122,0.12);
+  border-radius: 20px;
+  padding: 16px;
+  background: var(--surface-1);
+}
+.birth-baby-section-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--sage-dark);
+  margin: 0 0 12px;
+}
+
+/* ─── Chip Group ─── */
+.ms-chip-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ms-chip {
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--cream-dark);
+  background: white;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ms-chip:hover {
+  border-color: var(--sage);
+  color: var(--sage);
+}
+.ms-chip.active {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: white;
+}
+
+/* ─── Floating Toast Notification ─── */
+.bp-toast {
+  position: fixed;
+  top: auto !important;
+  bottom: 85px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(43, 61, 49, 0.95);
+  color: white;
+  padding: 0 24px;
+  height: 48px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  z-index: 2000;
+  animation: slideUpToast 0.35s cubic-bezier(0.15, 0.85, 0.35, 1);
+  text-align: center;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: 320px;
+  pointer-events: none;
+}
+.bp-toast-text {
+  font-family: 'Nunito', sans-serif;
+}
+
+/* ─── Premium iOS Style Confirm Dialog ─── */
+.ms-ios-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+.ms-ios-confirm-modal {
+  width: 270px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  animation: zoomInPop 0.25s cubic-bezier(0.15, 0.85, 0.35, 1);
+  overflow: hidden;
+  text-align: center;
+}
+.ms-ios-confirm-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #000;
+  margin: 18px 16px 4px;
+}
+.ms-ios-confirm-desc {
+  font-size: 13px;
+  color: #3a3a3c;
+  margin: 0 16px 18px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+.ms-ios-confirm-actions {
+  display: flex;
+  border-top: 0.5px solid #c7c7cc;
+}
+.ms-ios-confirm-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  transition: background 0.15s;
+}
+.ms-ios-confirm-btn:active {
+  background: rgba(0,0,0,0.05);
+}
+.ms-ios-confirm-btn.cancel {
+  color: #007aff;
+  border-right: 0.5px solid #c7c7cc;
+}
+.ms-ios-confirm-btn.confirm {
+  color: #ff3b30;
+  font-weight: 700;
+}
+
+/* ─── Keyframe Animations ─── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes slideUpToast {
+  from { transform: translate(-50%, 30px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+@keyframes zoomInPop {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 600px) {
+  .profile-header {
+    padding: 16px 16px 12px;
+  }
+  .profile-tabs {
+    padding: 0 12px;
+  }
+  .profile-tab {
+    padding: 12px 14px;
+    font-size: 13.5px;
+  }
+  .profile-content {
+    padding: 16px 12px 24px;
+  }
+  .overview-card {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+  .metrics-form-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* ─── Premium UX/UI Custom & Centering Styles ─── */
+
+/* Center alignment for all core layouts on wide screens */
+.profile-header-text,
+.profile-selector,
+.profile-tabs,
+.profile-content {
+  max-width: 800px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100%;
+}
+
+.profile-content {
+  margin: 0 auto;
+}
+
+/* Co nhỏ segment selector (Twin selector) trông premium giống iOS */
+.profile-selector {
+  max-width: 480px !important;
+}
+
+/* Smooth inertial scrolling for mobile tabs */
+.profile-tabs,
+.profile-selector {
+  -webkit-overflow-scrolling: touch;
+}
+
+.profile-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Responsive tab shortening labels */
+.desktop-only-inline {
+  display: inline;
+}
+.mobile-only-inline {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .desktop-only-inline {
+    display: none;
+  }
+  .mobile-only-inline {
+    display: inline;
+  }
+  .profile-tabs {
+    gap: 8px;
+  }
+  .profile-tab {
+    padding: 12px 8px;
+    font-size: 13.5px;
+  }
+}
+
+/* Custom focus outlines using commercial brand color (Green) instead of blue */
+.profile-screen button:focus,
+.profile-screen input:focus,
+.profile-screen textarea:focus,
+.profile-screen select:focus,
+.profile-tab:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.profile-screen button:focus-visible,
+.profile-tab:focus-visible {
+  outline: 2.5px solid var(--sage) !important;
+  outline-offset: 1px !important;
+}
+
+.profile-screen input:focus-visible,
+.profile-screen textarea:focus-visible,
+.profile-screen select:focus-visible {
+  border-color: var(--sage) !important;
+  box-shadow: 0 0 0 4px rgba(92,158,122,0.08) !important;
+}
+
+/* Form Card Centering & Responsiveness */
+.form-card {
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+  .form-card {
+    max-width: 100%;
+    border-radius: 16px;
+    padding: 16px;
+  }
+}
+
+/* Profile options link section placed below overview card */
+.profile-options-section {
+  margin-top: 24px;
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.profile-options-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 4px 4px;
+}
+.profile-options-link-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--warm-white);
+  border: 1px solid rgba(92,158,122,0.08);
+  border-radius: 16px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sage-dark);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-xs);
+}
+.profile-options-link-btn:hover {
+  background: rgba(92, 158, 122, 0.04);
+  border-color: var(--sage-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.profile-options-link-btn .arrow-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  color: var(--text-muted);
+}
+.profile-options-link-btn .arrow-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Thai giáo Montessori completion tag */
+.thai-giao-completed-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--sage-dark);
+  background: rgba(92, 158, 122, 0.08);
+  padding: 5px 10px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  width: fit-content;
+}
+.thai-giao-completed-tag .check-icon {
+  width: 10px;
+  height: 10px;
+  display: flex;
+  align-items: center;
+  color: var(--sage);
+}
+.thai-giao-completed-tag .check-icon svg {
+  width: 10px;
+  height: 10px;
 }
 

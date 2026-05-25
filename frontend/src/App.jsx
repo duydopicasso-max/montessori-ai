@@ -54,7 +54,13 @@ const NAV_TABS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTabInternal] = useState(() => {
+    return localStorage.getItem('montessori_active_tab') || 'chat';
+  });
+  const setActiveTab = (tab) => {
+    setActiveTabInternal(tab);
+    localStorage.setItem('montessori_active_tab', tab);
+  };
   const [authUser, setAuthUser]   = useState(null);
   const [profile, setProfile]     = useState(null);
   const [loading, setLoading]     = useState(true);

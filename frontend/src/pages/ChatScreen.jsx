@@ -1585,6 +1585,48 @@ ${logsDesc}`;
       setSaveWeightError(false);
       setShowPrePregInput(false);
       setPrePregInputValue(profile?.prePregnancyWeight || '');
+    } else if (activeBottomSheet === 'preg_emotion') {
+      const todayStr = getTodayLocalyyyymmdd();
+      const todayLog = activityLogs.find(l => l.type === 'preg_emotion' && l.date === todayStr);
+      if (todayLog) {
+        setSelectedEmotions(todayLog.selectedEmotions || []);
+        setEmotionNote(todayLog.emotionNote || '');
+        setEmotionIntensity(todayLog.intensity || 'Vừa');
+      } else {
+        setSelectedEmotions([]);
+        setEmotionNote('');
+        setEmotionIntensity('Vừa');
+      }
+      setSaveEmotionError(false);
+    } else if (activeBottomSheet === 'preg_clinic') {
+      const todayStr = getTodayLocalyyyymmdd();
+      const todayLog = activityLogs.find(l => l.type === 'preg_clinic' && l.date === todayStr);
+      if (todayLog) {
+        setClinicNote(todayLog.clinicNote || '');
+        setNextApptDate(todayLog.nextApptDate || '');
+        setReminderEnabled(todayLog.reminderEnabled !== undefined ? todayLog.reminderEnabled : true);
+        setVisitDate(todayLog.date || getTodayLocalyyyymmdd());
+      } else {
+        setClinicNote('');
+        setNextApptDate('');
+        setReminderEnabled(true);
+        setVisitDate(getTodayLocalyyyymmdd());
+      }
+      setSaveClinicError(false);
+      setShowValidationWarning(false);
+    } else if (activeBottomSheet === 'kick') {
+      setKickActive(false);
+      setKickSecs(0);
+      setKickCount(0);
+      setSaveKickError(false);
+    } else if (activeBottomSheet === 'contractions') {
+      setContraActive(false);
+      setContraSecs(0);
+      setContraCount(0);
+      setSaveContraError(false);
+    } else if (activeBottomSheet === 'growth') {
+      setGrowthWeight(7.5);
+      setGrowthHeight(68.2);
     } else if (activeBottomSheet === 'sleep') {
       setSleepTab('live');
       const now = new Date();
@@ -3057,18 +3099,37 @@ ${logsDesc}`;
 
   // Attempt close handlers
   const handleAttemptCloseSheet = () => {
-    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === activeBottomSheet)) {
-      window.history.back();
+    const isDirty = isSheetDirty(activeBottomSheet);
+    if (isDirty) {
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === activeBottomSheet)) {
+        window.history.back();
+      } else {
+        setConfirmCloseTarget(activeBottomSheet);
+      }
     } else {
+      const sheetId = activeBottomSheet;
       setActiveBottomSheet(null);
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === sheetId)) {
+        window._overlayStack.pop(sheetId);
+        window.history.back();
+      }
     }
   };
 
   const handleAttemptCloseChat = () => {
-    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'chat-assistant')) {
-      window.history.back();
+    const isChatDirty = input !== '' || pendingImgs.length > 0;
+    if (isChatDirty) {
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'chat-assistant')) {
+        window.history.back();
+      } else {
+        setConfirmCloseTarget('chat-assistant');
+      }
     } else {
       setIsChatOpen(false);
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'chat-assistant')) {
+        window._overlayStack.pop('chat-assistant');
+        window.history.back();
+      }
     }
   };
 

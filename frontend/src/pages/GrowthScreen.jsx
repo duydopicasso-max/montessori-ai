@@ -339,10 +339,19 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   }, [showEditProfileModal]);
 
   const handleAttemptCloseProfile = () => {
-    if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
-      window.history.back();
+    const isDirty = profileOverlayStateRef.current.isDirty;
+    if (isDirty) {
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
+        window.history.back();
+      } else {
+        setShowConfirmCloseProfile(true);
+      }
     } else {
       setShowEditProfileModal(false);
+      if (window._overlayStack && window._overlayStack.stack.some(item => item.id === 'growth-profile-edit')) {
+        window._overlayStack.pop('growth-profile-edit');
+        window.history.back();
+      }
     }
   };
 
