@@ -187,7 +187,8 @@ export default function AppDatePicker({
         return 'Chọn ngày sinh của bé';
       case 'memoryDate':
       case 'milestoneDate':
-        return 'Chọn ngày khoảnh khắc';
+      case 'momentDate':
+        return 'Chọn ngày ghi nhận';
       case 'eventDate':
         return 'Chọn ngày diễn ra sự kiện';
       default:
