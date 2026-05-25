@@ -1,0 +1,374 @@
+/* ════════════════════════════════════════════════
+   UserProfileSheet CSS
+   Premium pastel green, iPhone-style bottom sheet
+════════════════════════════════════════════════ */
+
+/* ── Overlay ── */
+.ups-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  animation: ups-fade-in 0.2s ease;
+}
+
+@keyframes ups-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Sheet ── */
+.ups-sheet {
+  width: 100%;
+  max-height: 92dvh;
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: ups-slide-up 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  position: relative;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@keyframes ups-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Drag handle ── */
+.ups-handle {
+  width: 36px;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+
+/* ── Top bar ── */
+.ups-topbar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px 4px;
+  flex-shrink: 0;
+}
+
+.ups-topbar-spacer { flex: 1; }
+
+.ups-icon-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.ups-icon-btn:active { background: #e8e8e8; }
+
+/* ── Overflow menu ── */
+.ups-menu-wrap {
+  position: relative;
+}
+
+.ups-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  overflow: hidden;
+  min-width: 150px;
+  z-index: 10;
+}
+
+.ups-menu-item {
+  display: block;
+  width: 100%;
+  padding: 13px 18px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-family: inherit;
+}
+.ups-menu-item:active { background: #f5f5f5; }
+.ups-menu-item--danger { color: #e53935; }
+
+/* ── Scrollable content ── */
+.ups-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 24px;
+}
+
+/* ── Profile hero ── */
+.ups-profile-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0 16px;
+  text-align: center;
+}
+
+.ups-avatar-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.ups-avatar-img {
+  display: block;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(76, 175, 80, 0.2);
+}
+
+.ups-avatar-initial {
+  margin-bottom: 14px;
+  border: 3px solid rgba(76, 175, 80, 0.2);
+}
+
+.ups-anon-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #f0f4f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  margin-bottom: 14px;
+  border: 3px solid #e8ede8;
+}
+
+.ups-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 4px;
+  letter-spacing: -0.3px;
+}
+
+.ups-context {
+  font-size: 13.5px;
+  color: #6c757d;
+  margin: 0 0 4px;
+}
+
+.ups-join-date {
+  font-size: 12.5px;
+  color: #aaa;
+  margin: 2px 0 0;
+}
+
+.ups-bio {
+  font-size: 13.5px;
+  color: #555;
+  margin: 10px 0 0;
+  line-height: 1.55;
+  font-style: italic;
+  text-align: center;
+}
+
+/* ── Anon notice ── */
+.ups-anon-notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #f9f9f7;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin: 8px 0 16px;
+  color: #888;
+}
+
+.ups-anon-notice p {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Stats row ── */
+.ups-stats-row {
+  display: flex;
+  align-items: center;
+  background: #f7faf7;
+  border-radius: 16px;
+  padding: 16px 8px;
+  margin: 8px 0 20px;
+  gap: 0;
+}
+
+.ups-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.ups-stat-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.ups-stat-label {
+  font-size: 11.5px;
+  color: #999;
+  letter-spacing: 0.2px;
+}
+
+.ups-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: #e8e8e8;
+  flex-shrink: 0;
+}
+
+/* ── Recent post ── */
+.ups-recent-section {
+  margin-bottom: 16px;
+}
+
+.ups-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 10px;
+  letter-spacing: -0.2px;
+}
+
+.ups-recent-card {
+  display: flex;
+  gap: 12px;
+  background: #f9f9f9;
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid #f0f0f0;
+  cursor: default;
+}
+
+.ups-recent-thumb {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.ups-recent-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ups-recent-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ups-recent-text {
+  font-size: 12.5px;
+  color: #666;
+  line-height: 1.45;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ups-recent-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.ups-recent-time {
+  font-size: 11.5px;
+  color: #bbb;
+}
+
+.ups-recent-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #bbb;
+  font-size: 12px;
+}
+
+.ups-recent-stats svg {
+  flex-shrink: 0;
+}
+
+/* ── CTA ── */
+.ups-cta-wrap {
+  flex-shrink: 0;
+  padding: 12px 20px 16px;
+  border-top: 1px solid #f5f5f5;
+  background: #fff;
+}
+
+.ups-cta-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 24px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #66BB6A 0%, #4CAF50 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.1px;
+  font-family: inherit;
+  transition: opacity 0.15s, transform 0.12s;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ups-cta-btn:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+.ups-cta-btn--sent {
+  background: linear-gradient(135deg, #a5d6a7 0%, #81c784 100%);
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.ups-cta-btn--sent:active { transform: none; }

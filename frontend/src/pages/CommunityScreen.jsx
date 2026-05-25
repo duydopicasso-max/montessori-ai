@@ -2,14 +2,14 @@
  * CommunityScreen.jsx — Tối ưu UX cộng đồng an toàn
  * - Cá nhân hóa phòng gợi ý theo user.status (pregnant / parent)
  * - Search bar, safety card, rich room metadata
- * - Segment tabs: Phòng Chat / Tin nhắn
+ * - Segment tabs: Phòng cộng đồng / Hộp thư
  * - Skeleton loading, empty states, create room bottom sheet
- * - Giữ nguyên ChatRoomView, Avatar, MemberProfileSheet, logic Firestore
+ * - Phase 1 DM: InboxView, DMRequestSheet, PrivateChatView tách riêng
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   collection, addDoc, onSnapshot, query, orderBy,
-  serverTimestamp, limit, updateDoc, doc, deleteDoc, getDocs, where
+  serverTimestamp, limit, updateDoc, doc, deleteDoc, getDocs, where, arrayUnion
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import './CommunityScreen.css';
@@ -17,6 +17,10 @@ import {
   PregnancyIcon, FoodBowlIcon, SleepMoonIcon,
   HealthHeartIcon, FamilyIcon, ChatBubbleIcon
 } from '../icons.jsx';
+import InboxView from '../components/dm/InboxView.jsx';
+import DMRequestSheet from '../components/dm/DMRequestSheet.jsx';
+import PrivateChatView from '../components/dm/PrivateChatView.jsx';
+import UserProfileSheet from '../components/community/UserProfileSheet.jsx';
 
 /* ── Room icon map ── */
 const ROOM_ICON_MAP = {
@@ -33,62 +37,66 @@ const CHAT_ROOMS = [
     id: 'pregnancy',
     name: 'Góc Mẹ Bầu',
     desc: 'Hành trình mang thai, thai giáo, chuẩn bị đón bé',
-    memberCount: 1243,
     unreadCount: 18,
     forStatus: 'pregnant',
     disclaimer: null,
+    tags: ['mẹ bầu', 'thai kỳ', 'mang thai', 'thai giáo', 'sinh', 'thai đôi'],
   },
   {
     id: 'weaning',
     name: 'Hành Trình Ăn Dặm',
     desc: 'Thực đơn BLW, kiểu Nhật, truyền thống · Kinh nghiệm thực tế',
-    memberCount: 987,
     unreadCount: 6,
     forStatus: 'parent',
     disclaimer: null,
+    tags: ['ăn dặm', 'blw', 'thức ăn', 'dinh dưỡng', 'thực đơn', 'bé ăn'],
   },
   {
     id: 'sleep',
     name: 'Rèn Ngủ Xuyên Đêm',
     desc: 'EASY, luyện ngủ tự lập, tuần khủng hoảng (Wonder Weeks)',
-    memberCount: 754,
     unreadCount: 11,
     forStatus: 'parent',
     disclaimer: null,
+    tags: ['ngủ', 'giấc ngủ', 'luyện ngủ', 'thức đêm', 'easy', 'wonder weeks'],
   },
   {
     id: 'health',
     name: 'Sức Khoẻ Mẹ & Bé',
     desc: 'Kinh nghiệm chăm sóc bé ốm, phục hồi sau sinh',
-    memberCount: 621,
     unreadCount: 3,
     forStatus: 'all',
     disclaimer: 'Thông tin chia sẻ chỉ mang tính tham khảo, không thay thế tư vấn của bác sĩ.',
+    tags: ['sức khỏe', 'bé ốm', 'sau sinh', 'phục hồi', 'y tế', 'khám'],
   },
   {
     id: 'family',
     name: 'Chuyện Gia Đình',
     desc: 'Tâm sự chuyện vợ chồng, bỉm sữa, cân bằng cuộc sống',
-    memberCount: 512,
     unreadCount: 0,
     forStatus: 'all',
     disclaimer: null,
+    tags: ['gia đình', 'tâm sự', 'chồng', 'cân bằng', 'bỉm sữa', 'sau sinh'],
   },
 ];
 
 const ANIMAL_NAMES  = ['Thỏ Ngọc', 'Gấu Misa', 'Cún Con', 'Mèo Ú', 'Sóc Nhỏ', 'Cáo Nâu', 'Hươu Cao Cổ', 'Chim Cánh Cụt'];
 const ANIMAL_EMOJIS = ['🐰', '🐻', '🐶', '🐱', '🐿️', '🦊', '🦒', '🐧'];
 
+/* ── Room chips for quick-create ── */
+const QUICK_CHIPS = [
+  { label: 'Mẹ bầu cùng tháng', name: 'Mẹ bầu cùng tháng', topic: 'Mẹ bầu' },
+  { label: 'Bé cùng độ tuổi',   name: 'Bé cùng độ tuổi',   topic: 'Gia đình' },
+  { label: 'Ăn dặm hôm nay',   name: 'Ăn dặm hôm nay',    topic: 'Ăn dặm' },
+  { label: 'Mẹ cần tâm sự',    name: 'Mẹ cần tâm sự',     topic: 'Gia đình' },
+];
+
+const TOPIC_CHIPS = ['Mẹ bầu', 'Ăn dặm', 'Giấc ngủ', 'Sức khỏe', 'Gia đình', 'Montessori', 'Khác'];
+
 function formatTime(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatMemberCount(n) {
-  if (!n) return '—';
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return `${n}`;
 }
 
 /* ── Inline icons ── */
@@ -168,9 +176,13 @@ export default function CommunityScreen({ profile }) {
   const [error, setError]                   = useState(false);
   const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [searchQuery, setSearchQuery]       = useState('');
-  const [friendRequests, setFriendRequests] = useState([]);
-  const [privateChats, setPrivateChats]     = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(null);
+  // DM Phase 1
+  const [dmRequests, setDmRequests]           = useState([]); // incoming pending requests
+  const [conversations, setConversations]     = useState([]); // accepted conversations
+  const [activeConversation, setActiveConversation] = useState(null);
+  const [showDMRequestSheet, setShowDMRequestSheet] = useState(null); // { uid, name, photo, baby }
+  const [dmToast, setDmToast]                 = useState('');
 
   /* ── Load custom rooms (with 3-day auto-expire) ── */
   useEffect(() => {
@@ -193,47 +205,109 @@ export default function CommunityScreen({ profile }) {
     return unsub;
   }, []);
 
-  /* ── Load inbox ── */
+  /* ── DM Toast helper ── */
+  const showDmToast = useCallback((msg) => {
+    setDmToast(msg);
+    setTimeout(() => setDmToast(''), 2800);
+  }, []);
+
+  /* ── Load DM requests (incoming) + Conversations ── */
   useEffect(() => {
     if (!user?.uid) return;
-    const unsubReqs = onSnapshot(
-      query(collection(db, 'friendRequests'), orderBy('createdAt', 'desc')),
-      snap => {
-        setFriendRequests(snap.docs
+
+    // Subscribe dmRequests where toUserId == me and status == pending
+    const qReqs = query(
+      collection(db, 'dmRequests'),
+      where('toUserId', '==', user.uid),
+      where('status', '==', 'pending'),
+      orderBy('createdAt', 'desc'),
+    );
+    const unsubReqs = onSnapshot(qReqs, snap => {
+      setDmRequests(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, err => console.error('dmRequests sub error:', err));
+
+    // Subscribe conversations where participantIds contains me, not hidden
+    const qConvs = query(
+      collection(db, 'conversations'),
+      where('participantIds', 'array-contains', user.uid),
+      orderBy('lastMessageAt', 'desc'),
+    );
+    const unsubConvs = onSnapshot(qConvs, snap => {
+      setConversations(
+        snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter(r => r.receiverId === user.uid && r.status === 'pending')
-        );
-      }
-    );
-    const unsubChats = onSnapshot(
-      query(collection(db, 'privateChats'), orderBy('lastMessageAt', 'desc')),
-      snap => {
-        setPrivateChats(snap.docs
-          .map(d => ({ id: d.id, ...d.data(), isPrivate: true }))
-          .filter(c => c.participants?.includes(user.uid))
-        );
-      }
-    );
-    return () => { unsubReqs(); unsubChats(); };
+          .filter(c => !c.hiddenFor?.includes(user.uid))
+      );
+    }, err => console.error('conversations sub error:', err));
+
+    return () => { unsubReqs(); unsubConvs(); };
   }, [user?.uid]);
 
-  /* ── Accept / Decline friend requests ── */
-  const acceptRequest = async (req) => {
+  /* ── Accept DM request → create conversation ── */
+  const acceptDMRequest = async (req) => {
     try {
-      await addDoc(collection(db, 'privateChats'), {
-        participants: [req.senderId, user.uid],
-        participantData: {
-          [req.senderId]: { name: req.senderName, photo: req.senderPhoto, baby: req.senderBaby },
-          [user.uid]:     { name: authorName, photo: authorPhoto, baby: authorBaby }
-        },
-        createdAt: serverTimestamp(), lastMessageAt: serverTimestamp()
+      // Check if conversation already exists
+      const existQ = query(
+        collection(db, 'conversations'),
+        where('participantIds', 'array-contains', user.uid),
+      );
+      const existing = await getDocs(existQ);
+      const alreadyExists = existing.docs.some(d => {
+        const ids = d.data().participantIds || [];
+        return ids.includes(req.fromUserId) && ids.includes(user.uid);
       });
-      await updateDoc(doc(db, 'friendRequests', req.id), { status: 'accepted' });
-    } catch (e) { console.error(e); }
+
+      let convId;
+      if (alreadyExists) {
+        // Find and use existing conv
+        const existConv = existing.docs.find(d => {
+          const ids = d.data().participantIds || [];
+          return ids.includes(req.fromUserId) && ids.includes(user.uid);
+        });
+        convId = existConv?.id;
+      } else {
+        const newConv = await addDoc(collection(db, 'conversations'), {
+          participantIds: [req.fromUserId, user.uid],
+          participantData: {
+            [req.fromUserId]: req.fromUserData || {},
+            [user.uid]: { name: authorName, photo: authorPhoto, baby: authorBaby },
+          },
+          createdFromRequestId: req.id,
+          topic:         req.topic || '',
+          fromRoom:      req.fromRoom || null,
+          lastMessage:   '',
+          lastMessageAt: serverTimestamp(),
+          unreadCounts:  { [req.fromUserId]: 1, [user.uid]: 0 },
+          blockedBy:     [],
+          hiddenFor:     [],
+          createdAt:     serverTimestamp(),
+        });
+        convId = newConv.id;
+      }
+
+      await updateDoc(doc(db, 'dmRequests', req.id), {
+        status: 'accepted',
+        updatedAt: serverTimestamp(),
+      });
+
+      showDmToast(`Đã kết nối với ${req.fromUserData?.name || 'mẹ'}`);
+      // Open the conversation
+      const convSnap = await getDocs(query(collection(db, 'conversations'), where('__name__', '==', convId)));
+      if (convSnap.docs[0]) {
+        setActiveConversation({ id: convId, ...convSnap.docs[0].data() });
+      }
+    } catch (e) { console.error('acceptDMRequest error:', e); }
   };
-  const declineRequest = async (id) => {
-    try { await updateDoc(doc(db, 'friendRequests', id), { status: 'declined' }); }
-    catch (e) { console.error(e); }
+
+  /* ── Decline DM request ── */
+  const declineDMRequest = async (reqId) => {
+    try {
+      await updateDoc(doc(db, 'dmRequests', reqId), {
+        status: 'declined',
+        updatedAt: serverTimestamp(),
+      });
+      showDmToast('Đã từ chối lời mời');
+    } catch (e) { console.error('declineDMRequest error:', e); }
   };
 
   const handleUserClick = (msg) => {
@@ -245,33 +319,56 @@ export default function CommunityScreen({ profile }) {
     setSelectedProfile({ uid: msg.senderId, name: msg.senderName, photo: msg.senderPhoto, baby: msg.senderBaby });
   };
 
-  /* ── Personalized recommended rooms ── */
+  /* ── Personalized recommended rooms (smart, no more than 3) ── */
   const getRecommendedRooms = () => {
     if (userStatus === 'pregnant') {
-      return CHAT_ROOMS.filter(r => r.id === 'pregnancy');
+      // For pregnant users: pregnancy first, then health, then family
+      return CHAT_ROOMS.filter(r => ['pregnancy', 'health', 'family'].includes(r.id)).slice(0, 3);
     }
-    // For parent, recommend based on baby age
-    if (babyAgeMonths !== null) {
-      if (babyAgeMonths >= 4 && babyAgeMonths <= 18) {
-        return CHAT_ROOMS.filter(r => r.id === 'weaning' || r.id === 'sleep');
+    if (userStatus === 'parent' && babyAgeMonths !== null) {
+      if (babyAgeMonths < 6) {
+        // Newborn to 6 months: sleep, health, family
+        return CHAT_ROOMS.filter(r => ['sleep', 'health', 'family'].includes(r.id)).slice(0, 3);
       }
-      if (babyAgeMonths < 4) {
-        return CHAT_ROOMS.filter(r => r.id === 'sleep');
+      if (babyAgeMonths >= 6 && babyAgeMonths <= 24) {
+        // 6–24 months: weaning first, then sleep, health
+        return CHAT_ROOMS.filter(r => ['weaning', 'sleep', 'health'].includes(r.id)).slice(0, 3);
+      }
+      if (babyAgeMonths > 24) {
+        // Toddler+: family, health, weaning
+        return CHAT_ROOMS.filter(r => ['family', 'health', 'weaning'].includes(r.id)).slice(0, 3);
       }
     }
-    return CHAT_ROOMS.filter(r => r.forStatus === 'parent' || r.forStatus === 'all').slice(0, 2);
+    // Default fallback
+    return CHAT_ROOMS.filter(r => r.forStatus === 'all').slice(0, 2);
   };
   const recommendedRooms = getRecommendedRooms();
+  const recommendedIds   = new Set(recommendedRooms.map(r => r.id));
 
-  /* ── Filter by search ── */
+  /* ── Filter by search (name + desc + tags) ── */
   const filteredRooms = searchQuery.trim()
-    ? CHAT_ROOMS.filter(r =>
-        r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.desc.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? CHAT_ROOMS.filter(r => {
+        const q = searchQuery.toLowerCase();
+        return (
+          r.name.toLowerCase().includes(q) ||
+          r.desc.toLowerCase().includes(q) ||
+          r.tags?.some(t => t.includes(q))
+        );
+      })
     : CHAT_ROOMS;
 
-  /* ── Chat room view ── */
+  /* ── Private Conversation view ── */
+  if (activeConversation) {
+    return (
+      <PrivateChatView
+        conversation={activeConversation}
+        currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
+        onBack={() => setActiveConversation(null)}
+      />
+    );
+  }
+
+  /* ── Community chat room view ── */
   if (activeRoom) {
     return (
       <>
@@ -280,18 +377,38 @@ export default function CommunityScreen({ profile }) {
           onBack={() => setActiveRoom(null)}
           currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
           onUserClick={handleUserClick}
+          onSendDMRequest={(toUser) => setShowDMRequestSheet(toUser)}
         />
         {selectedProfile && (
-          <MemberProfileSheet
-            profile={selectedProfile}
-            onClose={() => setSelectedProfile(null)}
+          <UserProfileSheet
+            user={selectedProfile}
             currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
-            onStartPrivateChat={(chat) => { setActiveRoom(chat); setSelectedProfile(null); }}
+            activeRoom={activeRoom}
+            conversations={conversations}
+            onClose={() => setSelectedProfile(null)}
+            onSendDMRequest={(toUser) => { setSelectedProfile(null); setShowDMRequestSheet(toUser); }}
+            onOpenConversation={(chat) => { setActiveRoom(chat); setSelectedProfile(null); }}
           />
+        )}
+
+        {/* DM Request Sheet — phải nằm trong block này để hiển thị khi đang trong phòng */}
+        {showDMRequestSheet && (
+          <DMRequestSheet
+            toUser={showDMRequestSheet}
+            currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
+            onClose={() => setShowDMRequestSheet(null)}
+            onSent={(msg) => showDmToast(msg)}
+          />
+        )}
+
+        {/* Toast */}
+        {dmToast && (
+          <div className="dm-toast" role="status" aria-live="polite">{dmToast}</div>
         )}
       </>
     );
   }
+
 
   return (
     <div className="community-screen">
@@ -313,15 +430,15 @@ export default function CommunityScreen({ profile }) {
           className={`comm-tab ${tab === 'rooms' ? 'active' : ''}`}
           onClick={() => setTab('rooms')}
         >
-          Phòng Chat
+          Phòng cộng đồng
         </button>
         <button
           className={`comm-tab ${tab === 'inbox' ? 'active' : ''}`}
           onClick={() => setTab('inbox')}
         >
-          Tin nhắn
-          {friendRequests.length > 0 && (
-            <span className="tab-badge">{friendRequests.length}</span>
+          Hộp thư
+          {(dmRequests.length > 0) && (
+            <span className="tab-badge">{dmRequests.length > 9 ? '9+' : dmRequests.length}</span>
           )}
         </button>
       </div>
@@ -374,11 +491,12 @@ export default function CommunityScreen({ profile }) {
               <CommunitySkeleton />
             ) : (
               <>
-                {/* Personalized recommended rooms */}
+                {/* Personalized recommended rooms — max 3, no duplicates in fixed section */}
                 {!searchQuery && recommendedRooms.length > 0 && (
                   <div className="rooms-section">
                     <div className="section-hdr">
                       <h2 className="section-label">Phù hợp với mẹ</h2>
+                      <span className="section-count">{recommendedRooms.length} phòng</span>
                     </div>
                     <div className="rooms-list">
                       {recommendedRooms.map(r => (
@@ -393,41 +511,43 @@ export default function CommunityScreen({ profile }) {
                   </div>
                 )}
 
-                {/* All / filtered rooms */}
-                <div className="rooms-section">
-                  <div className="section-hdr">
-                    <h2 className="section-label">
-                      {searchQuery ? `Kết quả tìm kiếm` : 'Phòng Cố Định'}
-                    </h2>
-                    {searchQuery && (
-                      <span className="section-count">{filteredRooms.length} phòng</span>
-                    )}
-                  </div>
-                  {filteredRooms.length > 0 ? (
-                    <div className="rooms-list">
-                      {filteredRooms.map(r => (
-                        <RoomCard key={r.id} room={r} onClick={() => setActiveRoom(r)} />
-                      ))}
+                {/* All / filtered rooms — exclude already-recommended when not searching */}
+                {(() => {
+                  const displayRooms = searchQuery
+                    ? filteredRooms
+                    : CHAT_ROOMS.filter(r => !recommendedIds.has(r.id));
+                  const sectionLabel = searchQuery ? 'Kết quả tìm kiếm' : 'Tất cả phòng';
+                  return displayRooms.length > 0 ? (
+                    <div className="rooms-section">
+                      <div className="section-hdr">
+                        <h2 className="section-label">{sectionLabel}</h2>
+                        {searchQuery && <span className="section-count">{displayRooms.length} phòng</span>}
+                      </div>
+                      <div className="rooms-list">
+                        {displayRooms.map(r => (
+                          <RoomCard key={r.id} room={r} onClick={() => setActiveRoom(r)} />
+                        ))}
+                      </div>
                     </div>
-                  ) : (
+                  ) : searchQuery ? (
                     <div className="comm-empty-state">
                       <p className="comm-empty-title">Không tìm thấy phòng phù hợp</p>
-                      <p className="comm-empty-sub">Thử từ khóa khác hoặc tạo phòng mới.</p>
+                      <p className="comm-empty-sub">Mẹ thử từ khóa khác như "ăn dặm", "ngủ", "mẹ bầu"...</p>
                     </div>
-                  )}
-                </div>
+                  ) : null;
+                })()}
 
                 {/* Custom rooms */}
                 {!searchQuery && (
                   <div className="rooms-section">
                     <div className="section-hdr">
-                      <h2 className="section-label">Phòng Tự Tạo</h2>
+                      <h2 className="section-label">Phòng tự tạo</h2>
                       <button className="create-room-btn" onClick={() => setShowCreateSheet(true)}>
                         <PlusIcon size={13} /> Tạo phòng
                       </button>
                     </div>
                     <p className="rooms-expire-note">
-                      Phòng tự tạo sẽ tự đóng nếu không có tin mới trong 3 ngày.
+                      Phòng tự tạo tự đóng sau 3 ngày không có bài mới.
                     </p>
 
                     {customRooms.length === 0 ? (
@@ -437,8 +557,14 @@ export default function CommunityScreen({ profile }) {
                           Mẹ có thể tạo một chủ đề nhỏ để thảo luận cùng cộng đồng.
                         </p>
                         <div className="topic-suggestions">
-                          {['Mẹ bầu cùng tháng', 'Bé cùng độ tuổi', 'Ăn dặm hôm nay'].map(t => (
-                            <span key={t} className="topic-chip">{t}</span>
+                          {QUICK_CHIPS.map(chip => (
+                            <button
+                              key={chip.label}
+                              className="topic-chip"
+                              onClick={() => setShowCreateSheet({ prefill: chip })}
+                            >
+                              {chip.label}
+                            </button>
                           ))}
                         </div>
                         <button className="outline-btn" onClick={() => setShowCreateSheet(true)}>
@@ -446,11 +572,16 @@ export default function CommunityScreen({ profile }) {
                         </button>
                       </div>
                     ) : (
-                      <div className="rooms-list">
-                        {customRooms.map(r => (
-                          <CustomRoomCard key={r.id} room={r} onClick={() => setActiveRoom(r)} />
-                        ))}
-                      </div>
+                      <>
+                        <div className="rooms-list">
+                          {customRooms.map(r => (
+                            <CustomRoomCard key={r.id} room={r} onClick={() => setActiveRoom(r)} />
+                          ))}
+                        </div>
+                        <button className="outline-btn" style={{ marginTop: 4 }} onClick={() => setShowCreateSheet(true)}>
+                          + Tạo phòng mới
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -462,12 +593,13 @@ export default function CommunityScreen({ profile }) {
         {/* ── INBOX TAB ── */}
         {!error && tab === 'inbox' && (
           <InboxView
-            friendRequests={friendRequests}
-            privateChats={privateChats}
-            user={user}
-            onAccept={acceptRequest}
-            onDecline={declineRequest}
-            onOpenChat={(chat) => setActiveRoom(chat)}
+            dmRequests={dmRequests}
+            conversations={conversations}
+            currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
+            onAccept={acceptDMRequest}
+            onDecline={declineDMRequest}
+            onOpenConversation={(conv) => setActiveConversation(conv)}
+            onSwitchToRooms={() => setTab('rooms')}
           />
         )}
       </div>
@@ -477,17 +609,36 @@ export default function CommunityScreen({ profile }) {
         <CreateRoomSheet
           onClose={() => setShowCreateSheet(false)}
           currentUser={{ uid: user?.uid }}
+          prefill={typeof showCreateSheet === 'object' ? showCreateSheet.prefill : null}
         />
       )}
 
-      {/* ── MEMBER PROFILE SHEET ── */}
+      {/* ── USER PROFILE SHEET ── */}
       {selectedProfile && (
-        <MemberProfileSheet
-          profile={selectedProfile}
-          onClose={() => setSelectedProfile(null)}
+        <UserProfileSheet
+          user={selectedProfile}
           currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
-          onStartPrivateChat={(chat) => { setActiveRoom(chat); setSelectedProfile(null); }}
+          activeRoom={activeRoom}
+          conversations={conversations}
+          onClose={() => setSelectedProfile(null)}
+          onSendDMRequest={(toUser) => { setSelectedProfile(null); setShowDMRequestSheet(toUser); }}
+          onOpenConversation={(chat) => { setActiveRoom(chat); setSelectedProfile(null); }}
         />
+      )}
+
+      {/* ── DM REQUEST SHEET ── */}
+      {showDMRequestSheet && (
+        <DMRequestSheet
+          toUser={showDMRequestSheet}
+          currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
+          onClose={() => setShowDMRequestSheet(null)}
+          onSent={(msg) => showDmToast(msg)}
+        />
+      )}
+
+      {/* ── DM TOAST ── */}
+      {dmToast && (
+        <div className="dm-toast" role="status" aria-live="polite">{dmToast}</div>
       )}
     </div>
   );
@@ -497,7 +648,8 @@ export default function CommunityScreen({ profile }) {
 function RoomCard({ room, badge, onClick }) {
   const RoomIcon = ROOM_ICON_MAP[room.id];
   return (
-    <div className="room-card" onClick={onClick} role="button" tabIndex={0}>
+    <div className="room-card" onClick={onClick} role="button" tabIndex={0}
+         onKeyDown={e => e.key === 'Enter' && onClick?.()}>
       <div className="room-icon-wrap">
         {RoomIcon ? <RoomIcon size={26} strokeWidth={1.8} /> : <MessageIcon size={22} />}
       </div>
@@ -508,9 +660,8 @@ function RoomCard({ room, badge, onClick }) {
         </div>
         <p className="room-desc">{room.desc}</p>
         <div className="room-meta">
-          <span className="room-meta-item">{formatMemberCount(room.memberCount)} thành viên</span>
           {room.unreadCount > 0 && (
-            <span className="room-meta-new">{room.unreadCount} tin mới</span>
+            <span className="room-meta-new">{room.unreadCount} bài mới</span>
           )}
         </div>
         {room.disclaimer && (
@@ -552,77 +703,14 @@ function CommunitySkeleton() {
   );
 }
 
-/* ── Inbox View ── */
-function InboxView({ friendRequests, privateChats, user, onAccept, onDecline, onOpenChat }) {
-  return (
-    <div className="inbox-wrap">
-      {friendRequests.length > 0 && (
-        <div className="rooms-section">
-          <div className="section-hdr">
-            <h2 className="section-label">Yêu cầu nhắn tin</h2>
-            <span className="section-count">{friendRequests.length}</span>
-          </div>
-          <div className="requests-list">
-            {friendRequests.map(req => (
-              <div key={req.id} className="request-card">
-                <Avatar name={req.senderName} photo={req.senderPhoto} size={46} />
-                <div className="request-info">
-                  <h4 className="request-name">{req.senderName}</h4>
-                  {req.senderBaby && <p className="request-baby">Mẹ của {req.senderBaby}</p>}
-                </div>
-                <div className="request-actions">
-                  <button className="req-btn accept" onClick={() => onAccept(req)}>✓</button>
-                  <button className="req-btn decline" onClick={() => onDecline(req.id)}>✕</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="rooms-section">
-        <div className="section-hdr">
-          <h2 className="section-label">Đang trò chuyện</h2>
-        </div>
-        {privateChats.length === 0 ? (
-          <div className="inbox-empty-state">
-            <div className="inbox-empty-icon"><MessageIcon size={28} /></div>
-            <p className="comm-empty-title">Chưa có tin nhắn nào</p>
-            <p className="comm-empty-sub">Khi mẹ trò chuyện riêng, tin nhắn sẽ hiển thị tại đây.</p>
-          </div>
-        ) : (
-          <div className="rooms-list">
-            {privateChats.map(chat => {
-              const otherUid  = chat.participants?.find(id => id !== user?.uid);
-              const otherUser = chat.participantData?.[otherUid];
-              if (!otherUser) return null;
-              return (
-                <div key={chat.id} className="room-card" onClick={() => onOpenChat({
-                  id: chat.id, name: otherUser.name, isPrivate: true, otherUid, otherUser
-                })}>
-                  <Avatar name={otherUser.name} photo={otherUser.photo} size={46} />
-                  <div className="room-card-body" style={{ marginLeft: 4 }}>
-                    <h3 className="room-name">{otherUser.name}</h3>
-                    <p className="room-desc">Trò chuyện riêng tư</p>
-                  </div>
-                  <div className="room-arrow"><ChevronRightIcon size={18} /></div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ── Create Room Bottom Sheet ── */
-function CreateRoomSheet({ onClose, currentUser }) {
-  const [name, setName]       = useState('');
-  const [desc, setDesc]       = useState('');
-  const [isPublic, setIsPublic] = useState(true);
-  const [saving, setSaving]   = useState(false);
+function CreateRoomSheet({ onClose, currentUser, prefill }) {
+  const [name, setName]         = useState(prefill?.name || '');
+  const [selectedTopic, setSelectedTopic] = useState(prefill?.topic || '');
+  const [desc, setDesc]         = useState('');
+  const [saving, setSaving]     = useState(false);
   const [nameError, setNameError] = useState('');
+  const lastSave = useRef(0);
 
   // Lock body scroll + hide bottom-nav on iOS when sheet is open
   useEffect(() => {
@@ -637,16 +725,22 @@ function CreateRoomSheet({ onClose, currentUser }) {
   const handleCreate = async () => {
     if (!name.trim()) { setNameError('Tên phòng không được để trống.'); return; }
     if (name.trim().length < 3) { setNameError('Tên phòng cần ít nhất 3 ký tự.'); return; }
+    // Anti-spam: min 5s between saves
+    const now = Date.now();
+    if (now - lastSave.current < 5000) { setNameError('Vui lòng đợi vài giây rồi thử lại.'); return; }
     setSaving(true);
     try {
+      const fullDesc = [selectedTopic, desc.trim()].filter(Boolean).join(' · ');
       await addDoc(collection(db, 'customRooms'), {
         name: name.trim(),
-        desc: desc.trim(),
-        isPublic,
+        desc: fullDesc,
+        topic: selectedTopic,
+        isPublic: true,
         createdBy: currentUser.uid,
         createdAt: serverTimestamp(),
         lastMessageAt: serverTimestamp(),
       });
+      lastSave.current = Date.now();
       onClose();
     } catch (err) {
       console.error(err);
@@ -660,17 +754,17 @@ function CreateRoomSheet({ onClose, currentUser }) {
       <div className="create-post-sheet" onClick={e => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <h3 className="sheet-title">Tạo phòng chat mới</h3>
-          <button className="sheet-close" onClick={onClose}><CloseIcon /></button>
+          <h3 className="sheet-title">Tạo phòng thảo luận</h3>
+          <button className="sheet-close" onClick={onClose} aria-label="Đóng"><CloseIcon /></button>
         </div>
 
-        <p className="sheet-hint">Tên phòng nên ngắn, dễ hiểu và tích cực.</p>
+        <p className="sheet-hint">Tên phòng nên ngắn, rõ chủ đề và thân thiện.</p>
 
         <div className="sheet-form-group">
           <label>Tên phòng *</label>
           <input
             className={`sheet-input ${nameError ? 'has-error' : ''}`}
-            placeholder="VD: Mẹ bầu cùng tháng, Bé 6 tháng..."
+            placeholder="Ví dụ: Mẹ bầu tháng 9"
             value={name}
             onChange={e => { setName(e.target.value); setNameError(''); }}
             maxLength={30}
@@ -680,31 +774,31 @@ function CreateRoomSheet({ onClose, currentUser }) {
         </div>
 
         <div className="sheet-form-group">
-          <label>Chủ đề (tuỳ chọn)</label>
+          <label>Chủ đề</label>
+          <div className="topic-chip-select">
+            {TOPIC_CHIPS.map(t => (
+              <button
+                key={t}
+                type="button"
+                className={`topic-select-chip ${selectedTopic === t ? 'active' : ''}`}
+                onClick={() => setSelectedTopic(selectedTopic === t ? '' : t)}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="sheet-form-group">
+          <label>Mô tả ngắn (tuỳ chọn)</label>
           <input
             className="sheet-input"
-            placeholder="VD: Chia sẻ kinh nghiệm ăn dặm BLW"
+            placeholder="Mẹ muốn thảo luận điều gì?"
             value={desc}
             onChange={e => setDesc(e.target.value)}
             maxLength={60}
           />
-        </div>
-
-        <div className="sheet-form-group">
-          <label>Chế độ phòng</label>
-          <div className="privacy-toggle">
-            <button
-              className={`privacy-btn ${isPublic ? 'active' : ''}`}
-              onClick={() => setIsPublic(true)}
-            >Công khai</button>
-            <button
-              className={`privacy-btn ${!isPublic ? 'active' : ''}`}
-              onClick={() => setIsPublic(false)}
-            >Riêng tư</button>
-          </div>
-          <p className="input-hint">
-            {isPublic ? 'Tất cả mọi người đều có thể vào phòng này.' : 'Chỉ người được mời mới vào được.'}
-          </p>
+          <p className="input-hint">{desc.length}/60 ký tự</p>
         </div>
 
         <button
@@ -712,7 +806,15 @@ function CreateRoomSheet({ onClose, currentUser }) {
           disabled={!name.trim() || saving}
           onClick={handleCreate}
         >
-          {saving ? 'Đang tạo...' : 'Tạo phòng'}
+          {saving ? (
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <svg className="animate-spin" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <circle cx="12" cy="12" r="10" strokeOpacity={0.2} />
+                <path d="M4 12a8 8 0 018-8" strokeLinecap="round" />
+              </svg>
+              Đang tạo...
+            </span>
+          ) : 'Tạo phòng'}
         </button>
       </div>
     </div>
@@ -722,7 +824,7 @@ function CreateRoomSheet({ onClose, currentUser }) {
 /* ════════════════════════════════════════════════
    CHAT ROOM VIEW
 ════════════════════════════════════════════════ */
-function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
+function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest }) {
   const [messages, setMessages]       = useState([]);
   const [loading, setLoading]         = useState(true);
   const [loadError, setLoadError]     = useState(false);
@@ -730,63 +832,70 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
   const [sending, setSending]         = useState(false);
   const [files, setFiles]             = useState([]);
   const [showRules, setShowRules]     = useState(false);
-  const fileInputRef                  = useRef(null);
-  const scrollRef                     = useRef(null);
+  const [pinnedExpanded, setPinnedExpanded] = useState(false);
+  const [showAISheet, setShowAISheet] = useState(false);
+  const [imageViewUrl, setImageViewUrl] = useState(null);
+  const [likes, setLikes]             = useState({});
+  const [saved, setSaved]             = useState({});
   const [directText, setDirectText]   = useState('');
+  const fileInputRef                  = useRef(null);
   const directFileInputRef            = useRef(null);
+  const scrollRef                     = useRef(null);
+  const inputRef                      = useRef(null);
 
-
-  /* ── Room type ── */
   const roomType = room.id || room.type || 'custom';
+  const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
-  /* ── Suggested topics by room type ── */
-  const SUGGESTED_TOPICS = {
+  /* ── Suggested topics by room ── */
+  const SUGGESTED_TOPICS_OBJ = {
     pregnancy: [
-      'Mẹ đang ở tuần thai bao nhiêu?',
-      'Thai giáo nhẹ nhàng nên bắt đầu thế nào?',
-      'Mẹ có đang nghén hoặc mệt không?',
-      'Chuẩn bị gì trước khi sinh?',
+      { icon: '\u{1F930}', text: 'Mẹ đang ở tuần thai bao nhiêu?' },
+      { icon: '\u{1F3B5}', text: 'Thai giáo nhẹ nhàng nên bắt đầu thế nào?' },
+      { icon: '\u{1F634}', text: 'Mẹ có đang nghén hoặc mệt không?' },
+      { icon: '\u{1F4CB}', text: 'Chuẩn bị gì trước khi sinh?' },
     ],
     weaning: [
-      'Bé mấy tháng thì bắt đầu ăn dặm?',
-      'BLW hay ăn dặm kiểu Nhật?',
-      'Món đầu tiên nên thử là gì?',
-      'Bé không hợp tác khi ăn thì làm sao?',
+      { icon: '\u{1F944}', text: 'Bé mấy tháng thì bắt đầu ăn dặm?' },
+      { icon: '\u{1F371}', text: 'BLW hay ăn dặm kiểu Nhật?' },
+      { icon: '\u{1F955}', text: 'Món đầu tiên nên thử là gì?' },
+      { icon: '\u{1F605}', text: 'Bé không hợp tác khi ăn thì làm sao?' },
     ],
     sleep: [
-      'Bé hay thức đêm phải làm sao?',
-      'Có nên luyện ngủ tự lập không?',
-      'Lịch EASY có phù hợp không?',
-      'Bé ngủ ngày ít có sao không?',
+      { icon: '\u{1F319}', text: 'Bé hay thức đêm phải làm sao?' },
+      { icon: '\u{1F4A4}', text: 'Có nên luyện ngủ tự lập không?' },
+      { icon: '\u{1F4C5}', text: 'Lịch EASY có phù hợp không?' },
+      { icon: '☀️', text: 'Bé ngủ ngày ít có sao không?' },
     ],
     health: [
-      'Khi nào nên đưa bé đi khám?',
-      'Bé ho/sốt cần theo dõi gì?',
-      'Mẹ sau sinh mệt nhiều có bình thường không?',
+      { icon: '\u{1F3E5}', text: 'Khi nào nên đưa bé đi khám?' },
+      { icon: '\u{1F321}️', text: 'Bé ho/sốt cần theo dõi gì?' },
+      { icon: '\u{1F48A}', text: 'Mẹ sau sinh mệt nhiều có bình thường không?' },
+      { icon: '\u{1F4DD}', text: 'Cách ghi lại triệu chứng cho bé?' },
     ],
     family: [
-      'Mẹ cần được lắng nghe hôm nay?',
-      'Chia sẻ việc chăm bé với chồng thế nào?',
-      'Áp lực sau sinh nên nói với ai?',
-      'Làm sao để mẹ có thời gian nghỉ ngơi?',
+      { icon: '\u{1F4AC}', text: 'Mẹ cần được lắng nghe hôm nay?' },
+      { icon: '\u{1F46B}', text: 'Chia sẻ việc chăm bé với chồng thế nào?' },
+      { icon: '\u{1F33F}', text: 'Áp lực sau sinh nên nói với ai?' },
+      { icon: '⏰', text: 'Làm sao để mẹ có thời gian nghỉ ngơi?' },
     ],
   };
-  const suggestedTopics = SUGGESTED_TOPICS[roomType] || [
-    'Bắt đầu chủ đề mới',
-    'Chia sẻ kinh nghiệm',
-    'Đặt câu hỏi cho cộng đồng',
+  const suggestedTopics = SUGGESTED_TOPICS_OBJ[roomType] || [
+    { icon: '\u{1F4A1}', text: 'Bắt đầu chủ đề mới' },
+    { icon: '\u{1F4D6}', text: 'Chia sẻ kinh nghiệm' },
+    { icon: '❓', text: 'Đặt câu hỏi cho cộng đồng' },
   ];
 
-  /* ── Pinned welcome post ── */
-  const PINNED_CONTENT = {
-    pregnancy: 'Chào mừng mẹ đến với Góc Mẹ Bầu. Đây là nơi mẹ có thể chia sẻ hành trình mang thai, đặt câu hỏi và đồng hành cùng các mẹ bầu khác. Mọi cảm xúc, thắc mắc đều được chào đón.',
-    weaning:   'Chào mừng mẹ đến với Hành Trình Ăn Dặm! Dù chọn BLW, kiểu Nhật hay phương pháp truyền thống, không có đúng hay sai — chỉ có điều phù hợp nhất với bé và mẹ.',
-    sleep:     'Chào mừng mẹ đến với Rèn Ngủ Xuyên Đêm. Giấc ngủ của bé là hành trình cần sự kiên nhẫn. Mẹ không cô đơn — các mẹ ở đây đều hiểu cảm giác thức đêm.',
-    health:    'Chào mừng mẹ đến với Sức Khoẻ Mẹ & Bé. Ở đây mẹ có thể chia sẻ kinh nghiệm chăm sóc. Lưu ý: thông tin trong nhóm chỉ mang tính tham khảo, không thay thế tư vấn y tế.',
-    family:    'Chào mừng mẹ đến với Chuyện Gia Đình. Đây là góc nhỏ để mẹ tâm sự, xả stress và cảm thấy được lắng nghe. Mọi câu chuyện đều xứng đáng được chia sẻ.',
+  /* ── Pinned content ── */
+  const PINNED = {
+    pregnancy: 'Chào mừng mẹ đến với Góc Mẹ Bầu! Đây là nơi mẹ chia sẻ hành trình mang thai, đặt câu hỏi và đồng hành cùng các mẹ bầu khác. Mọi cảm xúc, thắc mắc đều được chào đón.',
+    weaning:   'Mẹ có thể bắt đầu ăn dặm khi bé sẵn sàng về vận động, tiêu hóa và hứng thú với thức ăn. Dù chọn BLW, kiểu Nhật hay truyền thống — không có đúng hay sai, chỉ có phù hợp nhất với bé.',
+    sleep:     'Giấc ngủ của bé là hành trình cần kiên nhẫn. Mẹ không cô đơn — các mẹ ở đây đều hiểu cảm giác thức đêm. Hãy chia sẻ để cùng nhau tìm giải pháp.',
+    health:    'Đây là nơi mẹ chia sẻ kinh nghiệm chăm sóc sức khỏe mẹ và bé. Các thông tin chỉ mang tính tham khảo — mẹ nên hỏi bác sĩ khi có dấu hiệu bất thường.',
+    family:    'Đây là góc nhỏ để mẹ tâm sự, xả stress và cảm thấy được lắng nghe. Không có câu chuyện nào quá nhỏ để chia sẻ.',
   };
-  const pinnedContent = PINNED_CONTENT[roomType]
-    || `Chào mừng mẹ đến với ${room.name}. Đây là nơi mẹ có thể chia sẻ, đặt câu hỏi và đồng hành cùng các mẹ khác trong cùng giai đoạn.`;
+  const pinnedContent    = PINNED[roomType] || `Chào mừng mẹ đến với ${room.name}. Hãy chia sẻ và đặt câu hỏi cùng cộng đồng.`;
+  const PINNED_PREVIEW   = 120;
+  const pinnedTruncated  = pinnedContent.length > PINNED_PREVIEW;
 
   /* ── Load messages ── */
   useEffect(() => {
@@ -807,14 +916,11 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
 
   /* ── File handling ── */
   const handleFileChange = (e) => {
-    const selected = Array.from(e.target.files);
-    const valid = selected.filter(f => {
+    const valid = Array.from(e.target.files).filter(f => {
       if (f.size > 10 * 1024 * 1024) { alert(`Ảnh ${f.name} vượt quá 10MB.`); return false; }
       return true;
     });
-    if (valid.length > 0) {
-      setFiles([valid[0]]);
-    }
+    if (valid.length > 0) setFiles([valid[0]]);
     e.target.value = null;
   };
   const removeFile = () => setFiles([]);
@@ -836,51 +942,36 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
     return urls;
   };
 
-  const handleSendDirect = async () => {
+  const handleSend = async () => {
     if (!directText.trim() && files.length === 0) return;
     if (sending) return;
     setSending(true);
     const content = directText;
     const attachedFiles = [...files];
-    setDirectText('');
-    setFiles([]);
+    setDirectText(''); setFiles([]);
     try {
       const imageUrls = await uploadImages(attachedFiles);
       const rIndex = Math.floor(Math.random() * ANIMAL_NAMES.length);
-      const msgData = {
-        title:       '',
-        text:        content.trim(),
-        images:      imageUrls,
-        label:       null,
-        createdAt:   serverTimestamp(),
-        senderId:    currentUser.uid,
-        isAnon:      isAnon,
-        senderName:  isAnon ? `${ANIMAL_NAMES[rIndex]} Ẩn Danh` : currentUser.name,
-        senderPhoto: isAnon ? ANIMAL_EMOJIS[rIndex] : currentUser.photo,
-        senderBaby:  isAnon ? null : currentUser.baby,
-      };
       const colName = room.isCustom ? 'customRooms' : 'chatRooms';
-      await addDoc(collection(db, colName, room.id, 'messages'), msgData);
-      if (room.isCustom) {
-        await updateDoc(doc(db, 'customRooms', room.id), { lastMessageAt: serverTimestamp() });
-      }
+      await addDoc(collection(db, colName, room.id, 'messages'), {
+        title: '', text: content.trim(), images: imageUrls, label: null,
+        createdAt: serverTimestamp(), senderId: currentUser.uid, isAnon,
+        senderName:  isAnon ? `${ANIMAL_NAMES[rIndex]} Ẩn Danh` : currentUser.name,
+        senderPhoto: isAnon ? ANIMAL_EMOJIS[rIndex]                 : currentUser.photo,
+        senderBaby:  isAnon ? null                                  : currentUser.baby,
+        likes: 0, replies: 0,
+      });
+      if (room.isCustom) await updateDoc(doc(db, 'customRooms', room.id), { lastMessageAt: serverTimestamp() });
       setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 100);
     } catch (err) {
       console.error(err);
-      alert('Có lỗi xảy ra khi gửi tin nhắn.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleTopicSelect = (topic) => {
-    setDirectText(topic);
+      alert('Có lỗi xảy ra khi gửi bài.');
+    } finally { setSending(false); }
   };
 
   const isEmpty    = messages.length === 0;
   const showTopics = messages.length < 5;
 
-  /* ── Private chat: simple bubble view ── */
   if (room.isPrivate) {
     return <PrivateChatView room={room} onBack={onBack} currentUser={currentUser} onUserClick={onUserClick}
       messages={messages} loading={loading} files={files}
@@ -893,57 +984,32 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
   return (
     <div className="room-view-screen">
 
-      {/* ── HEADER ── */}
+      {/* HEADER */}
       <header className="room-view-header">
-        <button className="back-btn" onClick={onBack} aria-label="Quay lại">
-          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
+        <button className="rv-back-btn" onClick={onBack} aria-label="Quay lại">
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
           </svg>
-          <span className="back-btn-label">Quay lại</span>
         </button>
-        <div className="room-view-header-center">
-          <h2 className="room-view-title">{room.name}</h2>
-          <p className="room-view-status">
-            {isEmpty
-              ? 'Nhóm mới · Chưa có bài viết'
-              : `${room.memberCount ? `${room.memberCount >= 1000 ? (room.memberCount/1000).toFixed(1)+'k' : room.memberCount} thành viên · ` : ''}${messages.length} bài`}
+        <div className="rv-header-center">
+          <h2 className="rv-title">{room.name}</h2>
+          <p className="rv-meta">
+            {isEmpty ? 'Chưa có bài viết' : `${messages.length} bài chia sẻ`}
+            {roomType === 'health' && <span className="rv-meta-disclaimer"> · Chỉ tham khảo</span>}
           </p>
         </div>
-        <button className="room-rules-btn" onClick={() => setShowRules(true)} aria-label="Quy tắc nhóm">
+        <button className="rv-info-btn" onClick={() => setShowRules(true)} aria-label="Quy tắc nhóm">
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
         </button>
       </header>
 
-      {/* ── SCROLLABLE CONTENT ── */}
+      {/* SCROLLABLE CONTENT */}
       <div className="room-view-content" ref={scrollRef}>
 
-        {room.desc && <p className="room-view-desc">{room.desc}</p>}
-
-        {/* Safety card */}
-        <div className="room-safety-card">
-          <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            <polyline points="9 12 11 14 15 10"/>
-          </svg>
-          <span>Không gian được kiểm duyệt để mẹ chia sẻ an tâm.</span>
-        </div>
-
-        {/* Health disclaimer */}
-        {roomType === 'health' && (
-          <div className="room-health-disclaimer">
-            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <span>Thông tin trong nhóm chỉ mang tính tham khảo, không thay thế tư vấn của bác sĩ.</span>
-          </div>
-        )}
-
-        {/* Loading */}
         {loading && <RoomSkeleton />}
 
-        {/* Error */}
         {!loading && loadError && (
           <div className="room-error-card">
             <p className="room-error-title">Chưa thể tải nhóm lúc này</p>
@@ -959,37 +1025,78 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
 
         {!loading && !loadError && (
           <>
-            {/* Pinned welcome post */}
+            {/* Pinned post */}
             <div className="pinned-post-card">
               <div className="pinned-post-label">
-                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                </svg>
-                Bài ghim từ Montessori AI
+                <div className="pinned-icon-wrap">
+                  <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="17" x2="12" y2="22"/>
+                    <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+                  </svg>
+                </div>
+                <span>Bài ghim từ Montessori AI</span>
               </div>
-              <p className="pinned-post-content">{pinnedContent}</p>
+              <p className="pinned-post-content">
+                {pinnedExpanded || !pinnedTruncated
+                  ? pinnedContent
+                  : `${pinnedContent.slice(0, PINNED_PREVIEW)}...`}
+              </p>
+              {pinnedTruncated && (
+                <button className="pinned-expand-btn" onClick={() => setPinnedExpanded(v => !v)}>
+                  {pinnedExpanded ? 'Thu gọn' : 'Xem thêm'}
+                </button>
+              )}
             </div>
 
             {/* Suggested topics */}
             {showTopics && (
               <div className="suggested-topics-card">
                 <h3 className="suggested-topics-title">Mẹ có thể bắt đầu với</h3>
-                <div className="suggested-topics-chips">
-                  {suggestedTopics.map(t => (
-                    <button key={t} className="topic-chip-btn" onClick={() => handleTopicSelect(t)}>
-                      {t}
+                <div className="suggested-topics-grid">
+                  {suggestedTopics.map((t, i) => (
+                    <button key={i} className="topic-card-btn"
+                      onClick={() => { setDirectText(t.text); inputRef.current?.focus(); }}>
+                      <span className="topic-card-icon">{t.icon}</span>
+                      <span className="topic-card-text">{t.text}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
+            {/* Empty state */}
+            {isEmpty && (
+              <div className="room-encourage-card">
+                <div className="room-encourage-icon">
+                  <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </div>
+                <p className="room-encourage-title">Mẹ có thể là người mở đầu hôm nay</p>
+                <p className="room-encourage-sub">Đặt một câu hỏi, chia sẻ kinh nghiệm — cộng đồng đang chờ lắng nghe mẹ.</p>
+                <button className="room-encourage-btn" onClick={() => inputRef.current?.focus()}>
+                  Đặt câu hỏi đầu tiên
+                </button>
+              </div>
+            )}
 
-            {/* Posts list */}
+            {/* Posts */}
             {!isEmpty && (
               <div className="posts-list">
                 {messages.map(msg => (
-                  <PostCard key={msg.id} msg={msg} currentUser={currentUser} onUserClick={onUserClick} />
+                  <PostCard
+                    key={msg.id}
+                    msg={msg}
+                    currentUser={currentUser}
+                    onUserClick={onUserClick}
+                    liked={!!likes[msg.id]}
+                    saved2={!!saved[msg.id]}
+                    onLike={() => setLikes(p => ({ ...p, [msg.id]: !p[msg.id] }))}
+                    onSave={() => setSaved(p => ({ ...p, [msg.id]: !p[msg.id] }))}
+                    onReply={() => { setDirectText(`@${msg.senderName || ''} `); inputRef.current?.focus(); }}
+                    onImageClick={(url) => setImageViewUrl(url)}
+                    onSendDMRequest={onSendDMRequest}
+                  />
                 ))}
               </div>
             )}
@@ -997,92 +1104,66 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
         )}
       </div>
 
-      {/* Quick Input Bar at the bottom of group (iPhone premium style) */}
+      {/* FLOATING COMPOSER */}
       {!loading && !loadError && (
-        <div className="room-quick-input-bar-container">
-          {/* Attached image previews */}
+        <div className="rv-composer-container">
           {files.length > 0 && (
-            <div className="quick-image-previews">
-              <div className="quick-preview-item">
+            <div className="rv-image-previews">
+              <div className="rv-preview-item">
                 <img src={URL.createObjectURL(files[0])} alt="preview" />
-                <button type="button" className="quick-remove-file-btn" onClick={removeFile} aria-label="Xoá ảnh">
+                <button type="button" className="rv-remove-img-btn" onClick={removeFile} aria-label="Xoà ảnh">
                   <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
                 </button>
               </div>
             </div>
           )}
-
-          <div className="room-quick-input-bar">
-            <button className="quick-attach-btn" onClick={() => directFileInputRef.current?.click()} aria-label="Thêm ảnh" disabled={sending}>
-              <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.0} strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
+          <div className="rv-composer-bar">
+            <button className="rv-attach-btn" onClick={() => directFileInputRef.current?.click()} disabled={sending} aria-label="Thêm ảnh">
+              <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
               </svg>
             </button>
-            
-            <input 
-              type="file" 
-              accept="image/jpeg,image/png,image/heic,image/webp" 
-              ref={directFileInputRef} 
-              onChange={handleFileChange} 
-              style={{ display: 'none' }} 
-            />
-
-            <button 
-              className={`quick-anon-btn ${isAnon ? 'active' : ''}`} 
-              onClick={() => setIsAnon(!isAnon)}
-              title={isAnon ? "Chế độ ẩn danh: BẬT (Tên của mẹ sẽ được ẩn)" : "Chế độ ẩn danh: TẮT (Hiển thị tên thật)"}
-              aria-label="Chế độ ẩn danh"
-              disabled={sending}
-            >
-              {isAnon ? (
-                <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.0} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  <path d="M8 14a4 4 0 0 0 8 0" />
-                  <circle cx="9" cy="10" r="1" fill="currentColor" />
-                  <circle cx="15" cy="10" r="1" fill="currentColor" />
-                </svg>
-              ) : (
-                <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.0} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-              )}
-            </button>
+            <input type="file" accept="image/jpeg,image/png,image/heic,image/webp" ref={directFileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
 
             <input
+              ref={inputRef}
               type="text"
-              className="quick-input-field"
-              placeholder="Hỏi hoặc chia sẻ cùng các mẹ..."
+              className="rv-input"
+              placeholder="Đặt câu hỏi hoặc chia sẻ kinh nghiệm..."
               value={directText}
               onChange={(e) => setDirectText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleSendDirect();
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSend(); } }}
               disabled={sending}
             />
 
-            <button 
-              className="quick-post-btn" 
-              onClick={handleSendDirect} 
+            <button className="rv-ai-btn" onClick={() => setShowAISheet(true)} disabled={sending} aria-label="AI gợi ý">
+              <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                <line x1="9" y1="9" x2="9.01" y2="9"/>
+                <line x1="15" y1="9" x2="15.01" y2="9"/>
+              </svg>
+            </button>
+
+            <button
+              className="rv-send-btn"
+              onClick={handleSend}
               disabled={sending || (!directText.trim() && files.length === 0)}
-              style={{ opacity: sending || (!directText.trim() && files.length === 0) ? 0.6 : 1 }}
-              aria-label="Gửi tin nhắn"
+              aria-label="Gửi bài"
             >
               {sending ? (
                 <svg className="animate-spin" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={2.5} style={{ opacity: 0.2 }} />
-                  <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="10" strokeOpacity={0.2}/>
+                  <path d="M4 12a8 8 0 018-8" strokeLinecap="round"/>
                 </svg>
               ) : (
                 <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                 </svg>
               )}
             </button>
@@ -1090,198 +1171,283 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick }) {
         </div>
       )}
 
-      {showRules && (
-        <CommunityRulesSheet onClose={() => setShowRules(false)} roomType={roomType} />
+      {/* IMAGE VIEWER */}
+      {imageViewUrl && (
+        <div className="image-viewer-overlay" onClick={() => setImageViewUrl(null)}>
+          <button className="image-viewer-close" onClick={() => setImageViewUrl(null)} aria-label="Đóng">
+            <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <img src={imageViewUrl} alt="Xem ảnh" className="image-viewer-img" onClick={e => e.stopPropagation()} />
+        </div>
       )}
+
+      {/* AI SHEET */}
+      {showAISheet && (
+        <AISheet
+          roomType={roomType}
+          currentText={directText}
+          onUse={(text) => { setDirectText(text); setShowAISheet(false); inputRef.current?.focus(); }}
+          onClose={() => setShowAISheet(false)}
+          apiBase={API_BASE}
+        />
+      )}
+
+      {showRules && <CommunityRulesSheet onClose={() => setShowRules(false)} roomType={roomType} />}
     </div>
   );
 }
 
 /* ── Post Card ── */
-function PostCard({ msg, currentUser, onUserClick }) {
+function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave, onReply, onImageClick, onSendDMRequest }) {
   const isMe = msg.senderId === currentUser.uid;
   const isAI = msg.isAI === true;
-  const labelMap = {
-    question:   { text: 'Câu hỏi',              color: '#2F6B4F', bg: 'rgba(95,175,130,0.12)' },
-    share:      { text: 'Chia sẻ',              color: '#5F8C72', bg: 'rgba(95,175,130,0.08)' },
-    experience: { text: 'Kinh nghiệm cá nhân',  color: '#7B6A4F', bg: 'rgba(200,170,120,0.12)' },
-  };
-  const labelInfo = msg.label ? labelMap[msg.label] : null;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const likeCount  = (msg.likes   || 0) + (liked ? 1 : 0);
+  const replyCount = (msg.replies || 0);
+
+  function rel(ts) {
+    if (!ts) return '';
+    const d    = ts.toDate ? ts.toDate() : new Date(ts);
+    const diff = Math.round((Date.now() - d.getTime()) / 1000);
+    if (diff < 60)    return 'Vừa xong';
+    if (diff < 3600)  return `${Math.floor(diff / 60)} phút trước`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+  }
 
   return (
-    <div className="post-card">
+    <div className={`post-card ${isAI ? 'post-card-ai' : ''} ${isMe ? 'post-card-me' : ''}`}>
       <div className="post-card-author">
         {isAI ? (
           <div className="post-ai-avatar">
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/>
-              <path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+              <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+              <line x1="9" y1="9" x2="9.01" y2="9"/>
+              <line x1="15" y1="9" x2="15.01" y2="9"/>
             </svg>
           </div>
         ) : msg.isAnon ? (
-          <div className="chat-anon-avatar" style={{ width: 36, height: 36, fontSize: 18 }}>{msg.senderPhoto}</div>
+          <button
+            className="post-avatar-btn anon"
+            aria-label="Xem hồ sơ thành viên ẩn danh"
+            onClick={() => onUserClick?.(msg)}
+          >
+            <div className="chat-anon-avatar" style={{ width: 40, height: 40, fontSize: 20 }}>{msg.senderPhoto}</div>
+          </button>
+        ) : isMe ? (
+          <Avatar name={msg.senderName} photo={msg.senderPhoto} size={40} />
         ) : (
-          <Avatar name={msg.senderName} photo={msg.senderPhoto} size={36} />
+          <button
+            className="post-avatar-btn"
+            aria-label={`Xem hồ sơ ${msg.senderName || 'thành viên'}`}
+            onClick={() => onUserClick?.(msg)}
+          >
+            <Avatar name={msg.senderName} photo={msg.senderPhoto} size={40} />
+          </button>
         )}
+
         <div className="post-author-info">
           <div className="post-author-name-row">
             <span className="post-author-name"
               onClick={() => !isMe && !isAI && onUserClick?.(msg)}
               style={{ cursor: isMe || isAI ? 'default' : 'pointer' }}>
-              {isAI ? 'Montessori AI' : msg.senderName}
+              {isAI ? 'Montessori AI' : (msg.senderName || 'Thành viên')}
             </span>
-            {isAI    && <span className="post-ai-badge">AI</span>}
+            {isAI      && <span className="post-ai-badge">AI</span>}
             {msg.isAnon && !isAI && <span className="post-anon-badge">Ẩn danh</span>}
-            {isMe    && !isAI && <span className="post-me-badge">Bạn</span>}
+            {isMe      && !isAI && <span className="post-me-badge">Bạn</span>}
           </div>
-          {!isAI && !msg.isAnon && msg.senderBaby && (
-            <span className="post-author-sub">Mẹ của {msg.senderBaby}</span>
-          )}
+          <span className="post-author-sub">
+            {isAI ? 'Montessori AI'
+              : msg.isAnon ? 'Thành viên ẩn danh'
+              : msg.senderBaby ? `Mẹ của ${msg.senderBaby}`
+              : 'Thành viên'}
+          </span>
         </div>
-        <span className="post-time">{formatTime(msg.createdAt)}</span>
+
+        <div className="post-header-right">
+          <span className="post-time">{rel(msg.createdAt)}</span>
+          <div className="post-menu-wrap">
+            <button className="post-menu-btn" onClick={() => setMenuOpen(v => !v)} aria-label="Tuỳ chọn">
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="post-menu-dropdown" onClick={() => setMenuOpen(false)}>
+                {isMe ? (
+                  <>
+                    <button className="post-menu-item">Chỉnh sửa</button>
+                    <button className="post-menu-item danger">Xoá bài</button>
+                  </>
+                ) : isAI ? (
+                  <>
+                    <button className="post-menu-item" onClick={onSave}>{saved2 ? 'Bỏ lưu' : 'Lưu bài'}</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="post-menu-item" onClick={onSave}>{saved2 ? 'Bỏ lưu' : 'Lưu bài'}</button>
+                    {!msg.isAnon && msg.senderId && onSendDMRequest && (
+                      <button
+                        className="post-menu-item"
+                        onClick={() => onSendDMRequest({
+                          uid:   msg.senderId,
+                          name:  msg.senderName || 'Thành viên',
+                          photo: msg.senderPhoto || '',
+                          baby:  msg.senderBaby  || '',
+                        })}
+                      >
+                        Gửi lời mời nhắn tin
+                      </button>
+                    )}
+                    <button className="post-menu-item">Báo cáo</button>
+                    <button className="post-menu-item">Ẩn bài</button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {(labelInfo || isAI) && (
-        <div className="post-labels-row">
-          {labelInfo && (
-            <span className="post-label" style={{ color: labelInfo.color, background: labelInfo.bg }}>
-              {labelInfo.text}
-            </span>
-          )}
-          {isAI && (
-            <span className="post-label" style={{ color: '#2F6B4F', background: 'rgba(95,175,130,0.1)' }}>
-              Trả lời từ Montessori AI
-            </span>
-          )}
-        </div>
-      )}
-
       {msg.title && <h4 className="post-title">{msg.title}</h4>}
-      {msg.text  && <p className="post-content">{msg.text}</p>}
+      {msg.text  && <p  className="post-content">{msg.text}</p>}
 
       {msg.images?.length > 0 && (
         <div className={`post-images grid-${Math.min(msg.images.length, 4)}`}>
           {msg.images.map((url, i) => (
-            <img key={i} src={url} alt="attachment" className="post-image" />
+            <img key={i} src={url} alt="ảnh bài viết" className="post-image"
+              onClick={() => onImageClick?.(url)} style={{ cursor: 'pointer' }} />
           ))}
+        </div>
+      )}
+
+      {!isAI && (
+        <div className="post-action-footer">
+          <button className={`post-action-btn ${liked ? 'active' : ''}`} onClick={onLike}>
+            <svg width={16} height={16} viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+              <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+            </svg>
+            <span>Hữu ích{likeCount > 0 ? ` ${likeCount}` : ''}</span>
+          </button>
+          <button className="post-action-btn" onClick={onReply}>
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>Trả lời{replyCount > 0 ? ` ${replyCount}` : ''}</span>
+          </button>
+          <button className={`post-action-btn ${saved2 ? 'active' : ''}`} onClick={onSave}>
+            <svg width={16} height={16} viewBox="0 0 24 24" fill={saved2 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>Lưu</span>
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-/* ── Private Chat View ── */
-function PrivateChatView({ room, onBack, currentUser, onUserClick, messages, loading,
-  files, handleFileChange, removeFile, fileInputRef, scrollRef, uploadImages,
-  isAnon, setIsAnon, sending, setSending }) {
-  const [text, setText] = useState('');
+/* ── AI Suggest Sheet ── */
+function AISheet({ roomType, currentText, onUse, onClose, apiBase }) {
+  const [input, setInput]     = useState(currentText || '');
+  const [response, setResp]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
 
-  const handleSend = async (e) => {
-    e?.preventDefault();
-    if ((!text.trim() && files.length === 0) || sending) return;
-    setSending(true);
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.classList.add('overlay-open');
+    return () => { document.body.style.overflow = ''; document.body.classList.remove('overlay-open'); };
+  }, []);
+
+  const PROMPTS = {
+    pregnancy: ['Viết lại câu hỏi về thai kỳ', 'Gợi ý chủ đề thai giáo', 'Câu hỏi về sức khỏe mẹ bầu'],
+    weaning:   ['Gợi ý câu hỏi về BLW', 'Hỏi về món ăn dặm đầu tiên', 'Câu hỏi khi bé không chịu ăn'],
+    sleep:     ['Gợi ý về lịch EASY', 'Câu hỏi về luyện ngủ', 'Hỏi về tuần khủng hoảng'],
+    health:    ['Câu hỏi an toàn về sức khỏe', 'Gợi ý mô tả triệu chứng', 'Hỏi khi nào cần gặp bác sĩ'],
+    family:    ['Chia sẻ cảm xúc của mẹ', 'Câu hỏi về cân bằng gia đình', 'Tâm sự về áp lực sau sinh'],
+  };
+  const prompts = PROMPTS[roomType] || ['Viết lại câu hỏi rõ hơn', 'Gợi ý chủ đề liên quan'];
+
+  const ask = async (q) => {
+    const question = q || input.trim();
+    if (!question) return;
+    setLoading(true); setError(''); setResp('');
     try {
-      const imageUrls = await uploadImages();
-      const rIndex = Math.floor(Math.random() * ANIMAL_NAMES.length);
-      const msgData = {
-        text: text.trim(), images: imageUrls, createdAt: serverTimestamp(),
-        senderId: currentUser.uid, isAnon,
-        senderName:  isAnon ? `${ANIMAL_NAMES[rIndex]} Ẩn Danh` : currentUser.name,
-        senderPhoto: isAnon ? ANIMAL_EMOJIS[rIndex] : currentUser.photo,
-        senderBaby:  isAnon ? null : currentUser.baby,
-      };
-      const colName = room.isCustom ? 'customRooms' : 'chatRooms';
-      await addDoc(collection(db, colName, room.id, 'messages'), msgData);
-      if (room.isCustom) await updateDoc(doc(db, 'customRooms', room.id), { lastMessageAt: serverTimestamp() });
-      setText('');
-    } catch (e) { console.error(e); } finally { setSending(false); }
+      const res  = await fetch(`${apiBase}/chat/community`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: question, sessionId: `ai-${Date.now()}`, roomType }),
+      });
+      const data = await res.json();
+      setResp(data.reply || data.message || 'AI không có gợi ý lúc này.');
+    } catch {
+      setError('Chưa kết nối được AI. Mẹ thử lại sau nhé.');
+    } finally { setLoading(false); }
   };
 
   return (
-    <div className="chat-room-screen">
-      <header className="room-header">
-        <button className="back-btn" onClick={onBack} aria-label="Quay lại">
-          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          <span className="back-btn-label">Quay lại</span>
-        </button>
-        <div className="room-header-info" style={{ cursor: 'pointer' }}
-          onClick={() => onUserClick?.({ senderId: room.otherUid, senderName: room.otherUser?.name,
-            senderPhoto: room.otherUser?.photo, senderBaby: room.otherUser?.baby, isAnon: false })}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Avatar name={room.otherUser?.name} photo={room.otherUser?.photo} size={34} />
-            <div>
-              <h2 className="room-header-title">{room.name}</h2>
-              <span className="room-online-status">Trò chuyện riêng tư</span>
-            </div>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="ai-suggest-sheet" onClick={e => e.stopPropagation()}>
+        <div className="sheet-handle" />
+        <div className="ai-suggest-header">
+          <div>
+            <h3 className="sheet-title">AI gợi ý bài viết</h3>
+            <p className="ai-sheet-sub">Mẹ muốn hỏi theo hướng nào?</p>
           </div>
+          <button className="sheet-close" onClick={onClose} aria-label="Đóng"><CloseIcon /></button>
         </div>
-      </header>
-      <div className="chat-messages" ref={scrollRef}>
-        {!loading && messages.length === 0 && (
-          <div className="chat-empty"><ChatBubbleIcon size={28} strokeWidth={1.6} /><p>Hãy bắt đầu cuộc trò chuyện!</p></div>
+
+        {roomType === 'health' && (
+          <p className="ai-health-disclaimer">
+            AI chỉ hỗ trợ gợi ý cách đặt câu hỏi, không thay thế tư vấn của bác sĩ.
+          </p>
         )}
-        {messages.map((msg, idx) => {
-          const isMe       = msg.senderId === currentUser.uid;
-          const showAvatar = !isMe && (idx === messages.length - 1 || messages[idx + 1]?.senderId !== msg.senderId);
-          const showName   = !isMe && (idx === 0 || messages[idx - 1]?.senderId !== msg.senderId);
-          return (
-            <div key={msg.id} className={`chat-bubble-wrap ${isMe ? 'is-me' : 'is-other'}`}>
-              <div className="chat-bubble-row">
-                {!isMe && (
-                  <div className="chat-avatar-wrap" style={{ cursor: showAvatar ? 'pointer' : 'default' }}
-                    onClick={showAvatar ? () => onUserClick?.(msg) : undefined}>
-                    {showAvatar ? <Avatar name={msg.senderName} photo={msg.senderPhoto} size={36} /> : <div style={{ width: 36 }} />}
-                  </div>
-                )}
-                <div className="chat-bubble-col">
-                  {showName && <div className="chat-sender-name" style={{ cursor: 'pointer' }} onClick={() => onUserClick?.(msg)}>{msg.senderName}</div>}
-                  <div className={`chat-bubble ${isMe ? 'me' : 'other'}`}>
-                    {msg.text && <div className="chat-text">{msg.text}</div>}
-                    {msg.images?.length > 0 && (
-                      <div className={`chat-images-grid grid-${Math.min(msg.images.length, 4)} ${!msg.text ? 'no-text' : ''}`}>
-                        {msg.images.map((url, i) => <img key={i} src={url} alt="attachment" className="chat-attached-img" />)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="chat-meta">
-                    <span className="chat-time">{formatTime(msg.createdAt)}</span>
-                    {isMe && <span className="chat-status-icon">✓✓</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div className="chat-input-area">
-        {files.length > 0 && (
-          <div className="chat-files-preview">
-            <div className="chat-file-preview-item">
-              <img src={URL.createObjectURL(files[0])} alt="preview" />
-              <button type="button" className="chat-file-remove" onClick={removeFile}>✕</button>
+
+        <div className="ai-quick-prompts">
+          {prompts.map((p, i) => (
+            <button key={i} className="ai-quick-prompt-chip" onClick={() => { setInput(p); ask(p); }}>{p}</button>
+          ))}
+        </div>
+
+        <div className="ai-suggest-input-row">
+          <input className="ai-chat-input" placeholder="Nhập câu hỏi của mẹ..."
+            value={input} onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && ask()} />
+          <button className="ai-chat-send-btn" onClick={() => ask()} disabled={loading || !input.trim()}>
+            {loading ? (
+              <svg className="animate-spin" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                <circle cx="12" cy="12" r="10" strokeOpacity={0.2}/>
+                <path d="M4 12a8 8 0 018-8" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {loading && (
+          <div className="ai-loading-state">
+            <div className="ai-typing-dots"><span/><span/><span/></div>
+            <p className="ai-loading-text">AI đang gợi ý...</p>
+          </div>
+        )}
+        {error && <p className="ai-error-inline">{error}</p>}
+        {response && !loading && (
+          <div className="ai-response-card">
+            <p className="ai-response-text">{response}</p>
+            <div className="ai-response-actions">
+              <button className="ai-post-action-btn primary" onClick={() => onUse(response)}>Dùng nội dung này</button>
+              <button className="ai-post-action-btn secondary" onClick={() => setResp('')}>Thử lại</button>
             </div>
           </div>
         )}
-        <form className="chat-input-row" onSubmit={handleSend}>
-          <button type="button" className="chat-attach-btn" onClick={() => fileInputRef.current?.click()}>
-            <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-            </svg>
-          </button>
-          <input type="file" accept="image/jpeg,image/png,image/heic,image/webp" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} />
-          <input type="text" className="chat-input" placeholder="Gửi tin nhắn..." value={text} onChange={e => setText(e.target.value)} />
-          <label className="chat-anon-toggle">
-             <input type="checkbox" checked={isAnon} onChange={e => setIsAnon(e.target.checked)} />
-             <span>Ẩn danh</span>
-          </label>
-          <button type="submit" className="chat-send-btn" disabled={(!text.trim() && files.length === 0) || sending}>
-            <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>
-            </svg>
-          </button>
-        </form>
       </div>
     </div>
   );
@@ -1309,13 +1475,13 @@ function Avatar({ name, photo, size }) {
 }
 
 /* ── Member Profile Sheet (preserved) ── */
-function MemberProfileSheet({ profile, onClose, currentUser, onStartPrivateChat }) {
-  const [status, setStatus] = useState('none');
-  const [loading, setLoading] = useState(!profile.isAnon);
-  const [existingChat, setExistingChat] = useState(null);
-  const [sendingRequest, setSendingRequest] = useState(false);
+function MemberProfileSheet({ profile, onClose, currentUser, onStartPrivateChat, onSendDMRequest }) {
+  const [hasConversation, setHasConversation] = useState(false);
+  const [existingConv, setExistingConv] = useState(null);
+  const [hasPending, setHasPending] = useState(false);
+  const [loading, setLoading] = useState(!profile.isAnon && !!profile.uid);
 
-  // Lock body scroll + hide bottom-nav on iOS when sheet is open
+  // Lock body scroll
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     document.body.classList.add('overlay-open');
@@ -1325,60 +1491,58 @@ function MemberProfileSheet({ profile, onClose, currentUser, onStartPrivateChat 
     };
   }, []);
 
+  // Check if already have conversation or pending request with this user
   useEffect(() => {
-    if (profile.isAnon) return;
+    if (!profile.uid || !currentUser?.uid || profile.isAnon) { setLoading(false); return; }
     const check = async () => {
       try {
-        const qChats = query(collection(db, 'privateChats'), where('participants', 'array-contains', currentUser.uid));
-        const snap   = await getDocs(qChats);
-        let foundChat = null;
-        const isFriend = snap.docs.some(d => {
-          const data = d.data();
-          const matches = data.participants?.includes(profile.uid);
-          if (matches) {
-            const otherUid  = data.participants.find(id => id !== currentUser.uid);
-            const otherUser = data.participantData[otherUid];
-            foundChat = { id: d.id, name: otherUser.name, isPrivate: true, otherUser };
-          }
-          return matches;
-        });
-        if (isFriend) { setStatus('friends'); setExistingChat(foundChat); return; }
-
-        const [sentSnap, recvSnap] = await Promise.all([
-          getDocs(query(collection(db, 'friendRequests'), where('senderId', '==', currentUser.uid), where('receiverId', '==', profile.uid), where('status', '==', 'pending'))),
-          getDocs(query(collection(db, 'friendRequests'), where('senderId', '==', profile.uid), where('receiverId', '==', currentUser.uid), where('status', '==', 'pending'))),
-        ]);
-        if (!sentSnap.empty || !recvSnap.empty) setStatus('pending');
+        // Check conversations
+        const convSnap = await getDocs(
+          query(collection(db, 'conversations'), where('participantIds', 'array-contains', currentUser.uid))
+        );
+        const conv = convSnap.docs.find(d => d.data().participantIds?.includes(profile.uid));
+        if (conv) {
+          setHasConversation(true);
+          setExistingConv({ id: conv.id, ...conv.data() });
+          return;
+        }
+        // Check pending dmRequest
+        const reqSnap = await getDocs(
+          query(
+            collection(db, 'dmRequests'),
+            where('fromUserId', '==', currentUser.uid),
+            where('toUserId',   '==', profile.uid),
+            where('status',     '==', 'pending'),
+          )
+        );
+        if (!reqSnap.empty) setHasPending(true);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     };
     check();
-  }, [profile.uid, currentUser.uid, profile.isAnon]);
+  }, [profile.uid, currentUser?.uid, profile.isAnon]);
 
-  const sendRequest = async () => {
-    if (sendingRequest) return;
-    setSendingRequest(true);
-    try {
-      await addDoc(collection(db, 'friendRequests'), {
-        senderId: currentUser.uid, senderName: currentUser.name,
-        senderPhoto: currentUser.photo, senderBaby: currentUser.baby,
-        receiverId: profile.uid, status: 'pending', createdAt: serverTimestamp()
-      });
-      setStatus('pending');
-    } catch (e) { console.error(e); }
-    finally { setSendingRequest(false); }
-  };
-
-  const handlePrivateChat = async () => {
-    if (status === 'friends' && existingChat) onStartPrivateChat(existingChat);
-    else await sendRequest();
+  const handleDMAction = () => {
+    if (hasConversation && existingConv) {
+      // Open existing conversation directly
+      onStartPrivateChat?.(existingConv);
+      onClose();
+      return;
+    }
+    // Open DM request sheet
+    onSendDMRequest?.({
+      uid:   profile.uid,
+      name:  profile.name,
+      photo: profile.photo,
+      baby:  profile.baby,
+    });
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="member-profile-sheet" onClick={e => e.stopPropagation()}>
         <div className="sheet-handle" />
-        <button className="sheet-close-btn" onClick={onClose}><CloseIcon /></button>
+        <button className="sheet-close-btn" onClick={onClose} aria-label="Đóng"><CloseIcon /></button>
 
         {profile.isAnon ? (
           <div className="anon-profile-container">
@@ -1395,23 +1559,44 @@ function MemberProfileSheet({ profile, onClose, currentUser, onStartPrivateChat 
           <div className="member-profile-container">
             <Avatar name={profile.name} photo={profile.photo} size={72} />
             <h3 className="member-name">{profile.name}</h3>
-            <p className="member-role">{profile.baby ? `Mẹ của ${profile.baby}` : 'Thành viên Montessori AI'}</p>
+            <p className="member-role">
+              {profile.baby ? `Mẹ của ${profile.baby}` : 'Thành viên Montessori AI'}
+            </p>
+
             <div className="sheet-actions">
               {loading ? (
-                <div className="loading-status">Đang tải...</div>
+                <div className="loading-status">Đang kiểm tra...</div>
+              ) : hasConversation ? (
+                <>
+                  <button className="action-btn chat-btn" onClick={handleDMAction}>
+                    Mở cuộc trò chuyện
+                  </button>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0', textAlign: 'center' }}>
+                    Bạn đã có cuộc trò chuyện với mẹ này.
+                  </p>
+                </>
+              ) : hasPending ? (
+                <>
+                  <button className="action-btn friend-btn status-pending" disabled>
+                    Đã gửi lời mời
+                  </button>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0', textAlign: 'center' }}>
+                    Đang chờ mẹ kia phản hồi.
+                  </p>
+                </>
               ) : (
-                <div className="actions-grid">
-                  {status === 'friends' ? (
-                    <button className="action-btn friend-btn status-friends" disabled>✓ Bạn bè</button>
-                  ) : status === 'pending' ? (
-                    <button className="action-btn friend-btn status-pending" disabled>Đã gửi yêu cầu</button>
-                  ) : (
-                    <button className="action-btn friend-btn" onClick={sendRequest} disabled={sendingRequest}>
-                      {sendingRequest ? 'Đang gửi...' : 'Kết bạn'}
-                    </button>
-                  )}
-                  <button className="action-btn chat-btn" onClick={handlePrivateChat}>Nhắn tin riêng</button>
-                </div>
+                <>
+                  <button
+                    className="action-btn chat-btn"
+                    onClick={handleDMAction}
+                    disabled={!profile.uid || !onSendDMRequest}
+                  >
+                    Gửi lời mời nhắn tin
+                  </button>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '8px 0 0', textAlign: 'center', lineHeight: 1.5 }}>
+                    Lời mời sẽ được gửi đến mẹ. Tin nhắn chỉ bắt đầu khi cả hai đồng ý.
+                  </p>
+                </>
               )}
             </div>
           </div>
