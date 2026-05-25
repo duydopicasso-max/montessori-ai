@@ -109,19 +109,20 @@ export default function DMRequestSheet({ toUser, currentUser, onClose, onSent })
     setError('');
 
     try {
-      // Check if request already exists (pending)
+      // Check if request already exists — use 2 fields only (no composite index needed)
       const existingQ = query(
         collection(db, 'dmRequests'),
         where('fromUserId', '==', currentUser.uid),
-        where('toUserId', '==', toUser.uid),
-        where('status', '==', 'pending'),
+        where('toUserId',   '==', toUser.uid),
       );
       const existing = await getDocs(existingQ);
-      if (!existing.empty) {
+      const hasPending = existing.docs.some(d => d.data().status === 'pending');
+      if (hasPending) {
         setError('Mẹ đã gửi lời mời cho người này rồi. Vui lòng đợi phản hồi.');
         setSubmitting(false);
         return;
       }
+
 
       await addDoc(collection(db, 'dmRequests'), {
         fromUserId:   currentUser.uid,

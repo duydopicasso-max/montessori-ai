@@ -215,33 +215,43 @@ export default function CommunityScreen({ profile }) {
   useEffect(() => {
     if (!user?.uid) return;
 
-    // Subscribe dmRequests where toUserId == me and status == pending
+    // Subscribe dmRequests — no orderBy to avoid composite index requirement
     const qReqs = query(
       collection(db, 'dmRequests'),
       where('toUserId', '==', user.uid),
       where('status', '==', 'pending'),
-      orderBy('createdAt', 'desc'),
     );
     const unsubReqs = onSnapshot(qReqs, snap => {
-      setDmRequests(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const sorted = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => {
+          const ta = a.createdAt?.toMillis?.() ?? 0;
+          const tb = b.createdAt?.toMillis?.() ?? 0;
+          return tb - ta;
+        });
+      setDmRequests(sorted);
     }, err => console.error('dmRequests sub error:', err));
 
-    // Subscribe conversations where participantIds contains me, not hidden
+    // Subscribe conversations — no orderBy to avoid composite index requirement
     const qConvs = query(
       collection(db, 'conversations'),
       where('participantIds', 'array-contains', user.uid),
-      orderBy('lastMessageAt', 'desc'),
     );
     const unsubConvs = onSnapshot(qConvs, snap => {
-      setConversations(
-        snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter(c => !c.hiddenFor?.includes(user.uid))
-      );
+      const sorted = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(c => !c.hiddenFor?.includes(user.uid))
+        .sort((a, b) => {
+          const ta = a.lastMessageAt?.toMillis?.() ?? 0;
+          const tb = b.lastMessageAt?.toMillis?.() ?? 0;
+          return tb - ta;
+        });
+      setConversations(sorted);
     }, err => console.error('conversations sub error:', err));
 
     return () => { unsubReqs(); unsubConvs(); };
   }, [user?.uid]);
+
 
   /* ── Accept DM request → create conversation ── */
   const acceptDMRequest = async (req) => {

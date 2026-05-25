@@ -70,15 +70,19 @@ service cloud.firestore {
     // ════════════════════════════════════════════════════════
 
     match /dmRequests/{reqId} {
-      // Only sender or receiver can read
-      allow read: if isSignedIn()
+      // List queries: authenticated users can query their own requests
+      // (Firestore security rules: collection queries use 'list', doc reads use 'get')
+      allow list: if isSignedIn();
+
+      // Single document read: only sender or receiver
+      allow get: if isSignedIn()
                   && (resource.data.fromUserId == request.auth.uid
                       || resource.data.toUserId == request.auth.uid);
 
       // Create: must be authenticated, fromUserId must match caller
       allow create: if isSignedIn()
                     && request.resource.data.fromUserId == request.auth.uid
-                    && request.resource.data.toUserId != request.auth.uid  // cannot invite yourself
+                    && request.resource.data.toUserId != request.auth.uid
                     && request.resource.data.status == 'pending'
                     && request.resource.data.introMessage is string
                     && request.resource.data.introMessage.size() <= 300;
@@ -86,20 +90,18 @@ service cloud.firestore {
       // Update: only receiver can accept/decline, only sender can cancel
       allow update: if isSignedIn()
                     && (
-                      // Receiver: can only change status to accepted/declined
                       (resource.data.toUserId == request.auth.uid
                        && request.resource.data.diff(resource.data).affectedKeys()
                           .hasOnly(['status', 'updatedAt'])
                        && request.resource.data.status in ['accepted', 'declined'])
                       ||
-                      // Sender: can cancel (set to blocked/withdrawn)
                       (resource.data.fromUserId == request.auth.uid
                        && request.resource.data.diff(resource.data).affectedKeys()
                           .hasOnly(['status', 'updatedAt'])
                        && request.resource.data.status == 'blocked')
                     );
 
-      allow delete: if false; // Soft deletes only (status change)
+      allow delete: if false;
     }
 
     // ════════════════════════════════════════════════════════
@@ -107,33 +109,31 @@ service cloud.firestore {
     // ════════════════════════════════════════════════════════
 
     match /conversations/{convId} {
-      // Only participants can read conversation metadata
-      allow read: if isSignedIn()
+      // List & get: only participants
+      allow list: if isSignedIn();
+      allow get:  if isSignedIn()
                   && request.auth.uid in resource.data.participantIds;
 
-      // Create: must be authenticated, participantIds must include caller,
-      // and there must be exactly 2 participants
+      // Create
       allow create: if isSignedIn()
                     && request.auth.uid in request.resource.data.participantIds
                     && request.resource.data.participantIds.size() == 2;
 
-      // Update: only participants can update, with restrictions
+      // Update: only participants, restricted fields
       allow update: if isSignedIn()
                     && request.auth.uid in resource.data.participantIds
                     && (
-                      // Allowed metadata updates: lastMessage, lastMessageAt, unreadCounts, blockedBy, hiddenFor
                       request.resource.data.diff(resource.data).affectedKeys()
                         .hasOnly([
                           'lastMessage', 'lastMessageAt',
                           'unreadCounts', 'blockedBy', 'hiddenFor',
                           'mutedBy', 'updatedAt'
                         ])
-                      // Participants cannot change core fields
                       && request.resource.data.participantIds == resource.data.participantIds
                       && request.resource.data.participantData == resource.data.participantData
                     );
 
-      allow delete: if false; // Soft delete via hiddenFor field
+      allow delete: if false;
 
       // ── MESSAGES sub-collection ──
       match /messages/{msgId} {

@@ -153,14 +153,14 @@ export default function UserProfileSheet({
           setDmStatus('accepted');
           setExistingConv(conv);
         } else {
-          /* Check pending dmRequest I sent */
+          /* Check pending dmRequest I sent — 2 fields only, no composite index */
           const reqSnap = await getDocs(query(
             collection(db, 'dmRequests'),
             where('fromUserId', '==', currentUser.uid),
             where('toUserId',   '==', user.uid),
-            where('status',     '==', 'pending'),
           ));
-          if (!reqSnap.empty) setDmStatus('pending');
+          const hasPending = reqSnap.docs.some(d => d.data().status === 'pending');
+          if (hasPending) setDmStatus('pending');
         }
 
         /* 2. Fetch Firestore user profile (optional, graceful fallback) */
