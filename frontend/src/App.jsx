@@ -241,7 +241,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="loading-screen">
-        <img src="/icon-512.png" className="loading-logo-img" alt="logo" />
+        <img src={`${import.meta.env.BASE_URL}icon-512.png`} className="loading-logo-img" alt="logo" />
         <div className="loading-spinner" />
         <div className="loading-text">Đang tải...</div>
       </div>
@@ -266,7 +266,7 @@ export default function App() {
       {activeTab !== 'chat' && (
         <div className="top-bar">
           <div className="top-bar-brand">
-            <img src="/icon-192.png" className="top-bar-logo-img" alt="logo" />
+            <img src={`${import.meta.env.BASE_URL}icon-192.png`} className="top-bar-logo-img" alt="logo" />
             <div>
               <div className="top-bar-name">Montessori AI</div>
               <div className="top-bar-sub">Trợ lý mẹ & bé</div>
@@ -288,7 +288,7 @@ export default function App() {
       {/* ── SIDEBAR (desktop) ── */}
       <aside className="sidebar-desktop">
         <div className="sidebar-brand-desk">
-          <img src="/icon-192.png" className="sidebar-logo-img" alt="logo" />
+          <img src={`${import.meta.env.BASE_URL}icon-192.png`} className="sidebar-logo-img" alt="logo" />
           <div>
             <div className="sidebar-brand-name">Montessori AI</div>
             <div className="sidebar-brand-sub">Trợ lý mẹ & bé</div>
