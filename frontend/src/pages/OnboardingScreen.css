@@ -21,10 +21,13 @@
   animation: slideUp 0.5s var(--ease-smooth);
 }
 
-.onboarding-logo {
-  font-size: 48px;
-  text-align: center;
-  margin-bottom: 24px;
+.onboarding-logo-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto 24px;
   animation: float 3s ease-in-out infinite;
 }
 

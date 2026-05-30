@@ -975,18 +975,38 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
 
               {/* Field: Tuổi thai tại ngày khám */}
               <div className="cs-field-group">
-                <label className="cs-label">Tuổi thai tại ngày khám</label>
+                <label className="cs-label">TUỔI THAI TẠI NGÀY KHÁM</label>
                 {edd ? (
-                  <div className="cs-computed-age-box">
-                    <span className="cs-computed-age-value">
-                      {computedWeek !== null ? `Tuần ${computedWeek} + ${computedDay} ngày` : '—'}
-                    </span>
-                    <span className="cs-computed-age-source">Tự động tính từ Ngày dự sinh</span>
+                  <div className="cs-computed-age-box" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {computedWeek !== null ? (
+                      <>
+                        <span className="cs-computed-age-value" style={{ fontSize: '15px', fontWeight: '700', color: '#1F2D26', display: 'block' }}>
+                          Tuần {computedWeek} + {computedDay} ngày
+                        </span>
+                        <span className="cs-computed-age-source" style={{ fontSize: '12.5px', color: '#7B8A82', fontWeight: '500', display: 'block', lineHeight: '1.4' }}>
+                          Tuổi thai được tính tự động dựa vào ngày dự sinh.
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="cs-computed-age-value" style={{ fontSize: '15px', fontWeight: '700', color: '#8C9C90', display: 'block', fontStyle: 'italic' }}>
+                          Chưa xác định tuổi thai
+                        </span>
+                        <span className="cs-computed-age-source" style={{ fontSize: '12.5px', color: '#7B8A82', fontWeight: '500', display: 'block', lineHeight: '1.4' }}>
+                          Mẹ có thể cập nhật ngày dự sinh trong hồ sơ thai kỳ.
+                        </span>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="cs-manual-age-container">
-                    <div className="cs-manual-age-warning">
-                      <span>Thêm ngày dự sinh để app tính tuần thai chính xác hơn.</span>
+                    <div className="cs-manual-age-warning" style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: '#F4F7F5', padding: '12px 16px', borderRadius: '12px', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '15px', fontWeight: '700', color: '#8C9C90', display: 'block', fontStyle: 'italic' }}>
+                        Chưa xác định tuổi thai
+                      </span>
+                      <span style={{ fontSize: '12.5px', color: '#7B8A82', fontWeight: '500', display: 'block', lineHeight: '1.4' }}>
+                        Mẹ có thể cập nhật ngày dự sinh trong hồ sơ thai kỳ.
+                      </span>
                     </div>
                     <div className="cs-manual-age-selectors">
                       <div className="cs-manual-selector-field">
@@ -1318,10 +1338,7 @@ export default function CheckupSheet({ open, onClose, onSave, existingVisit = nu
                   Đang lưu...
                 </>
               ) : (
-                <>
-                  <CheckIcon size={16} />
-                  {existingVisit ? 'Cập nhật ghi nhận khám' : 'Lưu ghi nhận khám thai'}
-                </>
+                existingVisit ? 'Cập nhật ghi nhận khám' : 'Lưu ghi nhận khám thai'
               )}
             </button>
           </div>

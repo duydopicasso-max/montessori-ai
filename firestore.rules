@@ -178,6 +178,29 @@ service cloud.firestore {
     }
 
     // ════════════════════════════════════════════════════════
+    // USERS & THEIR PRIVATE DATA
+    // ════════════════════════════════════════════════════════
+
+    match /users/{userId} {
+      // Authenticated users can read basic profile details for community views
+      allow read: if isSignedIn();
+      // Only the owner can modify their profile details
+      allow write: if isSignedIn() && request.auth.uid == userId;
+
+      // Owner private subcollections (babies, pregnancyVisits, moments, reminders, etc.)
+      match /{privateData=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    match /blockedUsers/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // ════════════════════════════════════════════════════════
     // CATCH-ALL: Deny everything else
     // ════════════════════════════════════════════════════════
 

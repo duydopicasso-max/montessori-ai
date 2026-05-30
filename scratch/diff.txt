@@ -1,0 +1,71 @@
+Created At: 2026-05-30T03:52:04Z
+Completed At: 2026-05-30T03:52:06Z
+
+				The command completed successfully.
+				Output:
+				<truncated 1 lines>
+-            <ResponsiveContainer width="100%" height={240}>
+-              <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: -10, bottom: 8 }}>
+-                <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
+-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
+-                <YAxis tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
+-                <Tooltip content={<CustomTooltip chartTab={chartTab} />} />
+-                {hasWHO && (
+-                  <>
+-                    <Area type="monotone" dataKey="lower" stackId="who"
+-                      fill="rgba(240,236,230,0.6)" stroke="rgba(200,210,200,0.4)" strokeWidth={1}
+-                      dot={false} name="lower" />
+-                    <Area type="monotone" dataKey="band" stackId="who"
+-                      fill="rgba(95,175,130,0.12)" stroke="rgba(95,175,130,0.3)" strokeWidth={1}
+-                      dot={false} name="band" />
+-                  </>
+-                )}
+-                {hasActual && (
+-                  <Line type="monotone" dataKey="actual" stroke={chartColors[chartTab]}
+-                    strokeWidth={2.5}
+-                    dot={({ cx, cy, payload }) =>
+-                      payload.actual != null ? (
+-                        <g key={`dot-${cx}`}>
+-                          <circle cx={cx} cy={cy} r={5} fill={chartColors[chartTab]}
+-                            stroke="white" strokeWidth={2} />
+-                        </g>
+-                      ) : <g key={`dot-${cx}`} />
+-                    }
+-                    activeDot={{ r: 7 }}
+-                    name="actual"
+-                    connectNulls={false}
++            <div className="chart-container-relative" style={{ position: 'relative' }}>
++              <span style={{ position: 'abso
+<truncated 4230 bytes>
+-between', alignItems: 'center' }}>
+-                  <div className="measure-item-left">
+-                    <span className="measure-date">{fmtDate(l.date) || '—'}</span>
+-                    {logAge && <span className="measure-age">{logAge}</span>}
++                  <span className="measure-date">{fmtDate(l.date) || '—'}</span>
++                  <div className="visit-actions">
++                    <button type="button" className="visit-action-btn edit-btn" onClick={() => onEditLog(l)}>Sửa</button>
++                    <button type="button" className="visit-action-btn delete-btn" onClick={() => onDeleteLog(l)}>Xóa</button>
+                   </div>
+-                  <div className="measure-item-right">
+-                    {l.weight && <span className="measure-val">{l.weight} kg</span>}
+-                    {l.height && <span className="measure-val">{l.height} cm</span>}
+-                    {l.head   && <span className="measure-val head-val">{l.head} cm đầu</span>}
++                </div>
++                {logAge && (
++                  <div style={{ marginTop: '-4px' }}>
++                    <span className="measure-age">{logAge}</span>
+                   </div>
++                )}
++                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px' }}>
++                  {l.weight && <span className="measure-val">{l.weight} kg</span>}
++                  {l.height && <span className="measure-val">{l.height} cm</span>}
++                  {l.head   && <span className="measure-val head-val">{l.head} cm đầu</span>}
+                 </div>
+                 {l.note && (
+-                  <div className="measure-item-note" style={{ fontSize: '12.5px', color: '#687E70', fontStyle: 'italic', marginTop: '-2px', paddingLeft: '2px' }}>
++                  <div className="measure-item-note" style={{ fontSize: '12.5px', color: '#687E70', fontStyle: 'italic', marginTop: '2px', paddingLeft: '2px' }}>
+                     📝 {l.note}
+                   </div>
+                 )}
+
+

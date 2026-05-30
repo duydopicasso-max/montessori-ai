@@ -600,7 +600,7 @@ export default function TrackerScreen({ profile }) {
                 </div>
 
                 <button type="submit" className="submit-btn-sage">
-                  💾 Lưu Cân Nặng
+                  Lưu Cân Nặng
                 </button>
               </form>
             </div>
@@ -668,7 +668,7 @@ export default function TrackerScreen({ profile }) {
                     className="save-kicks-btn-full"
                     onClick={savePregKickLog}
                   >
-                    💾 Lưu buổi đếm này
+                    Lưu buổi đếm này
                   </button>
                 )}
 
@@ -870,7 +870,7 @@ export default function TrackerScreen({ profile }) {
                 )}
 
                 <button type="submit" className="submit-btn-sage" style={{ marginTop: '16px' }}>
-                  💾 Ghi Nhận Cữ Ăn
+                  Ghi Nhận Cữ Ăn
                 </button>
               </form>
             </div>
@@ -978,7 +978,7 @@ export default function TrackerScreen({ profile }) {
                   </div>
 
                   <button type="submit" className="submit-btn-sage">
-                    💾 Lưu Lịch Sử Thay Bỉm
+                    Lưu Lịch Sử Thay Bỉm
                   </button>
                 </form>
               </div>

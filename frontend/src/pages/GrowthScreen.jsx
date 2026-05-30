@@ -27,6 +27,77 @@ import {
 } from '../icons.jsx';
 
 /* ── Inline SVG Icons ── */
+const isCustomBabyPhoto = (url) => {
+  if (!url || typeof url !== 'string') return false;
+  if (url.includes('googleusercontent.com/a/')) return false;
+  return true;
+};
+
+const BabyLeafIcon = ({ size = 24, gender = 'neutral' }) => {
+  const strokeColor = gender === 'boy' ? '#4A6FA5' : gender === 'girl' ? '#A26A81' : '#2F6B4F';
+  const bgColor = gender === 'boy' ? 'rgba(95, 150, 180, 0.08)' : gender === 'girl' ? 'rgba(220, 150, 170, 0.08)' : 'rgba(95, 175, 130, 0.08)';
+
+  return (
+    <div style={{
+      width: '100%',
+      height: '100%',
+      borderRadius: '50%',
+      backgroundColor: bgColor,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxSizing: 'border-box'
+    }}>
+      <svg width="55%" height="55%" viewBox="0 0 24 24" fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+        <path d="M12 20V12" />
+        <path d="M12 12C12.5 10 14 9.5 15.5 8.5C17 7.5 18 6 18 4C16 4 14.5 5 13.5 6.5C12.5 7.5 12 9 12 12Z" fill={strokeColor} opacity="0.15" />
+        <path d="M12 12C12.5 10 14 9.5 15.5 8.5C17 7.5 18 6 18 4C16 4 14.5 5 13.5 6.5C12.5 7.5 12 9 12 12Z" />
+        <path d="M12 14C11.5 12.5 10 12 8.5 11C7 10 6 8.5 6 6.5C8 6.5 9.5 7.5 10.5 9C11.5 10 12 11.5 12 14Z" />
+      </svg>
+    </div>
+  );
+};
+
+const BabyAvatar = ({ photoURL, gender, size = 24 }) => {
+  const isBoy = gender === 'boy';
+  const isGirl = gender === 'girl';
+  
+  if (isCustomBabyPhoto(photoURL)) {
+    return (
+      <img 
+        src={photoURL} 
+        className="baby-avatar-photo" 
+        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+        alt="Bé" 
+      />
+    );
+  }
+  
+  if (isBoy) {
+    return (
+      <img 
+        src="/baby-boy.png" 
+        className="baby-avatar-photo default-avatar-designer" 
+        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+        alt="Bé trai" 
+      />
+    );
+  }
+  
+  if (isGirl) {
+    return (
+      <img 
+        src="/baby-girl.png" 
+        className="baby-avatar-photo default-avatar-designer" 
+        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
+        alt="Bé gái" 
+      />
+    );
+  }
+  
+  return <BabyLeafIcon size={size} gender="neutral" />;
+};
+
 const LineChartIcon = ({ size = 24, strokeWidth = 1.8 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -119,7 +190,7 @@ const CustomTooltip = ({ active, payload, label, chartTab }) => {
         {formattedDate && <div style={{ color: '#888888', fontWeight: '600', marginBottom: '4px' }}>{formattedDate}</div>}
         <div style={{ color: '#2F6B4F', fontWeight: '700', marginBottom: '6px' }}>{friendlyAge}</div>
         <div style={{ fontWeight: '800', color: '#1E4A33', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>{chartTab === 'weight' ? 'Cân nặng:' : 'Chiều cao:'}</span>
+          <span>{chartTab === 'weight' ? 'Cân nặng:' : chartTab === 'height' ? 'Chiều cao:' : 'Chu vi đầu:'}</span>
           <span style={{ color: '#5FAF82' }}>{data.actual} {unit}</span>
         </div>
       </div>
@@ -261,6 +332,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     weight: '', height: '', head: '', note: ''
   });
   const [saving, setSaving]       = useState(false);
+  const [editingMeasureId, setEditingMeasureId] = useState(null);
   const [editField, setEditField] = useState(null);
   const [editVal, setEditVal]     = useState('');
   const [chartTab, setChartTab]   = useState('weight');
@@ -270,6 +342,9 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
   const [activePendingDeleteIds, setActivePendingDeleteIds] = useState([]);
   const [visitToDelete, setVisitToDelete] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteMeasureConfirm, setShowDeleteMeasureConfirm] = useState(false);
+  const [measureToDeleteId, setMeasureToDeleteId] = useState(null);
+  const [isDeletingMeasure, setIsDeletingMeasure] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastType, setToastType] = useState('delete'); // 'delete' | 'error'
@@ -374,7 +449,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
 
   /* ── Body class effects for active modals — NO overflow:hidden (iOS Safari bug) ── */
   useEffect(() => {
-    const isModalOpen = showDeleteConfirm || showEditProfileModal || showEddCalendar || showDobCalendar || showMeasureDateCalendar || showRecalcModal;
+    const isModalOpen = showDeleteConfirm || showEditProfileModal || showEddCalendar || showDobCalendar || showMeasureDateCalendar || showRecalcModal || showMeasureForm || showDeleteMeasureConfirm;
     if (isModalOpen) {
       // Do NOT set overflow:hidden — iOS Safari freezes touch events on fixed elements
       document.body.classList.add('cs-modal-open');
@@ -387,7 +462,7 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       document.body.classList.remove('cs-modal-open');
       document.body.classList.remove('overlay-open');
     };
-  }, [showDeleteConfirm, showEditProfileModal, showEddCalendar, showDobCalendar, showMeasureDateCalendar, showRecalcModal]);
+  }, [showDeleteConfirm, showEditProfileModal, showEddCalendar, showDobCalendar, showMeasureDateCalendar, showRecalcModal, showMeasureForm, showDeleteMeasureConfirm]);
 
 
   /* ── Resolved baby ── */
@@ -774,9 +849,17 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
         createdAt: serverTimestamp(),
       };
       
-      // 1. Write to growthLogs
-      const docRef = await addDoc(collection(db, 'users', userId, 'babies', targetBabyId, 'growthLogs'), entry);
-      const savedEntry = { id: docRef.id, ...entry };
+      let savedEntry;
+      if (editingMeasureId) {
+        // Update existing measurement
+        await updateDoc(doc(db, 'users', userId, 'babies', targetBabyId, 'growthLogs', editingMeasureId), entry);
+        savedEntry = { id: editingMeasureId, ...entry };
+        setEditingMeasureId(null);
+      } else {
+        // Create new measurement
+        const docRef = await addDoc(collection(db, 'users', userId, 'babies', targetBabyId, 'growthLogs'), entry);
+        savedEntry = { id: docRef.id, ...entry };
+      }
 
       // 2. Write to activityLogs for Home card and ChatScreen timeline
       let detailParts = [];
@@ -786,8 +869,8 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       
       const metricsText = detailParts.join(', ');
       const activityNote = noteVal 
-        ? `Đã cập nhật số đo (${metricsText}) · ${noteVal}` 
-        : `Đã cập nhật số đo (${metricsText})`;
+        ? `${editingMeasureId ? 'Đã cập nhật' : 'Đã thêm'} số đo (${metricsText}) · ${noteVal}` 
+        : `${editingMeasureId ? 'Đã cập nhật' : 'Đã thêm'} số đo (${metricsText})`;
 
       const formattedTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
       const activityLogRef = doc(collection(db, 'users', userId, 'babies', targetBabyId, 'activityLogs'));
@@ -805,14 +888,63 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
       
       setBabyLogs(prev => {
         const currentLogs = prev[targetBabyId] || [];
-        const newLogs = [...currentLogs, savedEntry].sort((a, b) => a.date.localeCompare(b.date));
+        const filteredLogs = editingMeasureId
+          ? currentLogs.filter(l => l.id !== editingMeasureId)
+          : currentLogs;
+        const newLogs = [...filteredLogs, savedEntry].sort((a, b) => a.date.localeCompare(b.date));
         return { ...prev, [targetBabyId]: newLogs };
       });
 
       setMeasureForm({ date: new Date().toISOString().split('T')[0], weight: '', height: '', head: '', note: '' });
       setShowMeasureForm(false);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      alert("Chưa thể cập nhật. Mẹ thử lại nhé.");
+    }
     finally { setSaving(false); }
+  };
+
+  const handleDeleteMeasure = (logId) => {
+    setMeasureToDeleteId(logId);
+    setShowDeleteMeasureConfirm(true);
+  };
+
+  const handleConfirmDeleteMeasure = async () => {
+    const targetIdx = typeof selectedBaby === 'number' ? selectedBaby : 0;
+    const targetBaby = babies[targetIdx] || {};
+    const targetBabyId = targetBaby.id || targetBaby.name?.toLowerCase().replace(/\s+/g, '-') || `baby-${targetIdx}`;
+    if (!userId || !targetBabyId || !measureToDeleteId) return;
+
+    setIsDeletingMeasure(true);
+    try {
+      await deleteDoc(doc(db, 'users', userId, 'babies', targetBabyId, 'growthLogs', measureToDeleteId));
+      setBabyLogs(prev => {
+        const currentLogs = prev[targetBabyId] || [];
+        const newLogs = currentLogs.filter(item => item.id !== measureToDeleteId);
+        return { ...prev, [targetBabyId]: newLogs };
+      });
+      setShowDeleteMeasureConfirm(false);
+      setMeasureToDeleteId(null);
+    } catch (e) {
+      console.error("Xóa lần đo thất bại:", e);
+      alert("Chưa thể cập nhật. Mẹ thử lại nhé.");
+    } finally {
+      setIsDeletingMeasure(false);
+    }
+  };
+
+  const handleEditClick = (log) => {
+    setEditingMeasureId(log.id);
+    setMeasureForm({
+      date: log.date || new Date().toISOString().split('T')[0],
+      weight: log.weight || '',
+      height: log.height || '',
+      head: log.head || '',
+      note: log.note || ''
+    });
+    const targetIdx = typeof selectedBaby === 'number' ? selectedBaby : 0;
+    setMeasureFormBabyIndex(targetIdx);
+    setShowMeasureForm(true);
   };
 
   /* ── Save pregnancy visit (via CheckupSheet) ── */
@@ -1320,53 +1452,51 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
     if (!dob) return [];
     const whoRef = (gender === 'boy' || gender === 'girl') ? (getWHOData(gender, type) || []) : [];
     
-    // Collect actual points with real values (no grouping by months)
-    const actualPoints = logs.map(l => {
-      if (!l.date) return null;
-      const val = type === 'weight' ? l.weight : type === 'height' ? l.height : l.head;
-      if (val === undefined || val === null || val === '') return null;
-      const exactAge = (new Date(l.date) - new Date(dob)) / (1000 * 60 * 60 * 24 * 30.4375);
-      return {
-        isActual: true,
-        exactAge,
-        date: l.date,
-        val: parseFloat(val)
-      };
-    }).filter(p => p !== null);
-    
-    const maxActualAge = actualPoints.length > 0 ? Math.max(...actualPoints.map(p => p.exactAge)) : 0;
-    const limitAge = Math.max(12, Math.ceil(maxActualAge) + 3);
-    
-    // Filter WHO reference points
-    const whoPoints = whoRef
-      .filter(r => r.month <= limitAge)
-      .map(r => ({
-        isActual: false,
-        exactAge: r.month,
-        ref: r
+    // Collect actual points with real values — sorted oldest first
+    const actualPoints = logs
+      .map(l => {
+        if (!l.date) return null;
+        const val = type === 'weight' ? l.weight : type === 'height' ? l.height : l.head;
+        if (val === undefined || val === null || val === '') return null;
+        const exactAge = (new Date(l.date) - new Date(dob)) / (1000 * 60 * 60 * 24 * 30.4375);
+        return { isActual: true, exactAge, date: l.date, val: parseFloat(val) };
+      })
+      .filter(p => p !== null)
+      .sort((a, b) => a.exactAge - b.exactAge);
+
+    if (actualPoints.length === 0) {
+      // No measurements — show WHO reference from month 0 to 12 as fallback
+      const whoPoints = whoRef
+        .filter(r => r.month <= 12)
+        .map(r => ({ isActual: false, exactAge: r.month, ref: r }));
+      return whoPoints.map(pt => ({
+        x: pt.exactAge,
+        month: pt.exactAge,
+        label: `${pt.exactAge}th`,
+        lower: pt.ref.sd_n2,
+        band: parseFloat((pt.ref.sd_p2 - pt.ref.sd_n2).toFixed(2)),
+        actual: null,
+        date: null,
+        ageLabel: '',
+        isActualPoint: false
       }));
-      
-    // Combine and sort by exact age (float)
-    const allPoints = [...whoPoints, ...actualPoints].sort((a, b) => a.exactAge - b.exactAge);
-    
-    return allPoints.map(pt => {
-      const age = pt.exactAge;
+    }
+
+    // Keep at most 3 latest measurements
+    const targetPoints = actualPoints.slice(-3);
+    const count = targetPoints.length;
+
+    // Helpers to interpolate WHO values
+    const getWHOAtAge = (age) => {
       let lower = null;
       let band = null;
-      
-      if (!pt.isActual) {
-        lower = pt.ref.sd_n2;
-        band = parseFloat((pt.ref.sd_p2 - pt.ref.sd_n2).toFixed(2));
-      } else {
-        // Interpolate WHO values for float ages
+      if (whoRef.length > 0) {
         const refPrev = whoRef.findLast(r => r.month <= age);
         const refNext = whoRef.find(r => r.month > age);
         if (refPrev && refNext) {
           const t = (age - refPrev.month) / (refNext.month - refPrev.month);
-          const interpLower = refPrev.sd_n2 + t * (refNext.sd_n2 - refPrev.sd_n2);
-          const interpUpper = refPrev.sd_p2 + t * (refNext.sd_p2 - refPrev.sd_p2);
-          lower = interpLower;
-          band = parseFloat((interpUpper - interpLower).toFixed(2));
+          lower = refPrev.sd_n2 + t * (refNext.sd_n2 - refPrev.sd_n2);
+          band = parseFloat(((refPrev.sd_p2 + t * (refNext.sd_p2 - refPrev.sd_p2)) - lower).toFixed(2));
         } else if (refPrev) {
           lower = refPrev.sd_n2;
           band = parseFloat((refPrev.sd_p2 - refPrev.sd_n2).toFixed(2));
@@ -1375,28 +1505,100 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
           band = parseFloat((refNext.sd_p2 - refNext.sd_n2).toFixed(2));
         }
       }
+      return { lower, band };
+    };
+
+    const getAgeLabel = (age, date) => {
+      if (date === dob) return 'Lúc sinh';
+      return formatFriendlyAge(Math.floor(age));
+    };
+
+    // Calculate age mapped to X (0-100) linear scale
+    const getAgeForX = (x) => {
+      const a1 = targetPoints[0].exactAge;
+      if (count === 1) {
+        return Math.max(0, a1 + (x - 50) * 0.1);
+      }
+      const a2 = targetPoints[1].exactAge;
+      if (count === 2) {
+        const slope = (a2 - a1) / 30; // Between 35% and 65% (30% interval)
+        return Math.max(0, a1 + (x - 35) * slope);
+      }
+      const a3 = targetPoints[2].exactAge;
+      if (x <= 25) {
+        const slope = (a2 - a1) / 25;
+        return Math.max(0, a1 + (x - 25) * slope);
+      } else if (x <= 50) {
+        const t = (x - 25) / 25;
+        return a1 + t * (a2 - a1);
+      } else if (x <= 75) {
+        const t = (x - 50) / 25;
+        return a2 + t * (a3 - a2);
+      } else {
+        const slope = (a3 - a2) / 25;
+        return Math.max(0, a3 + (x - 75) * slope);
+      }
+    };
+
+    // Dense grid of X-coordinates for a smooth curve
+    let xCoords = [];
+    if (count === 3) {
+      xCoords = [0, 10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90, 100];
+    } else if (count === 2) {
+      xCoords = [0, 10, 20, 30, 35, 40, 50, 60, 65, 70, 80, 90, 100];
+    } else {
+      xCoords = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+    }
+
+    return xCoords.map(x => {
+      const age = getAgeForX(x);
+      const { lower, band } = getWHOAtAge(age);
       
-      const isInteger = Number.isInteger(age);
-      const label = isInteger ? `${age}th` : '';
-      
+      let actualVal = null;
+      let date = null;
       let ageLabel = '';
-      if (pt.isActual) {
-        if (pt.date === dob) {
-          ageLabel = 'Lúc sinh';
-        } else {
-          ageLabel = formatFriendlyAge(Math.round(age));
+      
+      if (count === 3) {
+        if (x === 25) {
+          actualVal = targetPoints[0].val;
+          date = targetPoints[0].date;
+          ageLabel = getAgeLabel(age, date);
+        } else if (x === 50) {
+          actualVal = targetPoints[1].val;
+          date = targetPoints[1].date;
+          ageLabel = getAgeLabel(age, date);
+        } else if (x === 75) {
+          actualVal = targetPoints[2].val;
+          date = targetPoints[2].date;
+          ageLabel = getAgeLabel(age, date);
+        }
+      } else if (count === 2) {
+        if (x === 35) {
+          actualVal = targetPoints[0].val;
+          date = targetPoints[0].date;
+          ageLabel = getAgeLabel(age, date);
+        } else if (x === 65) {
+          actualVal = targetPoints[1].val;
+          date = targetPoints[1].date;
+          ageLabel = getAgeLabel(age, date);
+        }
+      } else {
+        if (x === 50) {
+          actualVal = targetPoints[0].val;
+          date = targetPoints[0].date;
+          ageLabel = getAgeLabel(age, date);
         }
       }
-      
+
       return {
+        x,
         month: age,
-        label,
         lower,
         band,
-        actual: pt.isActual ? pt.val : null,
-        date: pt.isActual ? pt.date : null,
+        actual: actualVal,
+        date,
         ageLabel,
-        isActualPoint: pt.isActual
+        isActualPoint: actualVal !== null
       };
     });
   };
@@ -1674,6 +1876,41 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
                 </button>
                 <button type="button" className="cs-confirm-btn cs-confirm-btn--danger" onClick={handleConfirmDelete}>
                   Xóa ghi nhận
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* ── CUSTOM DELETE MEASURE CONFIRM MODAL ── */}
+        {showDeleteMeasureConfirm && createPortal(
+          <div className="cs-modal-overlay" onClick={() => setShowDeleteMeasureConfirm(false)}>
+            <div className="cs-confirm-box" onClick={e => e.stopPropagation()}>
+              <h3 className="cs-confirm-title">Xoá lần đo này?</h3>
+              <p className="cs-confirm-text">Dữ liệu cân nặng, chiều cao và chu vi đầu của lần đo này sẽ bị xoá khỏi lịch sử tăng trưởng của bé.</p>
+              <div className="cs-confirm-actions">
+                <button 
+                  type="button" 
+                  className="cs-confirm-btn cs-confirm-btn--secondary" 
+                  onClick={() => setShowDeleteMeasureConfirm(false)}
+                  disabled={isDeletingMeasure}
+                >
+                  Huỷ
+                </button>
+                <button 
+                  type="button" 
+                  className="cs-confirm-btn cs-confirm-btn--danger" 
+                  onClick={handleConfirmDeleteMeasure}
+                  disabled={isDeletingMeasure}
+                  style={{
+                    backgroundColor: '#E57373',
+                    color: 'white'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#EF5350'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E57373'}
+                >
+                  {isDeletingMeasure ? 'Đang xoá...' : 'Xoá'}
                 </button>
               </div>
             </div>
@@ -2415,6 +2652,10 @@ export default function GrowthScreen({ profile, setActiveTab, pendingAction, onC
             measureFormBabyIndex={measureFormBabyIndex}
             setMeasureFormBabyIndex={setMeasureFormBabyIndex}
             setShowMeasureDateCalendar={setShowMeasureDateCalendar}
+            editingMeasureId={editingMeasureId}
+            setEditingMeasureId={setEditingMeasureId}
+            handleDeleteMeasure={handleDeleteMeasure}
+            handleEditClick={handleEditClick}
           />
         )}
 
@@ -3533,7 +3774,11 @@ function ParentView({
   measureFormBabyIndex,
   setMeasureFormBabyIndex,
   setShowMeasureDateCalendar,
-  handleOpenEditBabyModal
+  handleOpenEditBabyModal,
+  editingMeasureId,
+  setEditingMeasureId,
+  handleDeleteMeasure,
+  handleEditClick
 }) {
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
@@ -3669,102 +3914,122 @@ function ParentView({
   };
 
   const renderMeasureForm = () => {
-    return (
-      <div className="form-card">
-        <div className="form-card-header">
-          <span className="form-card-title">Thêm lần đo</span>
-          <button type="button" className="form-close-btn" onClick={() => setShowMeasureForm(false)}>
-            <CloseIcon />
-          </button>
-        </div>
-
-        {babies.length > 1 && (
-          <div className="form-group form-group-full">
-            <label>Chọn bé</label>
-            <select
-              value={measureFormBabyIndex}
-              onChange={e => setMeasureFormBabyIndex(parseInt(e.target.value))}
-              className="cs-select"
-              style={{
-                width: '100%',
-                padding: '11px 14px',
-                borderRadius: '12px',
-                border: '2px solid var(--cream-dark)',
-                background: 'var(--surface-1)',
-                fontFamily: 'Nunito, sans-serif',
-                fontSize: '15px',
-                fontWeight: 600,
-                outline: 'none',
-                color: 'var(--text-primary)'
-              }}
-              disabled={typeof selectedBaby === 'number'}
-            >
-              {babies.map((b, idx) => (
-                <option key={idx} value={idx}>
-                  {b.name || `Bé ${String.fromCharCode(65 + idx)}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className="form-grid-2">
-          <div className="form-group">
-            <label><CalendarIcon size={13} /> Ngày đo</label>
-            <button
-              type="button"
-              className="cs-date-trigger-btn"
-              style={{ padding: '11px 14px', borderRadius: '12px' }}
-              onClick={() => setShowMeasureDateCalendar(true)}
-            >
-              {fmtDisplay(measureForm.date) || 'Chọn ngày'}
+    const isEditing = !!editingMeasureId;
+    return createPortal(
+      <div className="cs-modal-overlay" onClick={() => { setShowMeasureForm(false); setEditingMeasureId(null); }}>
+        <div className="cs-modal-box" onClick={e => e.stopPropagation()} style={{ overflow: 'visible' }}>
+          <div className="cs-modal-header">
+            <h3 className="cs-modal-title">{isEditing ? 'Chỉnh sửa lần đo' : 'Thêm lần đo'}</h3>
+            <button type="button" className="cs-modal-close" onClick={() => { setShowMeasureForm(false); setEditingMeasureId(null); }}>
+              <CloseIcon size={16} />
             </button>
           </div>
-          <div className="form-group">
-            <label><WeightIcon size={13} /> Cân nặng (kg)</label>
-            <input type="number" step="0.01" placeholder="8.5"
-              value={measureForm.weight}
-              onChange={e => setMeasureForm(f => ({ ...f, weight: e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label><RulerIcon size={13} /> Chiều cao (cm)</label>
-            <input type="number" step="0.1" placeholder="72.5"
-              value={measureForm.height}
-              onChange={e => setMeasureForm(f => ({ ...f, height: e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label><HeadCircleIcon size={13} /> Chu vi đầu (cm)</label>
-            <input type="number" step="0.1" placeholder="44.0"
-              value={measureForm.head}
-              onChange={e => setMeasureForm(f => ({ ...f, head: e.target.value }))} />
-          </div>
-          <div className="form-group form-group-full" style={{ gridColumn: 'span 2' }}>
-            <label>Ghi chú</label>
-            <input type="text" placeholder="Ví dụ: Bé khỏe mạnh, mọc răng..."
-              value={measureForm.note || ''}
-              onChange={e => setMeasureForm(f => ({ ...f, note: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: '11px 14px',
-                borderRadius: '12px',
-                border: '2px solid var(--cream-dark)',
-                background: 'var(--surface-1)',
-                fontFamily: 'Nunito, sans-serif',
-                fontSize: '15px',
-                outline: 'none',
-                color: 'var(--text-primary)'
-              }} />
+          <div className="cs-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {babies.length > 1 && (
+              <div className="cs-field-group">
+                <label className="cs-label">Chọn bé</label>
+                <select
+                  value={measureFormBabyIndex}
+                  onChange={e => setMeasureFormBabyIndex(parseInt(e.target.value))}
+                  className="cs-select"
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '12px',
+                    border: '2px solid var(--cream-dark)',
+                    background: 'var(--surface-1)',
+                    fontFamily: 'Nunito, sans-serif',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    outline: 'none',
+                    color: 'var(--text-primary)'
+                  }}
+                  disabled={typeof selectedBaby === 'number'}
+                >
+                  {babies.map((b, idx) => (
+                    <option key={idx} value={idx}>
+                      {b.name || `Bé ${String.fromCharCode(65 + idx)}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="form-grid-2">
+              <div className="cs-field-group">
+                <label className="cs-label"><CalendarIcon size={11} /> Ngày đo</label>
+                <button
+                  type="button"
+                  className="cs-date-trigger-btn"
+                  style={{ padding: '11px 14px', borderRadius: '12px' }}
+                  onClick={() => setShowMeasureDateCalendar(true)}
+                >
+                  {fmtDisplay(measureForm.date) || 'Chọn ngày'}
+                </button>
+              </div>
+              <div className="cs-field-group">
+                <label className="cs-label"><WeightIcon size={11} /> Cân nặng (kg)</label>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  placeholder="8.5"
+                  className="cs-input"
+                  style={{ padding: '11px 14px', borderRadius: '12px' }}
+                  value={measureForm.weight}
+                  onChange={e => setMeasureForm(f => ({ ...f, weight: e.target.value }))} 
+                />
+              </div>
+              <div className="cs-field-group">
+                <label className="cs-label"><RulerIcon size={11} /> Chiều cao (cm)</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  placeholder="72.5"
+                  className="cs-input"
+                  style={{ padding: '11px 14px', borderRadius: '12px' }}
+                  value={measureForm.height}
+                  onChange={e => setMeasureForm(f => ({ ...f, height: e.target.value }))} 
+                />
+              </div>
+              <div className="cs-field-group">
+                <label className="cs-label"><HeadCircleIcon size={11} /> Chu vi đầu (cm)</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  placeholder="44.0"
+                  className="cs-input"
+                  style={{ padding: '11px 14px', borderRadius: '12px' }}
+                  value={measureForm.head}
+                  onChange={e => setMeasureForm(f => ({ ...f, head: e.target.value }))} 
+                />
+              </div>
+            </div>
+            
+            <div className="cs-field-group" style={{ gridColumn: 'span 2' }}>
+              <label className="cs-label">Ghi chú</label>
+              <input 
+                type="text" 
+                placeholder="Ví dụ: Bé khỏe mạnh, mọc răng..."
+                className="cs-input"
+                style={{ padding: '11px 14px', borderRadius: '12px' }}
+                value={measureForm.note || ''}
+                onChange={e => setMeasureForm(f => ({ ...f, note: e.target.value }))} 
+              />
+            </div>
+            
+            <button 
+              type="button"
+              className="primary-btn" 
+              disabled={saving} 
+              onClick={handleSaveMeasure}
+              style={{ marginTop: '6px' }}
+            >
+              {saving ? 'Đang lưu...' : (isEditing ? 'Lưu thay đổi' : 'Lưu lần đo')}
+            </button>
           </div>
         </div>
-        <button 
-          type="button"
-          className="primary-btn" 
-          disabled={saving} 
-          onClick={handleSaveMeasure}
-        >
-          {saving ? 'Đang lưu...' : 'Lưu lần đo'}
-        </button>
-      </div>
+      </div>,
+      document.body
     );
   };
 
@@ -3789,13 +4054,14 @@ function ParentView({
               <div key={bId} className="growth-card baby-overview-card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div className={`baby-avatar-circle ${b.gender || 'girl'}`} style={{
+                    <div className={`baby-avatar-circle ${b.gender || 'neutral'}`} style={{
                       width: '40px', height: '40px', borderRadius: '50%',
-                      background: b.gender === 'boy' ? 'rgba(95, 175, 130, 0.15)' : 'rgba(212, 232, 220, 0.6)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '16px', fontWeight: 'bold', color: '#2F6B4F'
+                      overflow: 'hidden',
+                      background: b.gender === 'boy' ? 'rgba(95, 150, 180, 0.08)' : b.gender === 'girl' ? 'rgba(220, 150, 170, 0.08)' : 'rgba(95, 175, 130, 0.08)',
+                      border: b.gender === 'boy' ? '1px solid rgba(95, 150, 180, 0.15)' : b.gender === 'girl' ? '1px solid rgba(220, 150, 170, 0.15)' : '1px solid rgba(95, 175, 130, 0.15)'
                     }}>
-                      {b.name ? b.name.trim().charAt(0).toUpperCase() : 'B'}
+                      <BabyAvatar photoURL={b.photoURL} gender={b.gender} size={20} />
                     </div>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>{b.name || 'Bé yêu'}</h3>
@@ -4071,10 +4337,23 @@ function ParentView({
           {hasAnyActual ? (
             <>
               <ResponsiveContainer width="100%" height={260}>
-                <ComposedChart data={compChartData} margin={{ top: 8, right: 16, left: -10, bottom: 8 }}>
+                <ComposedChart data={compChartData} margin={{ top: 8, right: 24, left: -10, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
+                  <XAxis 
+                    dataKey="label" 
+                    tick={false} 
+                    axisLine={{ stroke: '#f0ece6', strokeWidth: 1.5 }} 
+                    tickLine={false} 
+                    label={{ 
+                      value: 'Tháng', 
+                      position: 'insideBottomRight', 
+                      offset: 0, 
+                      fontSize: 11, 
+                      fill: '#8C847C', 
+                      fontWeight: '700' 
+                    }} 
+                  />
+                  <YAxis tick={false} axisLine={false} tickLine={false} />
                   <Tooltip
                     contentStyle={{ borderRadius: 14, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.10)', fontSize: 13 }}
                     formatter={(v, name) => {
@@ -4100,14 +4379,21 @@ function ParentView({
                     return (
                       <Line type="monotone" key={i} dataKey={key} stroke={color}
                         strokeWidth={2.5}
-                        dot={({ cx, cy, payload }) =>
-                          payload[key] != null ? (
-                            <g key={`dot-${cx}-${i}`}>
-                              <circle cx={cx} cy={cy} r={4.5} fill={color}
-                                stroke="white" strokeWidth={1.5} />
-                            </g>
-                          ) : <g key={`dot-${cx}-${i}`} />
-                        }
+                        dot={(props) => {
+                          const { cx, cy, payload } = props;
+                          if (!cx || !cy || isNaN(cx) || isNaN(cy) || payload[key] == null) return null;
+                          return (
+                            <circle 
+                              key={`dot-${cx}-${i}`}
+                              cx={cx} 
+                              cy={cy} 
+                              r={4.5} 
+                              fill={color}
+                              stroke="white" 
+                              strokeWidth={1.5} 
+                            />
+                          );
+                        }}
                         activeDot={{ r: 6 }}
                         name={bName}
                         connectNulls={true}
@@ -4136,11 +4422,35 @@ function ParentView({
 
   // 3. SINGLE BABY VIEW (selectedBaby is index 0, 1, 2...)
   const hasData      = logs.length > 0;
-  const hasChartData = logs.length >= 2 && dob;
+  const hasChartData = logs.length >= 1 && dob;
   const chartData    = hasChartData ? buildChartData(chartTab) : [];
   const hasActual    = chartData.some(d => d.actual != null);
   const hasWHO       = chartData.some(d => d.lower != null && d.band != null);
   const chartColors  = { weight: '#5FAF82', height: '#2F6B4F', head: '#A8C5B0' };
+
+  const chartTicks = useMemo(() => {
+    if (!hasActual) {
+      return [0, 2, 4, 6, 8, 10, 12];
+    }
+    const count = logs.filter(l => {
+      const val = chartTab === 'weight' ? l.weight : chartTab === 'height' ? l.height : l.head;
+      return val !== undefined && val !== null && val !== '';
+    }).length;
+    if (count >= 3) return [25, 50, 75];
+    if (count === 2) return [35, 65];
+    return [50];
+  }, [logs, chartTab, hasActual]);
+
+  const formatXTick = (val) => {
+    if (!hasActual) {
+      return `${val} th`;
+    }
+    const pt = chartData.find(d => d.x === val);
+    if (!pt) return '';
+    if (pt.date === dob) return 'Lúc sinh';
+    const roundedMonth = Math.round(pt.month);
+    return `${roundedMonth} th`;
+  };
 
   const renderBabyGrowthComparison = () => {
     if (logs.length < 2) {
@@ -4229,8 +4539,12 @@ function ParentView({
       {/* ── BABY INFO CARD (Profile Summary Card) ── */}
       <div className="baby-profile-summary-card" style={{ marginBottom: '14px' }}>
         <div className="baby-profile-left">
-          <div className="baby-profile-avatar">
-            {gender === 'boy' ? '👦🏻' : gender === 'girl' ? '👧🏻' : '👶🏻'}
+          <div className="baby-profile-avatar" style={{
+            background: gender === 'boy' ? 'rgba(95, 150, 180, 0.08)' : gender === 'girl' ? 'rgba(220, 150, 170, 0.08)' : 'rgba(95, 175, 130, 0.08)',
+            border: gender === 'boy' ? '1px solid rgba(95, 150, 180, 0.15)' : gender === 'girl' ? '1px solid rgba(220, 150, 170, 0.15)' : '1px solid rgba(95, 175, 130, 0.15)',
+            overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <BabyAvatar photoURL={baby.photoURL} gender={gender} size={26} />
           </div>
           <div>
             <h3 className="baby-profile-name">{baby.name || 'Cốm'}</h3>
@@ -4346,57 +4660,117 @@ function ParentView({
 
       {/* ── LATEST MEASUREMENTS ── */}
       {hasData ? (
-        <div className="growth-card">
-          <div className="card-header">
-            <span className="card-title">Chỉ số gần nhất</span>
-            {latestLog?.date && <span className="card-date">{fmtDate(latestLog.date)}</span>}
-          </div>
-          <div className="latest-metrics-grid">
-            <div className="latest-metric">
-              <div className="latest-metric-icon weight-icon"><WeightIcon size={18} /></div>
-              <span className="latest-metric-value">{curWeight > 0 ? `${curWeight} kg` : '—'}</span>
-              <span className="latest-metric-label">Cân nặng</span>
-              {nutrition && curWeight > 0 && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '4px', background: 'rgba(95,175,130,0.06)', padding: '2px 8px', borderRadius: '12px', border: `1px solid ${nutrition.color}1E` }}>
-                  <span className="nutrition-tag" style={{ color: nutrition.color, fontSize: '10.5px', fontWeight: '700', margin: 0 }}>
-                    {nutrition.label}
-                  </span>
-                  <span 
-                    style={{ 
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: '12px', height: '12px', borderRadius: '50%', 
-                      background: 'rgba(0,0,0,0.04)', color: '#666', fontSize: '8px', 
-                      cursor: 'pointer', fontWeight: 'bold', flexShrink: 0
-                    }}
-                    title={`${nutrition.detail}\nKhoảng tham khảo an toàn: ${nutrition.sd}`}
-                  >
-                    i
-                  </span>
-                </div>
+        <div className="growth-card latest-metrics-card-compact" style={{ padding: '12px 14px' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              <span className="card-title" style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                Chỉ số gần nhất
+              </span>
+              {latestLog?.date && (
+                <span style={{ fontSize: '11px', color: '#687E70', fontWeight: '600' }}>
+                  Đo ngày {fmtDate(latestLog.date)}
+                </span>
               )}
             </div>
-            <div className="latest-metric">
-              <div className="latest-metric-icon height-icon"><RulerIcon size={18} /></div>
-              <span className="latest-metric-value">{curHeight > 0 ? `${curHeight} cm` : '—'}</span>
-              <span className="latest-metric-label">Chiều cao</span>
+            <button
+              type="button"
+              className="pill-action-btn"
+              style={{
+                height: '28px',
+                padding: '0 10px',
+                borderRadius: '14px',
+                fontSize: '11.5px',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                border: 'none',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                backgroundColor: showMeasureForm ? 'rgba(235, 94, 85, 0.08)' : 'rgba(95, 175, 130, 0.1)',
+                color: showMeasureForm ? '#C84B31' : '#2F6B4F',
+                boxShadow: 'none'
+              }}
+              onClick={() => {
+                setMeasureFormBabyIndex(selectedBaby);
+                setShowMeasureForm(v => !v);
+                if (showMeasureForm) {
+                  setEditingMeasureId(null);
+                }
+              }}
+            >
+              {showMeasureForm ? 'Đóng' : '+ Thêm lần đo'}
+            </button>
+          </div>
+          <div className="latest-metrics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '2px' }}>
+            {/* Weight */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 8px',
+              borderRadius: '10px',
+              background: 'var(--surface-1)',
+              border: '1px solid rgba(92, 158, 122, 0.05)'
+            }}>
+              <div className="latest-metric-icon weight-icon" style={{ width: '24px', height: '24px', borderRadius: '6px', margin: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <WeightIcon size={12} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, lineHeight: 1.1, textAlign: 'left' }}>
+                <span className="latest-metric-label" style={{ fontSize: '9px', opacity: 0.7, textTransform: 'uppercase', fontWeight: '600', color: 'var(--text-muted)' }}>Cân nặng</span>
+                <span className="latest-metric-value" style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-primary)' }}>{curWeight > 0 ? `${curWeight} kg` : '—'}</span>
+                {nutrition && curWeight > 0 && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(95,175,130,0.04)', padding: '0px 4px', borderRadius: '4px', marginTop: '1px', alignSelf: 'flex-start' }}>
+                    <span className="nutrition-tag" style={{ color: nutrition.color, fontSize: '8px', fontWeight: '700', margin: 0 }}>
+                      {nutrition.label}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="latest-metric">
-              <div className="latest-metric-icon head-icon"><HeadCircleIcon size={18} /></div>
-              <span className="latest-metric-value">{curHead > 0 ? `${curHead} cm` : '—'}</span>
-              <span className="latest-metric-label">Chu vi đầu</span>
+            
+            {/* Height */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 8px',
+              borderRadius: '10px',
+              background: 'var(--surface-1)',
+              border: '1px solid rgba(92, 158, 122, 0.05)'
+            }}>
+              <div className="latest-metric-icon height-icon" style={{ width: '24px', height: '24px', borderRadius: '6px', margin: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <RulerIcon size={12} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, lineHeight: 1.1, textAlign: 'left' }}>
+                <span className="latest-metric-label" style={{ fontSize: '9px', opacity: 0.7, textTransform: 'uppercase', fontWeight: '600', color: 'var(--text-muted)' }}>Chiều cao</span>
+                <span className="latest-metric-value" style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-primary)' }}>{curHeight > 0 ? `${curHeight} cm` : '—'}</span>
+              </div>
+            </div>
+
+            {/* Head */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 8px',
+              borderRadius: '10px',
+              background: 'var(--surface-1)',
+              border: '1px solid rgba(92, 158, 122, 0.05)'
+            }}>
+              <div className="latest-metric-icon head-icon" style={{ width: '24px', height: '24px', borderRadius: '6px', margin: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <HeadCircleIcon size={12} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, lineHeight: 1.1, textAlign: 'left' }}>
+                <span className="latest-metric-label" style={{ fontSize: '9px', opacity: 0.7, textTransform: 'uppercase', fontWeight: '600', color: 'var(--text-muted)' }}>Vòng đầu</span>
+                <span className="latest-metric-value" style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-primary)' }}>{curHead > 0 ? `${curHead} cm` : '—'}</span>
+              </div>
             </div>
           </div>
 
-          <p style={{ fontSize: '11px', color: '#8c9c90', fontStyle: 'italic', margin: '10px 4px 4px', textAlign: 'center', lineHeight: '1.4' }}>
+          <p style={{ fontSize: '10px', color: '#8c9c90', fontStyle: 'italic', margin: '6px 4px 2px', textAlign: 'center', lineHeight: '1.4' }}>
             * Thông tin chỉ mang tính theo dõi tham khảo, không thay thế đánh giá của bác sĩ.
           </p>
-
-          <button type="button" className="primary-btn mt-8" onClick={() => {
-            setMeasureFormBabyIndex(selectedBaby);
-            setShowMeasureForm(v => !v);
-          }}>
-            {showMeasureForm ? 'Đóng' : '+ Thêm lần đo'}
-          </button>
         </div>
       ) : (
         <div className="empty-card">
@@ -4452,40 +4826,75 @@ function ParentView({
                 )}
               </div>
             )}
-            <ResponsiveContainer width="100%" height={240}>
-              <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: -10, bottom: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#8C847C' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip chartTab={chartTab} />} />
-                {hasWHO && (
-                  <>
-                    <Area type="monotone" dataKey="lower" stackId="who"
-                      fill="rgba(240,236,230,0.6)" stroke="rgba(200,210,200,0.4)" strokeWidth={1}
-                      dot={false} name="lower" />
-                    <Area type="monotone" dataKey="band" stackId="who"
-                      fill="rgba(95,175,130,0.12)" stroke="rgba(95,175,130,0.3)" strokeWidth={1}
-                      dot={false} name="band" />
-                  </>
-                )}
-                {hasActual && (
-                  <Line type="monotone" dataKey="actual" stroke={chartColors[chartTab]}
-                    strokeWidth={2.5}
-                    dot={({ cx, cy, payload }) =>
-                      payload.actual != null ? (
-                        <g key={`dot-${cx}`}>
-                          <circle cx={cx} cy={cy} r={5} fill={chartColors[chartTab]}
-                            stroke="white" strokeWidth={2} />
-                        </g>
-                      ) : <g key={`dot-${cx}`} />
-                    }
-                    activeDot={{ r: 7 }}
-                    name="actual"
-                    connectNulls={false}
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                position: 'absolute',
+                top: '-8px',
+                left: '26px',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: '#8C847C',
+                zIndex: 10
+              }}>
+                Đơn vị: {chartTab === 'weight' ? 'kg' : 'cm'}
+              </div>
+              <ResponsiveContainer width="100%" height={240}>
+                <ComposedChart data={chartData} margin={{ top: 12, right: 24, left: -10, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ece6" vertical={false} />
+                  <XAxis 
+                    dataKey="x" 
+                    type="number" 
+                    domain={[0, 100]} 
+                    tick={false}
+                    axisLine={{ stroke: '#f0ece6', strokeWidth: 1.5 }}
+                    tickLine={false}
+                    label={{ 
+                      value: 'Tháng', 
+                      position: 'insideBottomRight', 
+                      offset: 0, 
+                      fontSize: 11, 
+                      fill: '#8C847C', 
+                      fontWeight: '700' 
+                    }}
                   />
-                )}
-              </ComposedChart>
-            </ResponsiveContainer>
+                  <YAxis tick={false} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip chartTab={chartTab} />} />
+                  {hasWHO && (
+                    <>
+                      <Area type="monotone" dataKey="lower" stackId="who"
+                        fill="rgba(240,236,230,0.6)" stroke="rgba(200,210,200,0.4)" strokeWidth={1}
+                        dot={false} name="lower" />
+                      <Area type="monotone" dataKey="band" stackId="who"
+                        fill="rgba(95,175,130,0.12)" stroke="rgba(95,175,130,0.3)" strokeWidth={1}
+                        dot={false} name="band" />
+                    </>
+                  )}
+                  {hasActual && (
+                    <Line type="monotone" dataKey="actual" stroke={chartColors[chartTab]}
+                      strokeWidth={2.5}
+                      dot={(props) => {
+                        const { cx, cy, payload } = props;
+                        if (!cx || !cy || isNaN(cx) || isNaN(cy) || payload.actual == null) return null;
+                        return (
+                          <circle 
+                            key={`dot-${cx}`}
+                            cx={cx} 
+                            cy={cy} 
+                            r={5} 
+                            fill={chartColors[chartTab]}
+                            stroke="white" 
+                            strokeWidth={2} 
+                          />
+                        );
+                      }}
+                      activeDot={{ r: 7 }}
+                      name="actual"
+                      connectNulls={true}
+                    />
+                  )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
             {!hasActual && (
               <div className="chart-no-actual">
                 <p>Chưa có dữ liệu của bé trên biểu đồ.</p>
@@ -4545,20 +4954,107 @@ function ParentView({
               return formatFriendlyAge(months);
             })() : null;
             return (
-              <div key={l.id || i} className="measure-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
+              <div key={l.id || i} className="measure-item" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 14px', alignItems: 'stretch' }}>
+                {/* Row 1: Date/Age on the left, faded Actions on the right */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="measure-item-left">
-                    <span className="measure-date">{fmtDate(l.date) || '—'}</span>
-                    {logAge && <span className="measure-age">{logAge}</span>}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                    <span className="measure-date" style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--text-primary)' }}>{fmtDate(l.date) || '—'}</span>
+                    {logAge && <span className="measure-age" style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>({logAge})</span>}
                   </div>
-                  <div className="measure-item-right">
-                    {l.weight && <span className="measure-val">{l.weight} kg</span>}
-                    {l.height && <span className="measure-val">{l.height} cm</span>}
-                    {l.head   && <span className="measure-val head-val">{l.head} cm đầu</span>}
+                  {/* Premium pill action buttons */}
+                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                    <button 
+                      type="button" 
+                      style={{
+                        background: 'rgba(95, 175, 130, 0.1)',
+                        border: 'none',
+                        color: '#2F6B4F',
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        transition: 'all 0.2s ease',
+                        boxShadow: 'none'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(95, 175, 130, 0.18)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(95, 175, 130, 0.1)'}
+                      onClick={() => handleEditClick(l)}
+                    >
+                      Sửa
+                    </button>
+                    <button 
+                      type="button" 
+                      style={{
+                        background: 'rgba(235, 94, 85, 0.08)',
+                        border: 'none',
+                        color: '#C84B31',
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        transition: 'all 0.2s ease',
+                        boxShadow: 'none'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(235, 94, 85, 0.16)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(235, 94, 85, 0.08)'}
+                      onClick={() => handleDeleteMeasure(l.id)}
+                    >
+                      Xóa
+                    </button>
                   </div>
                 </div>
+
+                {/* Row 2: Weight, Height, Head badges (highly visible) */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {l.weight && (
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: '#2F6B4F',
+                      background: 'rgba(95, 175, 130, 0.08)',
+                      borderRadius: '6px',
+                      padding: '2px 8px',
+                      border: '1px solid rgba(95, 175, 130, 0.12)'
+                    }}>
+                      {l.weight} kg
+                    </span>
+                  )}
+                  {l.height && (
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: '#2F6B4F',
+                      background: 'rgba(95, 175, 130, 0.08)',
+                      borderRadius: '6px',
+                      padding: '2px 8px',
+                      border: '1px solid rgba(95, 175, 130, 0.12)'
+                    }}>
+                      {l.height} cm
+                    </span>
+                  )}
+                  {l.head && (
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: '#5F8C72',
+                      background: 'rgba(168, 197, 176, 0.15)',
+                      borderRadius: '6px',
+                      padding: '2px 8px',
+                      border: '1px solid rgba(168, 197, 176, 0.2)'
+                    }}>
+                      {l.head} cm đầu
+                    </span>
+                  )}
+                </div>
+
                 {l.note && (
-                  <div className="measure-item-note" style={{ fontSize: '12.5px', color: '#687E70', fontStyle: 'italic', marginTop: '-2px', paddingLeft: '2px' }}>
+                  <div className="measure-item-note" style={{ fontSize: '12px', color: '#687E70', fontStyle: 'italic', marginTop: '2px', paddingLeft: '2px' }}>
                     📝 {l.note}
                   </div>
                 )}

@@ -13,6 +13,7 @@ import { calculateDetailedAge, getHandbookForAge } from '../data/handbookData.js
 import { LeafIcon, SparkleIcon } from '../icons.jsx';
 import AppDatePicker from '../components/AppDatePicker.jsx';
 import './ChatScreen.css';
+import { getCurrentPregnancyWeek, parseLocalDate, todayLocal } from '../utils/pregnancyWeek.js';
 
 const API_BASE      = import.meta.env.VITE_API_URL || '/api';
 const CLOUD_NAME    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
@@ -51,6 +52,25 @@ const DiaperIcon = () => (
     <path d="M4 9v8a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9"/>
     {/* Center gather/pinch line showing it's a diaper */}
     <path d="M4 13c2.5-1.5 5-2 8-2s5.5.5 8 2"/>
+  </svg>
+);
+
+const TrashIcon = ({ size = 20, strokeWidth = 1.6, className }) => (
+  <svg 
+    viewBox="0 0 24 24" 
+    width={size} 
+    height={size} 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth={strokeWidth} 
+    strokeLinecap="round" 
+    strokeLinejoin="round"
+    className={className}
+  >
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    <line x1="10" y1="11" x2="10" y2="17"></line>
+    <line x1="14" y1="11" x2="14" y2="17"></line>
   </svg>
 );
 
@@ -256,23 +276,242 @@ const emotionEmojiMap = {
 };
 
 
-/* Suggested questions per child stage */
-const QUESTION_POOL = {
-  pregnant:  ['🤰 Chế độ dinh dưỡng tốt nhất cho mẹ bầu?','🧘 Bài tập nhẹ nhàng cho mẹ bầu?','💤 Cách ngủ ngon ở tam cá nguyệt này?','🏥 Mốc khám thai quan trọng cần lưu ý?','🍼 Cần chuẩn bị gì trước khi sinh bé?','🌱 Áp dụng Montessori từ trong bụng mẹ?'],
-  newborn:   ['🤱 Thiết lập lịch sinh hoạt EASY cho bé sơ sinh?','😴 Mẹo giúp bé phân biệt ngày đêm?','👐 Kích thích giác quan cho bé dưới 6 tháng?','🧴 Chăm sóc da bé sơ sinh đúng cách?','🧩 Đồ chơi Montessori đầu đời là gì?','🤱 Chế độ ăn để có sữa tốt cho bé?'],
-  infant:    ['🍎 Bé 6 tháng bắt đầu ăn dặm thế nào?','🥦 Thực đơn ăn dặm kiểu Nhật/BLW?','🚶 Dấu hiệu bé sắp biết bò/biết đi?','🦷 Bé mọc răng quấy khóc làm gì?','📦 Môi trường Montessori cho bé tập bò?','🗣️ Kích thích ngôn ngữ giai đoạn bập bẹ?'],
-  toddler:   ['🧠 Kích thích trí não bé 1-3 tuổi?','🎨 Hoạt động Montessori tại nhà?','😤 Xử lý cơn hờn dỗi (tantrums)?','🚽 Tập vệ sinh cho bé đúng thời điểm?','🥗 Bé biếng ăn phải làm sao?','📖 Sách hay cho bé 2 tuổi phát triển ngôn ngữ?'],
-  preschool: ['🤝 Dạy bé kỹ năng giao tiếp chia sẻ?','🧮 Montessori giúp bé làm quen toán học?','📝 Chuẩn bị tâm lý trước khi đi học?','🏃 Trò chơi vận động cho bé 3-6 tuổi?','🎨 Phát triển sáng tạo qua hội họa?','🧹 Dạy bé làm việc nhà theo Montessori?'],
-};
+/* Unified Assistant Personalization Context Helper */
+function getAssistantContext(profile) {
+  const status = profile?.status || 'born';
+  const momName = profile?.momName || 'mẹ';
+  const babies = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
+  
+  // Retrieve active baby ID persisted in localStorage
+  const activeBabyId = typeof window !== 'undefined' ? localStorage.getItem('montessori_active_baby_id') : null;
+  const activeBaby = activeBabyId ? babies.find(b => b.id === activeBabyId) : (babies.length === 1 ? babies[0] : null);
 
-function getSuggestions(profile) {
-  if (profile.status === 'pregnant') return QUESTION_POOL.pregnant;
-  const m = parseInt(profile.ageInfo?.months || 0);
-  const y = parseInt(profile.ageInfo?.years  || 0) || Math.floor(m / 12);
-  if (m < 6)  return QUESTION_POOL.newborn;
-  if (m < 12) return QUESTION_POOL.infant;
-  if (y < 3)  return QUESTION_POOL.toddler;
-  return QUESTION_POOL.preschool;
+  const isPregnant = status === 'pregnant';
+  const pregnancyInfo = profile?.pregnancyInfo || activeBaby?.pregnancyInfo;
+  const edd = profile?.dueDate || pregnancyInfo?.dueDate;
+  
+  // Validation checks to avoid undefined or incomplete profile states
+  const hasPregnancyInfo = isPregnant && (!!edd || !!pregnancyInfo?.weeks);
+  const hasBabyInfo = !isPregnant && babies.length > 0 && !!babies[0]?.dob;
+
+  if (!hasPregnancyInfo && !hasBabyInfo) {
+    return {
+      group: 'incomplete',
+      title: `Xin chào mẹ ${momName}! 👋`,
+      subtitle: 'Mẹ có thể cập nhật thông tin thai kỳ hoặc ngày sinh của bé trong phần Hồ sơ để nhận được các gợi ý chăm sóc phù hợp nhất từ Montessori AI.',
+      suggestions: [
+        'Cập nhật hồ sơ thai kỳ ở đâu?',
+        'Làm sao để thêm ngày sinh của bé?',
+        'Phương pháp Montessori có lợi ích gì?',
+        'Trợ lý Montessori AI có thể làm gì?'
+      ],
+      placeholder: 'Hỏi Montessori AI hoặc cập nhật hồ sơ để được gợi ý chính xác hơn...'
+    };
+  }
+
+  if (isPregnant) {
+    const babyCount = profile?.numBabies || 1;
+    const isMulti = babyCount >= 2;
+    
+    let weeks = 30; // default fallback
+    if (edd) {
+      const dueDate = new Date(edd);
+      const today = new Date();
+      dueDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      const diffMs = dueDate.getTime() - today.getTime();
+      const diffDays = 280 - Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      weeks = Math.max(1, Math.min(42, Math.floor(diffDays / 7)));
+    } else if (pregnancyInfo?.weeks) {
+      weeks = parseInt(pregnancyInfo.weeks, 10);
+    }
+
+    if (isMulti) {
+      const isTriplet = babyCount >= 3;
+      const babyLabel = isTriplet ? 'các bé' : 'hai bé';
+      const pregnancyLabel = isTriplet ? 'thai ba' : 'thai đôi';
+      const namesList = babies.map(b => b.name).filter(Boolean);
+      const babiesText = namesList.length >= 2 ? namesList.slice(0, -1).join(', ') + ' và ' + namesList[namesList.length - 1] : babyLabel;
+      
+      let subtitleText = '';
+      if (weeks <= 12) {
+        subtitleText = `Mẹ đang theo dõi thai kỳ của ${babiesText}. Hôm nay mẹ muốn hỏi về khám thai, dinh dưỡng hay ghi chú dặn dò bác sĩ?`;
+      } else if (weeks <= 27) {
+        subtitleText = `${babiesText} đang lớn lên từng ngày. Montessori AI có thể giúp mẹ theo dõi chỉ số ${babyLabel}, dinh dưỡng và thai giáo.`;
+      } else if (weeks <= 34) {
+        subtitleText = `Mẹ đang ở giai đoạn cuối thai kỳ ${pregnancyLabel}. Mẹ có thể hỏi về thai máy, lịch khám, nghỉ ngơi hoặc chuẩn bị sinh.`;
+      } else {
+        subtitleText = "Mẹ sắp gặp các bé rồi. Montessori AI có thể giúp mẹ chuẩn bị những việc quan trọng trước ngày sinh.";
+      }
+      
+      const suggestionsList = [
+        `Theo dõi chỉ số ${babyLabel} như thế nào?`,
+        `Mẹ bầu ${pregnancyLabel} nên nghỉ ngơi ra sao?`,
+        `Thai máy của ${babyLabel} nên ghi nhận thế nào?`,
+        `Chuẩn bị sinh ${isTriplet ? 'ba' : 'đôi'} cần lưu ý gì?`,
+        `Dinh dưỡng cho mẹ mang thai ${isTriplet ? 'ba' : 'đôi'} cần chú ý gì?`
+      ];
+      
+      return {
+        group: 'pregnant_multi',
+        title: `Xin chào mẹ ${momName}! 🌿`,
+        subtitle: subtitleText,
+        suggestions: suggestionsList,
+        placeholder: `Hỏi về ${pregnancyLabel}, chỉ số ${babyLabel}, lịch khám...`
+      };
+    } else {
+      const name = activeBaby?.name || profile?.childName || 'bé';
+      const cleanBabyName = name === 'bé yêu' ? 'bé' : name;
+      
+      let subtitleText = '';
+      let suggestionsList = [];
+      
+      if (weeks <= 12) {
+        subtitleText = `Mẹ đang ở đầu thai kỳ. Hôm nay Montessori AI có thể giúp mẹ theo dõi khám thai, dinh dưỡng và những cảm nhận đầu tiên về ${cleanBabyName}.`;
+        suggestionsList = [
+          'Lần khám thai đầu tiên cần lưu ý gì?',
+          'Mẹo bổ sung vitamin cho mẹ bầu?',
+          'Đầu thai kỳ nên nghỉ ngơi ra sao?',
+          'Có nên bắt đầu thai giáo từ sớm không?'
+        ];
+      } else if (weeks <= 27) {
+        subtitleText = `${cleanBabyName} đang lớn lên từng ngày. Mẹ muốn hỏi về khám thai, dinh dưỡng hay thai giáo hôm nay?`;
+        suggestionsList = [
+          'Tuần này bé phát triển như thế nào?',
+          'Mẹ nên theo dõi chỉ số siêu âm nào?',
+          'Gợi ý thai giáo nhẹ nhàng hôm nay',
+          'Khi nào mẹ bắt đầu cảm nhận thai máy?'
+        ];
+      } else if (weeks <= 36) {
+        subtitleText = 'Mẹ đang bước vào giai đoạn cuối thai kỳ. Montessori AI có thể hỗ trợ mẹ theo dõi thai máy, lịch khám và chuẩn bị sinh.';
+        suggestionsList = [
+          'Mẹ nên theo dõi thai máy như thế nào?',
+          'Chuẩn bị đồ đi sinh cần những gì?',
+          'Cơn gò sinh lý khác gì cơn gò chuyển dạ?',
+          'Lịch khám cuối thai kỳ cần lưu ý gì?'
+        ];
+      } else {
+        subtitleText = `Mẹ sắp gặp ${cleanBabyName} rồi. Montessori AI có thể giúp mẹ chuẩn bị những việc cuối cùng trước ngày sinh.`;
+        suggestionsList = [
+          'Dấu hiệu sắp sinh thường gặp là gì?',
+          'Mẹ cần chuẩn bị gì trước ngày sinh?',
+          'Khi nào nên đi viện?',
+          'Sau sinh mẹ cần lưu ý điều gì đầu tiên?'
+        ];
+      }
+      
+      return {
+        group: 'pregnant_single',
+        title: `Xin chào mẹ ${momName}! 🌿`,
+        subtitle: subtitleText,
+        suggestions: suggestionsList,
+        placeholder: 'Hỏi về thai kỳ, khám thai, dinh dưỡng mẹ...'
+      };
+    }
+  } else {
+    // Born Context
+    if (babies.length > 1 && !activeBaby) {
+      return {
+        group: 'born_multi_general',
+        title: `Xin chào mẹ ${momName}! 👋`,
+        subtitle: 'Mẹ đang chăm sóc nhiều bé. Montessori AI có thể hỗ trợ mẹ theo từng bé, từng độ tuổi và từng nhu cầu trong ngày.',
+        suggestions: [
+          'So sánh lịch sinh hoạt của các bé thế nào?',
+          'Cách cân bằng thời gian chăm sóc từng bé?',
+          'Ghi chú sức khỏe riêng cho từng bé ở đâu?',
+          'Gợi ý hoạt động Montessori phù hợp cho từng độ tuổi?'
+        ],
+        placeholder: 'Hỏi về các bé, chăm sóc nhiều bé, Montessori...'
+      };
+    }
+
+    const baby = activeBaby || babies[0];
+    const name = baby?.name || 'bé';
+    const dob = baby?.dob || '';
+    
+    let ageMonths = 0;
+    if (dob) {
+      const birthDate = new Date(dob);
+      const today = new Date();
+      let diff = (today.getFullYear() - birthDate.getFullYear()) * 12 + today.getMonth() - birthDate.getMonth();
+      if (today.getDate() < birthDate.getDate()) {
+        diff--;
+      }
+      ageMonths = Math.max(0, diff);
+    }
+    
+    let subtitleText = '';
+    let suggestionsList = [];
+    let placeholderText = '';
+    
+    if (ageMonths < 6) {
+      subtitleText = `Hôm nay của ${name} thế nào? Montessori AI có thể giúp mẹ với giấc ngủ, bú sữa, lịch sinh hoạt và chăm sóc bé nhỏ.`;
+      suggestionsList = [
+        'Thiết lập lịch sinh hoạt EASY cho bé thế nào?',
+        'Mẹo giúp bé phân biệt ngày đêm?',
+        'Chăm sóc da bé sơ sinh đúng cách?',
+        'Đồ chơi Montessori đầu đời là gì?',
+        'Bé khóc nhiều thì mẹ nên làm gì?',
+        'Làm sao nhận biết bé bú đủ?'
+      ];
+      if (ageMonths >= 4) {
+        suggestionsList.push('Khi nào bé sẵn sàng ăn dặm?');
+      }
+      placeholderText = 'Hỏi về bú sữa, giấc ngủ, chăm sóc bé...';
+    } else if (ageMonths < 12) {
+      subtitleText = `${name} đang ở giai đoạn khám phá và ăn dặm. Mẹ muốn hỏi về món ăn, giấc ngủ, vận động hay trò chơi Montessori hôm nay?`;
+      suggestionsList = [
+        'Bé mấy tháng thì bắt đầu ăn dặm?',
+        'Món đầu tiên nên thử là gì?',
+        'Bé không hợp tác khi ăn thì làm sao?',
+        'Gợi ý trò chơi Montessori cho bé tập bò',
+        'Làm sao theo dõi dị ứng thực phẩm?'
+      ];
+      placeholderText = 'Hỏi về ăn dặm, giấc ngủ, trò chơi cho bé...';
+    } else if (ageMonths < 24) {
+      subtitleText = `${name} đang lớn rất nhanh. Montessori AI có thể gợi ý hoạt động, món ăn, giấc ngủ và cách đồng hành với cảm xúc của bé.`;
+      suggestionsList = [
+        'Gợi ý hoạt động Montessori cho bé 1–2 tuổi',
+        'Bé kén ăn thì mẹ nên làm gì?',
+        'Làm sao giúp bé tập nói nhiều hơn?',
+        'Bé hay ăn vạ thì xử lý thế nào?',
+        'Trò chơi phát triển vận động tinh cho bé'
+      ];
+      placeholderText = 'Hỏi về ăn uống, tập nói, cảm xúc, Montessori...';
+    } else if (ageMonths < 36) {
+      subtitleText = `${name} đang ở tuổi tò mò và muốn tự làm nhiều thứ. Mẹ có thể hỏi về ngôn ngữ, cảm xúc, kỷ luật tích cực hoặc hoạt động Montessori.`;
+      suggestionsList = [
+        'Khủng hoảng tuổi lên 2 nên xử lý thế nào?',
+        'Khi nào nên tập bỏ bỉm?',
+        'Gợi ý hoạt động tự lập cho bé',
+        'Làm sao dạy bé chờ đến lượt?',
+        'Bé nói chậm có cần lo không?'
+      ];
+      placeholderText = 'Hỏi về tự lập, cảm xúc, trò chơi, nề nếp...';
+    } else {
+      subtitleText = `${name} đang bước vào giai đoạn học hỏi mạnh mẽ. Montessori AI có thể gợi ý hoạt động, giao tiếp, tự lập và nề nếp mỗi ngày.`;
+      suggestionsList = [
+        'Gợi ý hoạt động Montessori tại nhà',
+        'Làm sao giúp bé tự lập hơn?',
+        'Cách nói chuyện khi bé không nghe lời',
+        'Chuẩn bị cho bé đi học như thế nào?',
+        'Hoạt động phát triển ngôn ngữ cho bé'
+      ];
+      placeholderText = 'Hỏi về tự lập, cảm xúc, trò chơi, nề nếp...';
+    }
+
+    if (babies.length > 1 && activeBaby) {
+      subtitleText = `Hôm nay mẹ đang xem hồ sơ của ${name}. Montessori AI có thể gợi ý chăm sóc phù hợp với độ tuổi của bé.`;
+    }
+
+    return {
+      group: babies.length > 1 ? 'born_multi_active' : 'born_single',
+      title: `Xin chào mẹ ${momName}! 👋`,
+      subtitle: subtitleText,
+      suggestions: suggestionsList,
+      placeholder: placeholderText
+    };
+  }
 }
 
 async function uploadToCloudinary(file) {
@@ -378,6 +617,7 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   // Active bottom sheets
   const [activeBottomSheet, setActiveBottomSheet] = useState(null); // 'nutrition' | 'sleep' | 'diaper' | 'growth' | 'kick' | 'contractions' | 'preg_weight' | 'preg_reminders' | 'preg_clinic' | 'preg_emotion'
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Status transition, Clinic and Emotion states
   const [isTransitionCardDismissed, setIsTransitionCardDismissed] = useState(false);
@@ -460,16 +700,19 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   };
 
   const getPregnancyWeekInfo = () => {
-    const daysRemaining = getDaysRemaining();
-    if (daysRemaining === null) {
-      const w = parseInt(pregnancyInfo?.weeks || 30);
-      const d = parseInt(pregnancyInfo?.days || 0);
-      return { weeks: w, days: d };
+    const w = getCurrentPregnancyWeek(profile, null);
+    const eddStr = profile?.dueDate || pregnancyInfo?.dueDate;
+    let d = 0;
+    if (eddStr) {
+      const edd = parseLocalDate(eddStr);
+      if (edd) {
+        const today = todayLocal();
+        const daysLeft = Math.round((edd - today) / 86400000);
+        const currentPregnancyDays = 280 - daysLeft;
+        d = Math.max(0, Math.min(6, currentPregnancyDays % 7));
+      }
     }
-    const currentPregnancyDays = 280 - daysRemaining;
-    const w = Math.max(1, Math.min(42, Math.floor(currentPregnancyDays / 7)));
-    const d = Math.max(0, Math.min(6, currentPregnancyDays % 7));
-    return { weeks: w, days: d };
+    return { weeks: w || parseInt(pregnancyInfo?.weeks || 30, 10), days: d };
   };
 
   const getDetailedAgeLabel = () => {
@@ -537,7 +780,7 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
   const fileInputRef   = useRef(null);
-  const suggestions = getSuggestions(profile);
+  const assistantContext = getAssistantContext(profile);
 
   // 1. Bottom Sheet Specific Inputs
   // A. Nutrition Sheet inputs
@@ -909,7 +1152,6 @@ ${logsDesc}`;
       imageUrls = await Promise.all(pendingImgs.map(p => uploadToCloudinary(p.file)));
       setUploadingImg(false);
     }
-
     const userMsg = { id: uuidv4(), role: 'user', content: question, images: imageUrls, status: 'sent', timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -919,7 +1161,7 @@ ${logsDesc}`;
     try {
       const ctx = getDynamicContext();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
       const res = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -953,6 +1195,12 @@ ${logsDesc}`;
   const clearChat = () => {
     setMessages([]); setHistory([]);
     fetch(`${API_BASE}/chat/session/${sessionId}`, { method: 'DELETE' }).catch(() => {});
+  };
+
+  const handleConfirmDelete = () => {
+    clearChat();
+    setShowDeleteConfirm(false);
+    showToast("Đã xoá cuộc trò chuyện");
   };
 
   const canSend = (input.trim() || pendingImgs.length > 0) && !isLoading && !uploadingImg;
@@ -2396,7 +2644,73 @@ ${logsDesc}`;
     !isTransitionCardDismissed && 
     (pregWeeks >= 40 || (daysRemaining !== null && daysRemaining <= 0));
 
-  const momNameUpper = `XIN CHÀO, ${(profile?.momName || 'Mẹ').toUpperCase()}`;
+  const getChildNamesText = () => {
+    const isPregnant = status === 'pregnant';
+    
+    if (!isPregnant) {
+      // Mẹ đã sinh
+      const validBabies = babies.filter(b => b.name && b.name.trim());
+      if (validBabies.length === 1) {
+        return validBabies[0].name.trim();
+      } else if (validBabies.length === 2) {
+        const combined = `${validBabies[0].name.trim()} & ${validBabies[1].name.trim()}`;
+        if (combined.length <= 22) {
+          return combined;
+        }
+        return 'hai bé';
+      } else {
+        return 'các bé'; // Từ 3 bé trở lên luôn hiển thị "các bé" trên mobile để tránh rối
+      }
+    } else {
+      // Mẹ đang bầu
+      const rawBabyName = profile?.babyName || pregnancyInfo?.babyName || '';
+      const nameParts = rawBabyName ? rawBabyName.split('&').map(n => n.trim()).filter(Boolean) : [];
+      
+      if (babyCount === 1) {
+        return nameParts[0] || 'bé yêu';
+      } else if (babyCount === 2) {
+        if (nameParts.length >= 2) {
+          const combined = `${nameParts[0]} & ${nameParts[1]}`;
+          if (combined.length <= 22) {
+            return combined;
+          }
+        }
+        return 'hai bé';
+      } else {
+        return 'các bé';
+      }
+    }
+  };
+
+  const renderGreeting = () => {
+    const hour = new Date().getHours();
+    const motherName = (profile?.momName || '').trim();
+    
+    let greetingPrefix = '';
+    if (hour >= 5 && hour < 11) {
+      greetingPrefix = 'Chào buổi sáng, mẹ';
+    } else if (hour >= 11 && hour < 13) {
+      greetingPrefix = 'Chào buổi trưa, mẹ';
+    } else if (hour >= 13 && hour < 18) {
+      greetingPrefix = 'Chào buổi chiều, mẹ';
+    } else if (hour >= 18 && hour < 24) {
+      greetingPrefix = 'Chào buổi tối, mẹ';
+    } else {
+      greetingPrefix = motherName ? 'Mẹ nghỉ ngơi sớm nhé, mẹ' : 'Mẹ nghỉ ngơi sớm nhé';
+    }
+    
+    return (
+      <span className="greeting-label" style={{ textTransform: 'none', letterSpacing: 'normal', fontSize: '15px', color: '#55685B', fontWeight: '500', display: 'block', lineHeight: '1.2' }}>
+        {greetingPrefix}
+        {motherName && (
+          <span style={{ fontWeight: '700', color: '#2F6B4F', marginLeft: '4px' }}>
+            {motherName}
+          </span>
+        )}
+      </span>
+    );
+  };
+
   const headerBabyName = status === 'pregnant'
     ? (isTwin ? twinWording : (profile?.babyName || pregnancyInfo?.babyName || 'Bé yêu'))
     : (baby?.name || 'Bé yêu');
@@ -2449,53 +2763,53 @@ ${logsDesc}`;
       return (
         <div className="dashboard-trackers-grid">
           {/* Card 1: Vitamin & Nước */}
-          <div className="tracker-item-card mint-light">
+          <div className="tracker-item-card mint-light" onClick={() => setActiveBottomSheet('preg_reminders')}>
             <div className="tracker-card-icon">
               <PregRemindersIcon />
             </div>
             <h4 className="tracker-card-name">Vitamin &amp; Nước</h4>
             <span className="tracker-card-status-text">{getVitaminStatusText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_reminders')}>
+            <button type="button" className="tracker-action-trigger-btn">
               Ghi nhận
             </button>
           </div>
 
           {/* Card 2: Cân nặng thai kỳ */}
-          <div className="tracker-item-card pink-light">
+          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_weight')}>
             <div className="tracker-card-icon">
               <PregWeightIcon />
             </div>
             <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
             {isTwin && <span className="tracker-card-twin-hint">của mẹ, không phải thai nhi</span>}
             <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
+            <button type="button" className="tracker-action-trigger-btn">
               Cập nhật
             </button>
           </div>
 
           {/* Card 3: Lịch khám thai */}
-          <div className="tracker-item-card mint-light">
+          <div className="tracker-item-card mint-light" onClick={() => {
+            if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+            setActiveTab('growth');
+          }}>
             <div className="tracker-card-icon">
               <PregClinicIcon />
             </div>
             <h4 className="tracker-card-name">Lịch khám thai</h4>
             <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => {
-              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
-              setActiveTab('growth');
-            }}>
+            <button type="button" className="tracker-action-trigger-btn">
               Ghi nhận
             </button>
           </div>
 
           {/* Card 4: Cảm xúc hôm nay */}
-          <div className="tracker-item-card pink-light">
+          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_emotion')}>
             <div className="tracker-card-icon">
               <PregEmotionIcon />
             </div>
             <h4 className="tracker-card-name">Cảm xúc hôm nay</h4>
             <span className="tracker-card-status-text">{getLastEmotionText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_emotion')}>
+            <button type="button" className="tracker-action-trigger-btn">
               Ghi nhận
             </button>
           </div>
@@ -2565,7 +2879,7 @@ ${logsDesc}`;
       return (
         <div className="dashboard-trackers-grid">
           {/* Card 1: Đếm thai máy */}
-          <div className="tracker-item-card mint-light">
+          <div className="tracker-item-card mint-light" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
             <div className="tracker-card-icon">
               <PregKickIcon />
             </div>
@@ -2574,47 +2888,46 @@ ${logsDesc}`;
             <button 
               type="button"
               className="tracker-action-trigger-btn" 
-              onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}
             >
               Bắt đầu đếm
             </button>
           </div>
 
           {/* Card 2: Cân nặng thai kỳ */}
-          <div className="tracker-item-card pink-light">
+          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_weight')}>
             <div className="tracker-card-icon">
               <PregWeightIcon />
             </div>
             <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
             <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
+            <button type="button" className="tracker-action-trigger-btn">
               Cập nhật
             </button>
           </div>
 
           {/* Card 3: Lịch khám thai */}
-          <div className="tracker-item-card mint-light">
+          <div className="tracker-item-card mint-light" onClick={() => {
+            if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+            setActiveTab('growth');
+          }}>
             <div className="tracker-card-icon">
               <PregClinicIcon />
             </div>
             <h4 className="tracker-card-name">Lịch khám thai</h4>
             <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => {
-              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
-              setActiveTab('growth');
-            }}>
+            <button type="button" className="tracker-action-trigger-btn">
               Ghi nhận
             </button>
           </div>
 
           {/* Card 4: Cảm xúc hôm nay */}
-          <div className="tracker-item-card pink-light">
+          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_emotion')}>
             <div className="tracker-card-icon">
               <PregEmotionIcon />
             </div>
             <h4 className="tracker-card-name">Cảm xúc hôm nay</h4>
             <span className="tracker-card-status-text">{getLastEmotionText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_emotion')}>
+            <button type="button" className="tracker-action-trigger-btn">
               Ghi nhận
             </button>
           </div>
@@ -2681,7 +2994,7 @@ ${logsDesc}`;
       return (
         <div className="dashboard-trackers-grid">
           {/* Card 1: Đếm thai máy */}
-          <div className="tracker-item-card mint-light">
+          <div className="tracker-item-card mint-light" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
             <div className="tracker-card-icon">
               <PregKickIcon />
             </div>
@@ -2690,14 +3003,13 @@ ${logsDesc}`;
             <button 
               type="button"
               className="tracker-action-trigger-btn" 
-              onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}
             >
               Bắt đầu đếm
             </button>
           </div>
 
           {/* Card 2: Đếm cơn gò */}
-          <div className="tracker-item-card pink-light">
+          <div className="tracker-item-card pink-light" onClick={() => { setActiveBottomSheet('contractions'); setContraSecs(0); setContraCount(0); }}>
             <div className="tracker-card-icon">
               <PregContraIcon />
             </div>
@@ -2706,35 +3018,34 @@ ${logsDesc}`;
             <button 
               type="button"
               className="tracker-action-trigger-btn" 
-              onClick={() => { setActiveBottomSheet('contractions'); setContraSecs(0); setContraCount(0); }}
             >
               Bắt đầu đếm
             </button>
           </div>
 
           {/* Card 3: Cân nặng thai kỳ */}
-          <div className="tracker-item-card pink-light">
+          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_weight')}>
             <div className="tracker-card-icon">
               <PregWeightIcon />
             </div>
             <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
             <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('preg_weight')}>
+            <button type="button" className="tracker-action-trigger-btn">
               Cập nhật
             </button>
           </div>
 
           {/* Card 4: Lịch khám thai */}
-          <div className="tracker-item-card mint-light">
+          <div className="tracker-item-card mint-light" onClick={() => {
+            if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+            setActiveTab('growth');
+          }}>
             <div className="tracker-card-icon">
               <PregClinicIcon />
             </div>
             <h4 className="tracker-card-name">Lịch khám thai</h4>
             <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn" onClick={() => {
-              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
-              setActiveTab('growth');
-            }}>
+            <button type="button" className="tracker-action-trigger-btn">
               Ghi nhận
             </button>
           </div>
@@ -2890,31 +3201,31 @@ ${logsDesc}`;
     return (
       <div className="dashboard-trackers-grid">
         {/* CARD 1: Ăn uống */}
-        <div className="tracker-item-card mint-light">
+        <div className="tracker-item-card mint-light" onClick={() => setActiveBottomSheet('nutrition')}>
           <div className="tracker-card-icon">
             <BottleIcon />
           </div>
           <h4 className="tracker-card-name">Ăn uống</h4>
           <span className="tracker-card-status-text">{getLastNutriText()}</span>
-          <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('nutrition')}>
+          <button type="button" className="tracker-action-trigger-btn">
             Ghi nhận ăn
           </button>
         </div>
 
         {/* CARD 2: Ngủ */}
-        <div className="tracker-item-card pink-light">
+        <div className="tracker-item-card pink-light" onClick={() => { setActiveBottomSheet('sleep'); setSleepSecs(0); }}>
           <div className="tracker-card-icon">
             <MoonStarIcon />
           </div>
           <h4 className="tracker-card-name">Ngủ</h4>
           <span className="tracker-card-status-text">{getLastSleepText()}</span>
-          <button type="button" className="tracker-action-trigger-btn" onClick={() => { setActiveBottomSheet('sleep'); setSleepSecs(0); }}>
+          <button type="button" className="tracker-action-trigger-btn">
             Ghi nhận ngủ
           </button>
         </div>
 
         {/* CARD 3: Thay tã / Vệ sinh / Tập bô */}
-        <div className="tracker-item-card pink-light">
+        <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('diaper')}>
           <div className="tracker-card-icon">
             <DiaperIcon />
           </div>
@@ -2925,20 +3236,19 @@ ${logsDesc}`;
           <button 
             type="button" 
             className="tracker-action-trigger-btn" 
-            onClick={() => setActiveBottomSheet('diaper')}
           >
             {diaperCardButtonText}
           </button>
         </div>
 
         {/* CARD 4: Phát triển */}
-        <div className="tracker-item-card mint-light">
+        <div className="tracker-item-card mint-light" onClick={() => setActiveTab('growth')}>
           <div className="tracker-card-icon">
             <ScaleIcon />
           </div>
           <h4 className="tracker-card-name">Phát triển</h4>
           <span className="tracker-card-status-text">{getLastGrowthText()}</span>
-          <button type="button" className="tracker-action-trigger-btn" onClick={() => setActiveBottomSheet('growth')}>
+          <button type="button" className="tracker-action-trigger-btn">
             Xem thống kê
           </button>
         </div>
@@ -3315,48 +3625,52 @@ ${logsDesc}`;
       )}
       
       {/* 📱 iOS-STYLE PREMIUM SINGLE HEADER */}
-      <header className="premium-ios-header">
-        <div className="header-left-meta">
-          <span className="greeting-label">{momNameUpper}</span>
-          <h1 className="baby-today-heading">Hôm nay của {headerBabyName}</h1>
-          <div className="baby-age-meta-row">
-            <span className="baby-age-badge">{headerAgeBadge}</span>
-            <span className="meta-dot">·</span>
-            <span className="update-time-label">Cập nhật lúc {getLatestUpdateTime()}</span>
-          </div>
+      <header className="premium-ios-header" style={{ padding: '20px 20px 14px', background: '#F7FAF8', borderBottom: 'none' }}>
+        <div className="header-left-meta" style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+          {renderGreeting()}
+          <h1 className="baby-today-heading" style={{
+            fontSize: '15px',
+            color: '#7B8A82',
+            fontWeight: '600',
+            margin: '4px 0 0 0',
+            textTransform: 'none',
+            letterSpacing: 'normal',
+            lineHeight: '1.4',
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '100%'
+          }} title={`Hành trình Montessori cùng ${getChildNamesText()} mỗi ngày`}>
+            Hành trình Montessori cùng <span style={{ color: '#2F6B4F', fontWeight: '700' }}>{getChildNamesText()}</span> mỗi ngày
+          </h1>
+          {status === 'pregnant' && (
+            <div className="baby-age-meta-row" style={{ marginTop: '6px', fontSize: '11.5px', color: '#7B8A82', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+              {!pregWeeks || isNaN(pregWeeks) || pregWeeks <= 0 ? (
+                <span style={{ fontStyle: 'italic', color: '#8C9C90' }}>
+                  {babyCount === 1 ? 'Hồ sơ thai kỳ đang được cập nhật · Thai đơn' :
+                   babyCount === 2 ? 'Hồ sơ thai kỳ đang được cập nhật · Thai đôi' :
+                   babyCount >= 3 ? 'Hồ sơ thai kỳ đang được cập nhật · Đa thai' :
+                   'Hồ sơ thai kỳ đang được cập nhật'}
+                </span>
+              ) : (
+                <>
+                  <span>Tuần thai {pregWeeks}</span>
+                  <span className="meta-dot" style={{ color: '#A8D5BA', margin: '0 2px' }}>·</span>
+                  <span>{babyCount === 1 ? 'Thai đơn' : babyCount === 2 ? 'Thai đôi' : 'Đa thai'}</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
-        <div className="header-right-profile" onClick={() => setActiveTab('baby')} style={{ cursor: 'pointer' }}>
+        <div className="header-right-profile" onClick={() => setActiveTab('baby')} style={{ cursor: 'pointer', marginLeft: '12px' }}>
           <div className="mother-avatar-circle" title="Xem hồ sơ">
             {getHeaderAvatar()}
           </div>
         </div>
       </header>
 
-      {/* 🌟 TWIN OVERVIEW SELECTOR */}
-      {isTwin && status === 'pregnant' && (
-        <div className="twin-overview-selector">
-          {(() => {
-            const tabs = ['Tổng quan'];
-            const suffixes = ['A', 'B', 'C'];
-            for (let i = 0; i < Math.min(babyCount, 3); i++) {
-              tabs.push(`Bé ${suffixes[i]}`);
-            }
-            return tabs.map(tab => (
-              <button
-                key={tab}
-                type="button"
-                className={`twin-tab-chip${twinViewTab === tab ? ' active' : ''}`}
-                onClick={() => setTwinViewTab(tab)}
-              >
-                {tab}
-              </button>
-            ));
-          })()}
-          {twinViewTab !== 'Tổng quan' && (
-            <span className="twin-tab-viewing-hint">Đang xem: {twinViewTab}</span>
-          )}
-        </div>
-      )}
+      {/* 🌟 TWIN OVERVIEW SELECTOR - removed per user request */}
 
       {/* 🎉 INTERACTIVE OVERDUE TRANSITION CARD */}
       {showTransitionCard && (
@@ -3652,9 +3966,7 @@ ${logsDesc}`;
         onClick={() => setIsChatOpen(true)}
         aria-label="Trợ lý AI"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
+        <LeafIcon size={22} strokeWidth={2} />
         <span className="floating-fab-dot" />
       </button>
 
@@ -3665,6 +3977,9 @@ ${logsDesc}`;
           <div className="chat-slide-up-modal-overlay" onClick={handleAttemptCloseChat} />
           <div ref={chatPanelRef} className="chat-slide-up-content-panel animate-slide-up" onClick={e => e.stopPropagation()} onFocusCapture={handleFocusCapture}>
             
+            {/* Drag handle pill visible only on Mobile bottom sheet */}
+            <div className="sheet-drag-handle-pill mobile-only-drag-handle" />
+
             {/* Chat Header inside sliding panel */}
             <header className="chat-sliding-header">
               <div className="header-sliding-left">
@@ -3674,12 +3989,17 @@ ${logsDesc}`;
                 </div>
                 <div>
                   <h3 className="sliding-title-label">Trợ lý Montessori AI</h3>
-                  <p className="sliding-subtitle-status">🟢 Đang hoạt động</p>
                 </div>
               </div>
               <div className="header-sliding-right">
                 {messages.length > 0 && (
-                  <button className="clear-chat-sliding-btn" onClick={clearChat} title="Xóa cuộc trò chuyện">🗑️</button>
+                  <button 
+                    className="clear-chat-sliding-btn" 
+                    onClick={() => setShowDeleteConfirm(true)} 
+                    title="Xóa cuộc trò chuyện"
+                  >
+                    <TrashIcon size={16} strokeWidth={2} />
+                  </button>
                 )}
                 <button className="close-sliding-modal-btn" onClick={handleAttemptCloseChat}>✕</button>
               </div>
@@ -3691,13 +4011,13 @@ ${logsDesc}`;
                 <div className="welcome-dashboard-inner-sliding">
                   <div className="sliding-welcome-hero">
                     <span className="sliding-welcome-avatar"><LeafIcon size={52} strokeWidth={1.6} /></span>
-                    <h3 className="sliding-welcome-title">Xin chào mẹ Maud! 👋</h3>
-                    <p className="sliding-welcome-sub">Hôm nay mẹ cần trợ lý Montessori AI giúp đỡ gì cho em bé?</p>
+                    <h3 className="sliding-welcome-title">{assistantContext.title}</h3>
+                    <p className="sliding-welcome-sub">{assistantContext.subtitle}</p>
                   </div>
                   <div className="welcome-suggestions-section">
                     <h4 className="suggestions-section-title">Gợi ý câu hỏi thông minh hôm nay</h4>
                     <div className="suggestions-grid">
-                      {suggestions.map((q, i) => (
+                      {assistantContext.suggestions.map((q, i) => (
                         <button key={i} className="suggestion-card" onClick={() => sendMessage(q)}>
                           <span className="suggestion-card-bullet"><LeafIcon size={13} strokeWidth={2} /></span> {q}
                         </button>
@@ -3743,7 +4063,7 @@ ${logsDesc}`;
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={pendingImgs.length > 0 ? 'Thêm mô tả cho ảnh...' : 'Hỏi về thai kỳ, chăm sóc bé, Montessori...'}
+                  placeholder={pendingImgs.length > 0 ? 'Thêm mô tả cho ảnh...' : assistantContext.placeholder}
                   rows={1}
                   disabled={isLoading}
                 />
@@ -3762,6 +4082,25 @@ ${logsDesc}`;
 
           </div>
         </>,
+        document.getElementById('modal-root') || document.body
+      )}
+
+      {showDeleteConfirm && createPortal(
+        <div className="chat-delete-confirm-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="chat-delete-confirm-card" onClick={e => e.stopPropagation()}>
+            <div className="confirm-icon-wrapper">
+              <TrashIcon size={24} strokeWidth={2} />
+            </div>
+            <h3 className="confirm-title">Xoá cuộc trò chuyện?</h3>
+            <p className="confirm-desc">
+              Toàn bộ nội dung trong cuộc trò chuyện hiện tại với Trợ lý Montessori AI sẽ được xoá.
+            </p>
+            <div className="confirm-actions">
+              <button className="confirm-btn cancel" onClick={() => setShowDeleteConfirm(false)}>Huỷ</button>
+              <button className="confirm-btn delete" onClick={handleConfirmDelete}>Xoá</button>
+            </div>
+          </div>
+        </div>,
         document.getElementById('modal-root') || document.body
       )}
 
@@ -6720,30 +7059,6 @@ function MessageBubble({ message, profile }) {
           <Status />
         </div>
       </div>
-
-      {isUser && (
-        <div className="msg-avatar user-msg-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {avatarUrl && !imgError ? (
-            <img src={avatarUrl} alt="me" onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: '#E8F4EA',
-              color: '#2F6B4F',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: '700',
-              fontSize: '13px',
-              borderRadius: '50%',
-              textTransform: 'uppercase'
-            }}>
-              {(profile?.momName || 'M').charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-      )}
 
       {expanded && (
         <div className="img-lightbox" onClick={() => setExpanded(null)}>

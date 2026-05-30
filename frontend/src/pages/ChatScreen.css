@@ -904,7 +904,7 @@
 }
 
 .montessori-brand-title {
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: var(--font-primary);
   font-size: 16px;
   font-weight: 800;
   color: #2B4E3A;
@@ -982,7 +982,7 @@
 
 /* ── Large page heading "Hôm nay với Cốm" ── */
 .dashboard-page-main-heading {
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: var(--font-primary);
   font-size: 30px;
   font-weight: 800;
   color: #1A1A1A;
@@ -1071,6 +1071,7 @@
   position: relative;
   transition: transform 0.18s ease;
   min-height: 158px;
+  cursor: pointer;
   /* Subtle drop shadow */
   box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
 }
@@ -1108,7 +1109,7 @@
 }
 
 .tracker-card-name {
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: var(--font-primary);
   font-size: 16px;
   font-weight: 700;
   color: #1A1A1A;
@@ -1137,7 +1138,7 @@
   color: #1A1A1A;
   cursor: pointer;
   text-align: center;
-  font-family: 'Nunito', 'Inter', sans-serif;
+  font-family: var(--font-primary);
   transition: opacity 0.15s ease, transform 0.15s ease;
   margin-top: auto;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
@@ -1155,7 +1156,7 @@
 }
 
 .timeline-title-headline {
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: var(--font-primary);
   font-size: 22px;
   font-weight: 800;
   color: #1A1A1A;
@@ -1276,7 +1277,7 @@
 }
 
 .node-details-title {
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: var(--font-primary);
   font-size: 14px;
   font-weight: 700;
   color: #1A1A1A;
@@ -1303,12 +1304,13 @@
   width: 48px;         /* Nhỏ gọn hơn */
   height: 48px;
   border-radius: 50%;
-  background: #2F6B4F; /* Màu xanh thương hiệu đậm premium */
+  background: #458C6A; /* Màu xanh thương hiệu dịu mát premium (-20% đậm) */
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: white;
   box-shadow:
     0 8px 24px rgba(47, 107, 79, 0.35),
     0 3px 8px rgba(0, 0, 0, 0.08);
@@ -1339,7 +1341,7 @@
   height: 10px;
   background: #4CAF50;
   border-radius: 50%;
-  border: 1.8px solid #2F6B4F;
+  border: 1.8px solid #458C6A;
   animation: green-dot-pulse 2s ease-in-out infinite;
 }
 
@@ -1452,7 +1454,7 @@
 }
 
 .sliding-title-label {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 15px;
   font-weight: 800;
   color: #1D2B1F;
@@ -1473,21 +1475,22 @@
 }
 
 .clear-chat-sliding-btn {
-  background: none;
   border: none;
   width: 36px;
   height: 36px;
   border-radius: 50%;
+  background: #F5F6F5;
+  color: #8A9A90; /* elegant gray-green / slate gray */
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  cursor: pointer;
   transition: all 0.2s;
 }
 
 .clear-chat-sliding-btn:hover {
   background: #FFF0F0;
+  color: #E74C3C; /* soft warning red on hover */
 }
 
 .close-sliding-modal-btn {
@@ -1546,7 +1549,7 @@
 }
 
 .sliding-welcome-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 20px;
   font-weight: 800;
   color: #1D2B1F;
@@ -1725,7 +1728,7 @@
 }
 
 .tracker-sheet-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 18px;
   font-weight: 800;
   color: #1D2B1F;
@@ -1927,7 +1930,7 @@
 }
 
 .ruler-display-box-value h3 {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 32px;
   font-weight: 800;
   color: #1D2B1F;
@@ -2400,7 +2403,7 @@
 }
 
 .insight-heading-label {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 12.5px;
   font-weight: 800;
   color: #2B4E3A;
@@ -2434,7 +2437,7 @@
 }
 
 .huge-kick-counter-glow-number {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 42px;
   font-weight: 800;
   color: #5C9E7A;
@@ -2586,15 +2589,17 @@
 }
 
 .greeting-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #7B8A82;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #55685B;
+  text-transform: none;
+  letter-spacing: normal;
+  display: block;
+  line-height: 1.2;
 }
 
 .baby-today-heading {
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: var(--font-primary);
   font-size: 24px;
   font-weight: 800;
   color: #1F2D26;
@@ -2766,7 +2771,7 @@
 }
 
 .suggestion-ai-badge {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 9.5px;
   font-weight: 800;
   color: #2F6B4F;
@@ -2780,7 +2785,7 @@
 }
 
 .suggestion-card-header h3 {
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: var(--font-primary);
   font-size: 15.5px;
   font-weight: 700;
   color: #2F6B4F;
@@ -2873,7 +2878,7 @@
 }
 
 .warning-text-wrap h4 {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 14.5px;
   font-weight: 700;
   color: #A0522D;
@@ -2891,7 +2896,7 @@
    ⏰ TIMELINE REFINEMENTS
    ══════════════════════════════════════ */
 .timeline-empty-state-box h4 {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 16px;
   font-weight: 700;
   color: #1F2D26;
@@ -3405,7 +3410,7 @@
 
 .weight-numeric-input {
   width: 140px;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 52px;
   font-weight: 800;
   color: #1D2B1F;
@@ -3425,7 +3430,7 @@
 }
 
 .weight-unit-label {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 22px;
   font-weight: 800;
   color: #7C8B80;
@@ -3583,7 +3588,7 @@
   padding: 6px 10px;
   border: 1.5px solid #CBD5D0;
   border-radius: 8px;
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 16px;
   font-weight: 700;
   color: #1D2B1F;
@@ -4052,7 +4057,7 @@
 }
 
 .clinic-modal-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 16px;
   font-weight: 800;
   color: #2F6B4F;
@@ -4645,7 +4650,7 @@
 }
 
 .contra-metric-value {
-  font-family: 'Outfit', sans-serif;
+  font-family: var(--font-primary);
   font-size: 18px;
   font-weight: 800;
   color: #1D2B1F;
@@ -4904,4 +4909,152 @@
   text-align: center;
   line-height: 1.45;
   margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   🌿 ADDITIONAL PREMIUM STYLES FOR MONTESSORI AI ASSISTANT PANEL
+   ========================================================================== */
+
+/* ── Mobile drag handle & custom slide-up bottom sheet ── */
+.mobile-only-drag-handle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-only-drag-handle {
+    display: block;
+    margin: 10px auto 2px;
+  }
+  
+  .chat-slide-up-content-panel {
+    height: 90vh !important; /* Forces premium bottom sheet layout */
+    border-radius: 32px 32px 0 0 !important;
+  }
+  
+  .chat-sliding-header {
+    padding-top: 8px !important;
+  }
+}
+
+/* ── Delete Confirmation Overlay & Card ── */
+.chat-delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 22, 15, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlay-fade-in 0.22s ease-out;
+}
+
+.chat-delete-confirm-card {
+  background: white;
+  width: 90%;
+  max-width: 340px;
+  border-radius: 24px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 15px 40px rgba(10, 22, 15, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: confirm-card-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirm-card-pop {
+  from { transform: scale(0.9) translateY(12px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.confirm-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #FFF0F0;
+  color: #E74C3C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-title {
+  font-family: var(--font-primary);
+  font-size: 18px;
+  font-weight: 800;
+  color: #1D2B1F;
+  margin: 0;
+}
+
+.confirm-desc {
+  font-size: 13.5px;
+  color: #55685B;
+  line-height: 1.5;
+  margin: 0;
+  font-weight: 500;
+}
+
+.confirm-actions {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.confirm-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-primary);
+}
+
+.confirm-btn.cancel {
+  background: #F5F6F5;
+  color: #55685B;
+}
+
+.confirm-btn.cancel:hover {
+  background: #E8F4EA;
+  color: #5C9E7A;
+}
+
+.confirm-btn.delete {
+  background: #FDEDEC;
+  color: #E74C3C;
+}
+
+.confirm-btn.delete:hover {
+  background: #FADBD8;
+  color: #C0392B;
+}
+
+/* ── Align message-row user without avatar perfectly to the right ── */
+.message-row.user {
+  justify-content: flex-start; /* aligns properly inside flex-direction: row-reverse */
+}
+
+/* Align user messages timestamp gently */
+.user-group {
+  align-items: flex-end;
+}
+
+.msg-footer-right {
+  justify-content: flex-end;
+}
+
+.msg-time {
+  color: #9AA09D !important; /* subtle gray-slate */
 }

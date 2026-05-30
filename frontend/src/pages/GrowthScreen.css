@@ -1163,13 +1163,21 @@
 }
 
 .baby-avatar-circle.boy {
-  background: rgba(95, 175, 130, 0.15) !important;
-  color: #2F6B4F !important;
+  background: rgba(95, 150, 180, 0.08) !important;
+  color: #4A6FA5 !important;
+  border: 1px solid rgba(95, 150, 180, 0.15) !important;
 }
-
+ 
 .baby-avatar-circle.girl {
-  background: rgba(212, 232, 220, 0.6) !important;
+  background: rgba(220, 150, 170, 0.08) !important;
+  color: #A26A81 !important;
+  border: 1px solid rgba(220, 150, 170, 0.15) !important;
+}
+ 
+.baby-avatar-circle.neutral {
+  background: rgba(95, 175, 130, 0.08) !important;
   color: #2F6B4F !important;
+  border: 1px solid rgba(95, 175, 130, 0.15) !important;
 }
 
 .cs-select {

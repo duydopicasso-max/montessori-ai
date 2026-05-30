@@ -1252,14 +1252,481 @@
   width: fit-content;
 }
 .thai-giao-completed-tag .check-icon {
-  width: 10px;
-  height: 10px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   color: var(--sage);
 }
 .thai-giao-completed-tag .check-icon svg {
   width: 10px;
   height: 10px;
+}
+
+/* ─── Extracted QuickProfileSummary & HealthRecordsHistory CSS ─── */
+.qps-container { margin-bottom: 28px; }
+.qps-section-title { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 14px; padding-left: 2px; }
+.qps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.qps-card { background: #fff; border: 1px solid rgba(92,158,122,0.12); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 0; box-shadow: 0 2px 12px #0000000a; transition: box-shadow 0.2s ease, transform 0.2s ease; min-height: 140px; cursor: pointer; }
+.qps-card:hover { box-shadow: 0 6px 20px rgba(92,158,122,0.12); transform: translateY(-2px); }
+.qps-card-wide { border-radius: 20px; padding: 16px 18px; min-height: unset; margin-bottom: 10px; background: #fff; border: 1px solid rgba(92,158,122,0.12); box-shadow: 0 2px 12px #0000000a; transition: box-shadow 0.2s ease, transform 0.2s ease; cursor: pointer; }
+.qps-card-wide:hover { box-shadow: 0 6px 20px rgba(92, 158, 122, 0.12); transform: translateY(-2px); }
+.qps-card:active, .qps-card-wide:active { transform: translateY(0) scale(0.985); }
+.qps-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.qps-icon-wrap { width: 32px; height: 32px; min-width: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.qps-icon-wrap svg { width: 15px; height: 15px; stroke-width: 2; }
+.qps-icon-health { background: rgba(220, 80, 80, 0.09); color: #d94f4f; }
+.qps-icon-note { background: rgba(92, 158, 122, 0.1); color: var(--sage-dark); }
+.qps-icon-food { background: rgba(236, 100, 110, 0.1); color: #e05a68; }
+.qps-icon-alert { background: rgba(78, 138, 152, 0.1); color: #3d8a9e; }
+.qps-icon-toilet { background: rgba(92, 158, 122, 0.08); color: #4a9e7a; }
+.qps-icon-play { background: rgba(92, 158, 122, 0.12); color: var(--sage-dark); }
+.qps-card-label { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; line-height: 1; }
+.qps-card-body { flex: 1; margin-bottom: 12px; }
+.qps-card-main { font-size: 14px; font-weight: 700; color: var(--text-primary); line-height: 1.35; margin-bottom: 4px; }
+.qps-card-sub { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.qps-card-empty { font-size: 12px; color: var(--text-muted); line-height: 1.55; padding-top: 2px; }
+.qps-pill-btn { display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 700; color: var(--sage-dark); background: rgba(92, 158, 122, 0.1); border: none; padding: 5px 12px; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: background 0.15s, opacity 0.15s; align-self: flex-start; }
+.qps-pill-btn:hover { background: rgba(92, 158, 122, 0.18); }
+.qps-chip-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+.qps-chip-watch { background: rgba(192, 57, 43, 0.08); color: #c0392b; }
+.qps-wide-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.qps-wide-left { display: flex; align-items: flex-start; gap: 12px; flex: 1; }
+.qps-wide-left > div:last-child { display: flex; flex-direction: column; gap: 4px; }
+.qps-toilet-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(92, 158, 122, 0.1); display: flex; flex-direction: column; gap: 10px; }
+.qps-montessori-card { background: linear-gradient(135deg, #f2faf6, #eaf5ef) !important; border-color: rgba(92, 158, 122, 0.18) !important; }
+.qps-montessori-age { font-size: 12px; color: var(--sage-dark); font-weight: 500; }
+.qps-activity-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(92, 158, 122, 0.1); }
+.qps-activity-chip { display: flex; align-items: flex-start; gap: 12px; }
+.qps-activity-dot { width: 8px; height: 8px; min-width: 8px; border-radius: 50%; background: var(--sage); margin-top: 5px; }
+.qps-activity-name { font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.3; }
+.qps-activity-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.qps-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.qps-cta { display: inline-block; font-size: 12px; font-weight: 700; color: var(--sage-dark); background: none; border: none; padding: 4px 0 0; cursor: pointer; margin-top: auto; text-align: left; transition: opacity 0.15s; }
+.qps-cta:hover { opacity: 0.7; }
+.qps-food-list { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+.qps-food-chip { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: var(--mint-pale); color: var(--sage-dark); white-space: nowrap; }
+.qps-food-chip.watch { background: rgba(192, 57, 43, 0.08); color: #c0392b; }
+.qps-toilet-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.qps-montessori { background: linear-gradient(135deg, #f0faf5, #e8f5ee); border-color: rgba(92, 158, 122, 0.2); }
+.qps-montessori-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.qps-activity-list { display: flex; flex-direction: column; gap: 10px; }
+.qps-activity-item { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-primary); font-weight: 500; }
+
+.hhs-container { margin-top: 24px; }
+.hhs-heading { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 14px; padding-left: 2px; }
+.hhs-empty-card { background: #fff; border: 1px solid rgba(92,158,122,0.12); border-radius: 20px; padding: 28px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; box-shadow: 0 2px 12px #0000000a; }
+.hhs-empty-icon { width: 40px; height: 40px; border-radius: 14px; background: rgba(92, 158, 122, 0.1); display: flex; align-items: center; justify-content: center; color: var(--sage-dark); margin-bottom: 4px; }
+.hhs-empty-icon svg { width: 20px; height: 20px; stroke-width: 1.5; }
+.hhs-empty-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.hhs-empty-desc { font-size: 13px; color: var(--text-muted); line-height: 1.55; max-width: 260px; }
+.record-card-empty-hint { font-size: 12.5px; color: #aeaeb2; font-style: italic; margin: 8px 0 0; padding: 10px 12px; background: #f9f9f9; border-radius: 10px; }
+
+/* ── Pregnancy Quick Summary (PQS) ── */
+.pqs-section {
+  margin-top: 24px;
+}
+.pqs-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin-bottom: 14px;
+  padding-left: 2px;
+}
+.pqs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.pqs-grid--extra {
+  margin-top: 10px;
+}
+.pqs-card {
+  background: #fff;
+  border: 1px solid rgba(92, 158, 122, 0.12);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  box-shadow: 0 2px 12px #0000000a;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 110px;
+  overflow: hidden;
+}
+.pqs-card:hover {
+  box-shadow: 0 6px 20px rgba(92, 158, 122, 0.12);
+  transform: translateY(-1px);
+}
+.pqs-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.pqs-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.pqs-icon-wrap {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(92, 158, 122, 0.1);
+  color: var(--sage-dark);
+}
+.pqs-icon-wrap svg {
+  width: 14px;
+  height: 14px;
+}
+.pqs-card-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.pqs-val {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.45;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.pqs-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.pqs-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.pqs-cta {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sage-dark);
+  margin-top: 4px;
+  align-self: flex-start;
+}
+.pqs-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 0;
+  border: 1.5px solid rgba(92, 158, 122, 0.2);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--sage-dark);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.pqs-expand-btn:active {
+  background: rgba(92, 158, 122, 0.08);
+}
+.pqs-expand-icon {
+  font-size: 18px;
+  transform: rotate(90deg);
+  display: inline-block;
+  line-height: 1;
+}
+.pqs-expand-icon--up {
+  transform: rotate(-90deg);
+}
+
+/* ── Near Birth Banners ── */
+.singleton-near-birth-banner,
+.twin-near-birth-banner {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1.5px solid rgba(34, 197, 94, 0.25);
+  border-radius: 18px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tnb-text {
+  font-size: 14px;
+  color: #15803d;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+/* ── Near Birth Status Badge ── */
+.overview-status-badge.near-birth-badge {
+  background: linear-gradient(135deg, #fef3f3, #fde8e8);
+  color: #c0392b;
+  border: 1px solid rgba(192, 57, 43, 0.15);
+}
+
+/* ── Twin Overview Selector & Chips ── */
+.twin-overview-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 6px;
+  flex-wrap: wrap;
+}
+.twin-tab-chip {
+  padding: 7px 16px;
+  border-radius: 100px;
+  border: 1.5px solid rgba(47, 107, 79, 0.25);
+  background: rgba(255, 255, 255, 0.9);
+  color: #4a5d54;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.twin-tab-chip.active {
+  background: linear-gradient(135deg, #2f6b4f, #4a9b6e);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(47, 107, 79, 0.25);
+}
+.twin-tab-chip:hover:not(.active) {
+  background: rgba(47, 107, 79, 0.08);
+  border-color: rgba(47, 107, 79, 0.4);
+}
+.twin-tab-viewing-hint {
+  font-size: 12px;
+  color: #4a9b6e;
+  font-weight: 600;
+  margin-left: 4px;
+  background: rgba(74, 155, 110, 0.1);
+  padding: 4px 10px;
+  border-radius: 100px;
+}
+.twin-kick-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: linear-gradient(135deg, #fff8e7, #fff3d0);
+  border: 1px solid rgba(212, 163, 44, 0.3);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+}
+.twin-kick-notice-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.twin-kick-notice-text {
+  font-size: 13px;
+  color: #6b5300;
+  font-weight: 500;
+  line-height: 1.5;
+  margin: 0;
+}
+.tracker-card-twin-hint {
+  display: block;
+  font-size: 11px;
+  color: #7a8f86;
+  font-weight: 500;
+  margin-top: -2px;
+  margin-bottom: 4px;
+  font-style: italic;
+}
+
+/* ── Singleton Metrics Table & Chips ── */
+.singleton-metrics-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+.singleton-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f0fdf4;
+  border: 1px solid #c8e8d4;
+  border-radius: 10px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+}
+.chip-label {
+  font-weight: 700;
+  color: #3a7d55;
+}
+.singleton-metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.singleton-metrics-table td {
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+.singleton-metrics-table tr:last-child td {
+  border-bottom: none;
+}
+.sm-label {
+  color: #8e8e93;
+  font-weight: 500;
+  width: 60%;
+}
+.sm-val {
+  color: #1c1c1e;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* ─── Overview Card OVC Styles (Premium Left Aligned Layout) ─── */
+.overview-card--compact {
+  align-items: flex-start !important;
+  text-align: left !important;
+  border-radius: 24px !important;
+  background: #ffffff !important;
+  border: 1.5px solid rgba(92, 158, 122, 0.08) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+  padding: 18px 20px !important;
+}
+.ovc-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+}
+.overview-card--compact .overview-status-badge {
+  margin-bottom: 0 !important;
+  background: rgba(92, 158, 122, 0.08) !important;
+  color: var(--sage-dark, #2f6b4f) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  padding: 5px 12px !important;
+  border-radius: 100px !important;
+  letter-spacing: 0.1px;
+}
+.ovc-edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1.2px solid rgba(92, 158, 122, 0.25);
+  color: var(--sage-dark, #2f6b4f);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+.ovc-edit-btn:hover {
+  background: rgba(92, 158, 122, 0.04);
+  border-color: rgba(92, 158, 122, 0.4);
+  transform: translateY(-1px);
+}
+.ovc-edit-btn:active {
+  transform: translateY(0);
+}
+.ovc-edit-btn svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.2;
+}
+.ovc-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.ovc-baby-names {
+  font-family: var(--font-primary);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary, #1c1c1e);
+  margin: 0;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.ovc-week-pill {
+  background: rgba(92, 158, 122, 0.08);
+  color: var(--sage-dark, #2f6b4f);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 100px;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+}
+.ovc-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  width: 100%;
+}
+.ovc-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ovc-meta-lbl {
+  color: #8e8e93;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11.5px;
+  letter-spacing: 0.3px;
+}
+.ovc-meta-val {
+  font-weight: 700;
+  color: var(--text-primary, #1c1c1e);
+  font-size: 13px;
+}
+.ovc-meta-dot {
+  color: #8e8e93;
+  opacity: 0.6;
+  margin: 0 4px;
+  font-weight: 700;
+}
+.ovc-desc {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #8e8e93;
+  margin: 0;
+  max-width: 100%;
+  font-weight: 500;
+  text-align: left !important;
+  width: 100%;
 }
 

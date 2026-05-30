@@ -7,6 +7,7 @@ import {
 import { db } from '../firebase.js';
 import { getAgeInMonths } from '../data/whoData.js';
 import './BabyProfileScreen.css';
+import { getCurrentPregnancyWeek } from '../utils/pregnancyWeek.js';
 import AppDatePicker from '../components/AppDatePicker.jsx';
 
 /* ─── SVG Line Icons (No Emoji) ─── */
@@ -124,14 +125,7 @@ const formatDate = (dateStr) => {
   }
 };
 
-/* ── Gợi ý hoạt động thai giáo Montessori tuần 21 ── */
-const PREGNANCY_EDUCATION_SUGGESTIONS = [
-  { id: 'music', title: 'Nghe nhạc nhẹ 5–10 phút', desc: 'Chọn bản nhạc cổ điển hoặc không lời êm dịu, kích thích phát triển thính giác thai nhi.' },
-  { id: 'talk', title: 'Trò chuyện với Bắp và Bon', desc: 'Mẹ hoặc ba đặt tay lên bụng, nói lời yêu thương bằng giọng trầm ấm để bé làm quen với giọng nói ba mẹ.' },
-  { id: 'touch', title: 'Chạm nhẹ và thở chậm', desc: 'Chạm tay vuốt nhẹ nhàng trên bụng theo nhịp thở sâu, chậm rãi giúp mẹ thư giãn và bé cảm nhận nhịp yêu thương.' },
-  { id: 'movement', title: 'Ghi lại cảm nhận thai máy', desc: 'Dành 10 phút yên tĩnh nằm nghiêng trái để tập trung cảm nhận những cú máy, đạp nhẹ đầu tiên của Bắp và Bon.' },
-  { id: 'letter', title: 'Viết lời nhắn cho hai bé', desc: 'Viết một vài dòng nhật ký gửi tới Bắp và Bon để sau này làm kỷ niệm lưu trữ hành trình bé lớn lên.' },
-];
+
 
 /* ── Gợi ý trò chơi Montessori theo nhóm tuổi ── */
 const PLAY_DATA = {
@@ -183,6 +177,569 @@ function getPlayGroup(ageMonths) {
   return '3-6 tuổi';
 }
 
+/* ── SVG Icons for Quick Pregnancy Summary ── */
+const IconSearch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8"/>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </svg>
+);
+
+const IconPulse = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  </svg>
+);
+
+const IconTruck = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="1" y="3" width="15" height="13"/>
+    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+    <circle cx="5.5" cy="18.5" r="2.5"/>
+    <circle cx="18.5" cy="18.5" r="2.5"/>
+  </svg>
+);
+
+/* ── Gestational Stage Helpers ── */
+function parseDateAtMidnight(dateInput) {
+  if (!dateInput) return null;
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+      const [y, m, d] = dateInput.split('-').map(Number);
+      return new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
+    const t = new Date(dateInput);
+    return isNaN(t.getTime()) ? null : new Date(t.getFullYear(), t.getMonth(), t.getDate(), 0, 0, 0, 0);
+  } catch {
+    return null;
+  }
+}
+
+function getCurrentDateAtMidnight() {
+  const e = new Date();
+  return new Date(e.getFullYear(), e.getMonth(), e.getDate(), 0, 0, 0, 0);
+}
+
+function getDaysLeftToEDD(edd) {
+  const t = parseDateAtMidnight(edd);
+  if (!t) return null;
+  const n = getCurrentDateAtMidnight();
+  return Math.round((t - n) / 86400000);
+}
+
+function getTwinProfileStage(week, daysLeft) {
+  if (week >= 35 || (daysLeft !== null && daysLeft <= 21)) {
+    return 'twin_near_birth';
+  }
+  if (week >= 28) {
+    return 'twin_late';
+  }
+  if (week >= 13) {
+    return 'twin_mid';
+  }
+  return 'twin_early';
+}
+
+function getSingletonProfileStage(week, daysLeft) {
+  if (week >= 37 || (daysLeft !== null && daysLeft <= 14)) {
+    return 'singleton_near_birth';
+  }
+  if (week >= 28) {
+    return 'singleton_late';
+  }
+  if (week >= 13) {
+    return 'singleton_mid';
+  }
+  return 'singleton_early';
+}
+
+function getProfileStage(profile, pregnancyData, rawBabies, isPregnant, weekNum) {
+  if (isPregnant) {
+    if (!weekNum) return 'fallback';
+    const edd = pregnancyData?.edd || profile?.pregnancyInfo?.dueDate || '';
+    const daysLeft = getDaysLeftToEDD(edd);
+    
+    // Robust check for twin pregnancy
+    const isTwinPreg = (
+      rawBabies.filter(b => b && safeStr(b.childKey)).length >= 2 ||
+      profile?.numBabies === 2 ||
+      pregnancyData?.isTwin === true ||
+      pregnancyData?.babyCount === 2 ||
+      (profile?.pregnancyInfo?.babyName && safeStr(profile.pregnancyInfo.babyName).includes('&'))
+    );
+
+    if (isTwinPreg) {
+      return getTwinProfileStage(weekNum, daysLeft);
+    } else {
+      return getSingletonProfileStage(weekNum, daysLeft);
+    }
+  }
+
+  // Postpartum (parent) mode:
+  const dob = rawBabies[0]?.dob || '';
+  if (!dob) return 'fallback';
+  try {
+    const diffTime = Date.now() - new Date(dob).getTime();
+    const diffDays = Math.floor(diffTime / 86400000);
+    if (diffDays < 0) return 'fallback';
+    const ageMonths = diffDays / 30.44;
+    if (ageMonths < 6 && diffDays <= 42) {
+      return 'postpartum_new';
+    }
+    if (ageMonths < 6) {
+      return 'baby_0_6_months';
+    }
+    if (ageMonths < 12) {
+      return 'baby_6_12_months';
+    }
+    if (ageMonths < 24) {
+      return 'baby_12_24_months';
+    }
+    return 'baby_24_plus_months';
+  } catch {
+    return 'fallback';
+  }
+}
+
+const PREGNANCY_STAGES = {
+  pregnant_early: {
+    badge: "Thai kỳ tuần đầu",
+    overviewDesc: "Mẹ có thể theo dõi khám thai, dinh dưỡng và ghi chú hôm nay.",
+    emptyCheckup: "Mẹ có thể lưu lại kết quả khám, chỉ số và lời dặn của bác sĩ.",
+    emptyNutrition: "Ghi lại lịch uống vitamin, triệu chứng và các món bồi bổ hàng ngày.",
+    emptyNote: "Mẹ có thể ghi lại cảm nhận, triệu chứng hoặc điều cần nhớ hôm nay."
+  },
+  pregnant_mid: {
+    badge: "Giữa thai kỳ",
+    overviewDesc: "Mẹ có thể theo dõi chỉ số siêu âm, khám thai và cảm nhận thai máy.",
+    emptyCheckup: "Lưu kết quả khám, chỉ số siêu âm và lời dặn của bác sĩ.",
+    emptyNutrition: "Ghi lại lịch uống vitamin, cân nặng mẹ và món bồi bổ hàng ngày.",
+    emptyNote: "Lưu cảm nhận thai máy, khoảnh khắc thai kỳ hoặc điều cần nhớ."
+  },
+  pregnant_late: {
+    badge: "Cuối thai kỳ",
+    overviewDesc: "Mẹ có thể ghi lại thai máy, lịch khám và chuẩn bị cho ngày sinh.",
+    emptyCheckup: "Lưu kết quả khám và lịch hẹn khám tiếp theo.",
+    emptyNutrition: "Ghi lại dinh dưỡng và những điều bác sĩ dặn.",
+    emptyNote: "Lưu danh sách chuẩn bị giỏ đồ đi sinh hoặc điều cần nhớ."
+  },
+  near_birth: {
+    badge: "Sắp gặp bé yêu",
+    overviewDesc: "Mẹ sắp gặp bé yêu rồi. Chúc mẹ bình an.",
+    emptyCheckup: "Lưu lịch khám cuối và lời dặn bác sĩ.",
+    emptyNutrition: "Ghi lại dinh dưỡng những ngày cuối thai kỳ.",
+    emptyNote: "Lưu danh sách giỏ đồ đi sinh và những điều cần chuẩn bị."
+  },
+  singleton_early: {
+    badge: "Đầu thai kỳ",
+    overviewDesc: "Mẹ có thể theo dõi khám thai, dinh dưỡng và ghi chú hôm nay.",
+    emptyCheckup: "Mẹ có thể lưu lại kết quả khám đầu thai kỳ và lời dặn của bác sĩ.",
+    emptyNutrition: "Ghi lại lịch uống vitamin, nước uống và những gì mẹ ăn hôm nay.",
+    emptyNote: "Mẹ có thể ghi lại cảm nhận của cơ thể hoặc điều cần nhớ hôm nay."
+  },
+  singleton_mid: {
+    badge: "Giữa thai kỳ",
+    overviewDesc: "Mẹ có thể theo dõi khám thai, siêu âm và cảm nhận thai máy.",
+    emptyCheckup: "Lưu kết quả khám và chỉ số siêu âm gần nhất.",
+    emptyNutrition: "Ghi lại lịch uống vitamin, cân nặng mẹ và bữa ăn hàng ngày.",
+    emptyNote: "Lưu cảm nhận thai máy, dặn dò bác sĩ hoặc khoảnh khắc thai kỳ."
+  },
+  singleton_late: {
+    badge: "Cuối thai kỳ",
+    overviewDesc: "Mẹ có thể ghi lại thai máy, lịch khám và chuẩn bị cho ngày sinh.",
+    emptyCheckup: "Lưu kết quả khám và lịch hẹn khám tiếp theo.",
+    emptyNutrition: "Ghi lại dinh dưỡng và những điều bác sĩ dặn.",
+    emptyNote: "Lưu danh sách chuẩn bị giỏ đồ đi sinh hoặc điều cần nhớ."
+  },
+  singleton_near_birth: {
+    badge: "Sắp gặp bé",
+    overviewDesc: "Mẹ sắp gặp bé rồi. Chúc mẹ thật bình an.",
+    emptyCheckup: "Lưu lịch khám cuối và lời dặn bác sĩ.",
+    emptyNutrition: "Ghi lại dinh dưỡng những ngày cuối thai kỳ.",
+    emptyNote: "Lưu danh sách giỏ đồ đi sinh và những điều cần chuẩn bị."
+  },
+  twin_early: {
+    badge: "Đầu thai kỳ · Thai đôi",
+    overviewDesc: "Mẹ có thể theo dõi khám thai, dinh dưỡng và cảm nhận của hai bé.",
+    emptyCheckup: "Mẹ có thể lưu lại kết quả khám đầu thai kỳ và lời dặn của bác sĩ.",
+    emptyNutrition: "Ghi lại lịch uống vitamin, nước uống và triệu chứng ăn uống hàng ngày.",
+    emptyNote: "Mẹ có thể ghi lại cảm nhận, triệu chứng hoặc dặn dò bác sĩ hôm nay."
+  },
+  twin_mid: {
+    badge: "Giữa thai kỳ · Thai đôi",
+    overviewDesc: "Mẹ có thể theo dõi khám thai, dinh dưỡng và cảm nhận thai máy.",
+    emptyCheckup: "Lưu kết quả khám và chỉ số siêu âm riêng của Bé A và Bé B.",
+    emptyNutrition: "Ghi lại lịch uống vitamin, cân nặng mẹ và món bồi bổ hàng ngày.",
+    emptyNote: "Lưu cảm nhận thai máy, khoảnh khắc thai kỳ hoặc dặn dò bác sĩ."
+  },
+  twin_late: {
+    badge: "Cuối thai kỳ · Thai đôi",
+    overviewDesc: "Mẹ có thể theo dõi thai máy, lịch khám và chuẩn bị sát hơn.",
+    emptyCheckup: "Lưu kết quả khám và lịch hẹn khám tiếp theo.",
+    emptyNutrition: "Ghi lại dinh dưỡng và những điều bác sĩ dặn ở cuối thai kỳ.",
+    emptyNote: "Lưu danh sách chuẩn bị giỏ đồ đi sinh và những điều cần nhớ."
+  },
+  twin_near_birth: {
+    badge: "Sắp gặp các bé · Thai đôi",
+    overviewDesc: "Mẹ sắp gặp hai bé rồi. Montessori AI chúc mẹ bình an.",
+    emptyCheckup: "Lưu lịch khám cuối và lời dặn bác sĩ.",
+    emptyNutrition: "Ghi lại dinh dưỡng để giữ sức cho ngày sinh.",
+    emptyNote: "Lưu giỏ đồ đi sinh, tâm tư hoặc lời nhắn đầu tiên cho hai bé."
+  },
+  fallback: {
+    badge: "Đang theo dõi thai kỳ",
+    overviewDesc: "Mẹ có thể theo dõi khám thai, dinh dưỡng và ghi chú hôm nay.",
+    emptyCheckup: "Mẹ có thể lưu lại kết quả khám và lời dặn của bác sĩ.",
+    emptyNutrition: "Ghi lại dinh dưỡng, triệu chứng của mẹ hàng ngày.",
+    emptyNote: "Mẹ có thể ghi lại cảm nhận hoặc điều cần nhớ hôm nay."
+  }
+};
+
+function QuickPregnancySummary({ userId, week, profileStage, isTwin, fetuses, babyName, pregnancyData, onSwitchTab }) {
+  const [latestCheckup, setLatestCheckup] = useState(null);
+  const [latestNutrition, setLatestNutrition] = useState(null);
+  const [latestNote, setLatestNote] = useState(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const babyAName = fetuses[0]?.name || "Bé A";
+  const babyBName = fetuses[1]?.name || "Bé B";
+  const resolvedBabyName = babyName || fetuses[0]?.name || "bé";
+  const eddStr = pregnancyData?.edd ? formatDate(pregnancyData.edd) : null;
+
+  const loadData = useCallback(() => {
+    if (!userId) return;
+    
+    // Get latest checkup visit
+    const visitsQuery = query(collection(db, 'users', userId, 'pregnancyVisits'), orderBy('date', 'desc'));
+    getDocs(visitsQuery).then((snap) => {
+      if (!snap.empty) {
+        setLatestCheckup({ id: snap.docs[0].id, ...snap.docs[0].data() });
+      }
+    }).catch(() => {});
+
+    // Get latest nutrition entry
+    const nutritionQuery = query(collection(db, 'users', userId, 'pregnancyNutrition'), orderBy('date', 'desc'));
+    getDocs(nutritionQuery).then((snap) => {
+      if (!snap.empty) {
+        setLatestNutrition({ id: snap.docs[0].id, ...snap.docs[0].data() });
+      }
+    }).catch(() => {});
+
+    // Get latest note
+    const notesQuery = query(collection(db, 'users', userId, 'pregnancyNotes'), orderBy('date', 'desc'));
+    getDocs(notesQuery).then((snap) => {
+      if (!snap.empty) {
+        setLatestNote({ id: snap.docs[0].id, ...snap.docs[0].data() });
+      }
+    }).catch(() => {});
+  }, [userId]);
+
+  useEffect(() => {
+    loadData();
+    window.addEventListener('profile-data-changed', loadData);
+    return () => window.removeEventListener('profile-data-changed', loadData);
+  }, [loadData]);
+
+  const V = (val) => (val !== null && val !== undefined && !isNaN(val)) ? val : null;
+
+  const getB = () => {
+    const ee = latestCheckup?.babyA;
+    return ee ? (V(ee.efw) ? `EFW: ${ee.efw}g` : V(ee.bpd) ? `BPD: ${ee.bpd}mm${V(ee.fl) ? ` · FL: ${ee.fl}mm` : ""}` : V(ee.hc) ? `HC: ${ee.hc}mm` : null) : null;
+  };
+
+  const getH = () => {
+    const ee = latestCheckup?.babyA;
+    const ne = latestCheckup?.babyB;
+    if (!ee && !ne) return null;
+    const Te = V(ee?.efw);
+    const We = V(ne?.efw);
+    if (Te !== null || We !== null) {
+      const valA = Te !== null ? `${Te}g` : "Chưa có dữ liệu";
+      const valB = We !== null ? `${We}g` : "Chưa có dữ liệu";
+      const me = Te !== null && We !== null ? ` · Chênh ${Math.abs(Te - We)}g` : "";
+      return `${babyAName}: ${valA} · ${babyBName}: ${valB}${me}`;
+    }
+    return null;
+  };
+
+  // Card definitions
+  const cardCheckup = {
+    id: "checkup",
+    icon: <IconCalendar />,
+    label: "Khám thai gần nhất",
+    onClick: () => onSwitchTab('checkup'),
+    children: latestCheckup ? (
+      <>
+        {getB() && !isTwin && <p className="pqs-val">{getB()}</p>}
+        {getH() && isTwin && <p className="pqs-val" style={{ fontSize: '11.5px', lineHeight: '1.4' }}>{getH()}</p>}
+        {latestCheckup.notes && (
+          <p className="pqs-sub" style={{ fontStyle: 'italic' }}>
+            "{latestCheckup.notes.slice(0, 50)}{latestCheckup.notes.length > 50 ? '...' : ''}"
+          </p>
+        )}
+        <p className="pqs-date">{formatDate(latestCheckup.date)}</p>
+        <span className="pqs-cta">Xem chi tiết</span>
+      </>
+    ) : (
+      <>
+        <p className="pqs-sub">Chưa có lần khám nào.</p>
+        <span className="pqs-cta">+ Ghi nhận khám thai</span>
+      </>
+    )
+  };
+
+  const cardUltrasound = {
+    id: "ultrasound",
+    icon: <IconSearch />,
+    label: "Chỉ số siêu âm",
+    onClick: () => onSwitchTab('checkup'),
+    children: getB() ? (
+      <>
+        <p className="pqs-val">{getB()}</p>
+        {latestCheckup?.date && <p className="pqs-date">{formatDate(latestCheckup.date)}</p>}
+        <span className="pqs-cta">Xem chỉ số</span>
+      </>
+    ) : (
+      <>
+        <p className="pqs-sub">Chưa có chỉ số siêu âm.</p>
+        <span className="pqs-cta">+ Thêm lần khám</span>
+      </>
+    )
+  };
+
+  const cardTwinMetrics = {
+    id: "twin_metrics",
+    icon: <IconSearch />,
+    label: "Chỉ số hai bé",
+    onClick: () => onSwitchTab('checkup'),
+    children: getH() ? (
+      <>
+        <p className="pqs-val" style={{ fontSize: '11.5px', lineHeight: '1.4' }}>{getH()}</p>
+        {latestCheckup?.date && <p className="pqs-date">{formatDate(latestCheckup.date)}</p>}
+        <span className="pqs-cta">Xem chỉ số</span>
+      </>
+    ) : (
+      <>
+        <p className="pqs-sub">Chưa có chỉ số hai bé.</p>
+        <span className="pqs-cta">+ Thêm lần khám</span>
+      </>
+    )
+  };
+
+  const cardEdd = {
+    id: "edd",
+    icon: <IconHeart />,
+    label: "Ngày dự sinh",
+    onClick: () => onSwitchTab('overview'),
+    children: eddStr ? (
+      <>
+        <p className="pqs-val">{eddStr}</p>
+        <span className="pqs-cta">Xem hồ sơ</span>
+      </>
+    ) : (
+      <>
+        <p className="pqs-sub">Thêm ngày dự sinh để cá nhân hoá app.</p>
+        <span className="pqs-cta">+ Thêm ngày</span>
+      </>
+    )
+  };
+
+  const cardNutrition = {
+    id: "nutrition",
+    icon: <IconApple />,
+    label: "Dinh dưỡng mẹ",
+    onClick: () => onSwitchTab('nutrition'),
+    children: latestNutrition ? (
+      <>
+        {latestNutrition.water > 0 && <p className="pqs-val">Nước: {latestNutrition.water} ml</p>}
+        {latestNutrition.vitamin && <p className="pqs-sub">Vi chất: {latestNutrition.vitamin}</p>}
+        {!latestNutrition.water && !latestNutrition.vitamin && <p className="pqs-sub">Ngày {formatDate(latestNutrition.date)}</p>}
+        <span className="pqs-cta">Xem thêm</span>
+      </>
+    ) : (
+      <>
+        <p className="pqs-sub">Ghi lại nước, vitamin hàng ngày.</p>
+        <span className="pqs-cta">+ Ghi nhận</span>
+      </>
+    )
+  };
+
+  const cardEducation = {
+    id: "education",
+    icon: <IconLeaf />,
+    label: "Thai giáo hôm nay",
+    onClick: () => onSwitchTab('education'),
+    children: (() => {
+      const nameA = fetuses[0]?.name || "Bé A";
+      const nameB = fetuses[1]?.name || "Bé B";
+      const twinNames = `${nameA} và ${nameB}`;
+      const targetBabyName = isTwin ? twinNames : resolvedBabyName;
+
+      let eduText = `Trò chuyện với ${targetBabyName} 5 phút`;
+      if (week <= 12) eduText = "Nghe nhạc nhẹ vài phút";
+      else if (week <= 27) eduText = `Trò chuyện với ${targetBabyName} 5 phút`;
+      else eduText = `Đọc truyện cho ${targetBabyName} nghe`;
+      return (
+        <>
+          <p className="pqs-val">{eduText}</p>
+          <span className="pqs-cta">Xem gợi ý</span>
+        </>
+      );
+    })()
+  };
+
+  const cardNote = {
+    id: "note",
+    icon: <IconNote />,
+    label: "Ghi chú gần nhất",
+    onClick: () => onSwitchTab('note'),
+    children: latestNote ? (
+      <>
+        <p className="pqs-val">{(latestNote.title || "Ghi chú thai kỳ").slice(0, 40)}</p>
+        <p className="pqs-date">{formatDate(latestNote.date)}</p>
+        <span className="pqs-cta">Xem thêm</span>
+      </>
+    ) : (
+      <>
+        <p className="pqs-sub">Lưu dặn dò bác sĩ hoặc cảm nhận hôm nay.</p>
+        <span className="pqs-cta">+ Thêm ghi chú</span>
+      </>
+    )
+  };
+
+  const cardFetalMovement = {
+    id: "fetal_movement",
+    icon: <IconHeart />,
+    label: "Thai máy",
+    onClick: () => onSwitchTab('note'),
+    children: week >= 20 ? (
+      <>
+        <p className="pqs-val">Từ tuần {week}, mẹ để ý thai máy của {resolvedBabyName}.</p>
+        <span className="pqs-cta">Ghi nhận cảm nhận</span>
+      </>
+    ) : (
+      <>
+        <p className="pqs-sub">Tìm hiểu trước về thai máy.</p>
+        <span className="pqs-cta">Tìm hiểu thêm</span>
+      </>
+    )
+  };
+
+  const cardContractions = {
+    id: "contractions",
+    icon: <IconPulse />,
+    label: "Cơn gò",
+    onClick: () => onSwitchTab('note'),
+    children: (
+      <>
+        <p className="pqs-sub">Ghi lại cơn gò để dễ theo dõi.</p>
+        <span className="pqs-cta">Ghi nhận</span>
+      </>
+    )
+  };
+
+  const cardBirthPrep = {
+    id: "birth_prep",
+    icon: <IconTruck />,
+    label: "Chuẩn bị sinh",
+    onClick: () => onSwitchTab('note'),
+    children: (
+      <>
+        <p className="pqs-sub">Lưu danh sách giỏ đồ và điều cần chuẩn bị.</p>
+        <span className="pqs-cta">Thêm ghi chú</span>
+      </>
+    )
+  };
+
+  const cardNextAppt = {
+    id: "next_appt",
+    icon: <IconCalendar />,
+    label: "Lịch khám tiếp theo",
+    onClick: () => onSwitchTab('checkup'),
+    children: latestCheckup?.nextAppointment ? (
+      <>
+        <p className="pqs-val">{formatDate(latestCheckup.nextAppointment)}</p>
+        <span className="pqs-cta">Xem lịch</span>
+      </>
+    ) : (
+      <>
+        <p className="pqs-sub">Chưa có lịch hẹn tiếp theo.</p>
+        <span className="pqs-cta">+ Thêm lịch hẹn</span>
+      </>
+    )
+  };
+
+  const metricCard = isTwin ? cardTwinMetrics : cardUltrasound;
+
+  const cardList = (() => {
+    if (profileStage === "singleton_near_birth" || profileStage === "twin_near_birth") {
+      return [cardNextAppt, cardFetalMovement, cardContractions, cardBirthPrep, metricCard, cardNutrition, cardNote];
+    }
+    if (profileStage === "singleton_late" || profileStage === "twin_late") {
+      return [cardNextAppt, cardFetalMovement, metricCard, cardNutrition, cardContractions, cardNote, cardEducation, cardBirthPrep];
+    }
+    if ((profileStage === "singleton_mid" || profileStage === "twin_mid") && week >= 20) {
+      return [cardCheckup, metricCard, cardFetalMovement, cardNutrition, cardEducation, cardNote, cardNextAppt];
+    }
+    if (profileStage === "singleton_mid" || profileStage === "twin_mid") {
+      return [cardCheckup, metricCard, cardNutrition, cardEducation, cardNote, cardEdd, cardNextAppt];
+    }
+    return [cardCheckup, cardEdd, cardNutrition, cardNote, cardEducation];
+  })();
+
+  const visibleCards = cardList.slice(0, 4);
+  const extraCards = cardList.slice(4);
+  const hasExtra = extraCards.length > 0;
+
+  const renderCard = (card) => {
+    return (
+      <div 
+        key={card.id} 
+        className="pqs-card" 
+        onClick={card.onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(ev) => ev.key === 'Enter' && card.onClick()}
+      >
+        <div className="pqs-card-top">
+          <div className="pqs-icon-wrap">{card.icon}</div>
+          <span className="pqs-card-label">{card.label}</span>
+        </div>
+        {card.children}
+      </div>
+    );
+  };
+
+  return (
+    <div className="pqs-section">
+      <h3 className="pqs-section-title">Hồ sơ nhanh thai kỳ</h3>
+      <div className="pqs-grid">
+        {visibleCards.map(renderCard)}
+      </div>
+      {hasExtra && expanded && (
+        <div className="pqs-grid pqs-grid--extra fade-in">
+          {extraCards.map(renderCard)}
+        </div>
+      )}
+      {hasExtra && (
+        <button className="pqs-expand-btn" onClick={() => setExpanded(e => !e)}>
+          {expanded ? (
+            <>
+              <span className="pqs-expand-icon pqs-expand-icon--up">›</span>
+              Thu gọn
+            </>
+          ) : (
+            <>
+              <span className="pqs-expand-icon">›</span>
+              Xem thêm ({extraCards.length})
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ════════════════════════════════════════
    MAIN COMPONENT
    ════════════════════════════════════════ */
@@ -191,11 +748,24 @@ export default function BabyProfileScreen({ profile }) {
   const statusContext = profile?.status || 'pregnant'; // 'pregnant' | 'parent'
   const isPregnant   = statusContext === 'pregnant';
 
+  /* ── States ── */
+  const [selectedSubject, setSelectedSubject] = useState('all');
+  const [activeTab, setActiveTab]             = useState(isPregnant ? 'overview' : 'health');
+  
+  // Modals & Toast states
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showConfirmBirthModal, setShowConfirmBirthModal] = useState(false);
+  const [toast, setToast]                                 = useState('');
+  const [deleteConfirmInfo, setDeleteConfirmInfo]         = useState(null); // { type: 'checkup'|'nutrition'|'note'|'health'|'food', id }
+  const [deleting, setDeleting]                           = useState(false);
+
+  // Profile data locally synced
+  const [pregnancyData, setPregnancyData] = useState(null);
+
   /* ── Resolve babies / fetuses ── */
   const rawBabies   = useMemo(() => [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0)), [profile?.babies]);
   const pregnancyId = safeStr(profile?.pregnancyId || profile?.currentPregnancyId || profile?.pregnancyInfo?.id || 'pregnancy');
-  const currentWeek = profile?.pregnancyWeek || profile?.currentWeek
-    || safeStr(profile?.pregnancyInfo?.weeks) || '21';
+  const currentWeek = isPregnant ? getCurrentPregnancyWeek(profile, pregnancyData) : null;
 
   // Thai nhi (chỉ lọc những bé thuộc thai kỳ hiện tại - có childKey)
   const fetuses = useMemo(() => isPregnant
@@ -244,19 +814,7 @@ export default function BabyProfileScreen({ profile }) {
         ...babies.map((b, i) => ({ id: b.id || `baby-${i}`, label: b.name || `Bé ${String.fromCharCode(65 + i)}` })),
       ];
 
-  /* ── States ── */
-  const [selectedSubject, setSelectedSubject] = useState('all');
-  const [activeTab, setActiveTab]             = useState(isPregnant ? 'overview' : 'health');
-  
-  // Modals & Toast states
-  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [showConfirmBirthModal, setShowConfirmBirthModal] = useState(false);
-  const [toast, setToast]                                 = useState('');
-  const [deleteConfirmInfo, setDeleteConfirmInfo]         = useState(null); // { type: 'checkup'|'nutrition'|'note'|'health'|'food', id }
-  const [deleting, setDeleting]                           = useState(false);
 
-  // Profile data locally synced
-  const [pregnancyData, setPregnancyData] = useState(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -266,23 +824,44 @@ export default function BabyProfileScreen({ profile }) {
     return () => unsub();
   }, [userId]);
 
-  const activeFetusNames = fetuses.map(f => f.name).filter(Boolean).join(' và ') || 'các bé';
+  const isTwinPregnancy = useMemo(() => {
+    if (!isPregnant) return false;
+    const numBabies = profile?.numBabies || profile?.numberOfBabies || pregnancyData?.numberOfBabies || pregnancyData?.numBabies || fetuses.length;
+    const pregType = profile?.pregnancyType || pregnancyData?.pregnancyType || (pregnancyData?.isTwin ? 'twins' : '');
+    return numBabies === 2 || pregType === 'twins';
+  }, [isPregnant, profile, pregnancyData, fetuses]);
+
+  const babyAName = useMemo(() => fetuses[0]?.name || "Bé A", [fetuses]);
+  const babyBName = useMemo(() => fetuses[1]?.name || "Bé B", [fetuses]);
+
+  const activeFetusNames = useMemo(() => {
+    if (isTwinPregnancy) {
+      return `${babyAName} và ${babyBName}`;
+    }
+    return fetuses[0]?.name || 'bé';
+  }, [isTwinPregnancy, babyAName, babyBName, fetuses]);
+
+  const weekNum = parseInt(currentWeek, 10) || 0;
+  const profileStage = useMemo(() => {
+    return getProfileStage(profile, pregnancyData, rawBabies, isPregnant, weekNum);
+  }, [profile, pregnancyData, rawBabies, isPregnant, weekNum]);
+
+  const isSingletonPregnancy = useMemo(() => {
+    if (!isPregnant) return false;
+    return !isTwinPregnancy;
+  }, [isPregnant, isTwinPregnancy]);
 
   // Recalculate EDD days near birth to show Birth Confirmation button
   const showBirthBanner = useMemo(() => {
-    if (!isPregnant || !pregnancyData?.edd) return false;
-    try {
-      const now = new Date();
-      const eddDate = new Date(pregnancyData.edd);
-      eddDate.setHours(0,0,0,0);
-      now.setHours(0,0,0,0);
-      const diffDays = Math.ceil((eddDate.getTime() - now.getTime()) / (86400000));
-      // Show when diff ≤ 7 days (or EDD is in the past)
-      return diffDays <= 7;
-    } catch {
-      return false;
-    }
-  }, [isPregnant, pregnancyData]);
+    if (!isPregnant) return false;
+    if (isTwinPregnancy && weekNum >= 35) return true;
+    if (!isTwinPregnancy && weekNum >= 37) return true;
+    const edd = pregnancyData?.edd;
+    if (!edd) return false;
+    const daysLeft = getDaysLeftToEDD(edd);
+    if (daysLeft === null) return false;
+    return isTwinPregnancy ? daysLeft <= 21 : daysLeft <= 14;
+  }, [isPregnant, pregnancyData, weekNum, isTwinPregnancy]);
 
   // Global Toast trigger helper
   const triggerToast = (msg) => {
@@ -302,22 +881,7 @@ export default function BabyProfileScreen({ profile }) {
         </div>
       </header>
 
-      {/* ── Selector bé/thai nhi (Twin/Triplet selector) ── */}
-      {needsSubjectSelector && (
-        <div className="profile-selector-wrap">
-          <div className="profile-selector">
-            {subjectOptions.map(opt => (
-              <button
-                key={opt.id}
-                className={`profile-selector-pill${selectedSubject === opt.id ? ' active' : ''}`}
-                onClick={() => setSelectedSubject(opt.id)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Selector bé/thai nhi removed per user request */}
 
       {/* ── Nav Tabs ── */}
       <div className="profile-tabs-wrap">
@@ -382,6 +946,10 @@ export default function BabyProfileScreen({ profile }) {
                 activeFetusNames={activeFetusNames}
                 onEditProfile={() => setShowEditProfileModal(true)}
                 onOpenBirthModal={() => setShowConfirmBirthModal(true)}
+                profileStage={profileStage}
+                onSwitchTab={setActiveTab}
+                isTwinPregnancy={isTwinPregnancy}
+                isSingletonPregnancy={isSingletonPregnancy}
               />
             )}
             {activeTab === 'checkup' && (
@@ -390,8 +958,10 @@ export default function BabyProfileScreen({ profile }) {
                 pregnancyId={pregnancyId}
                 selectedSubject={selectedSubject}
                 fetuses={fetuses}
+                isTwinPregnancy={isTwinPregnancy}
                 onDeleteClick={(id) => setDeleteConfirmInfo({ type: 'checkup', id })}
                 triggerToast={triggerToast}
+                currentWeek={currentWeek}
               />
             )}
             {activeTab === 'nutrition' && (
@@ -408,6 +978,9 @@ export default function BabyProfileScreen({ profile }) {
                 currentWeek={currentWeek}
                 activeFetusNames={activeFetusNames}
                 triggerToast={triggerToast}
+                selectedSubject={selectedSubject}
+                fetuses={fetuses}
+                isTwinPregnancy={isTwinPregnancy}
               />
             )}
             {activeTab === 'note' && (
@@ -430,6 +1003,7 @@ export default function BabyProfileScreen({ profile }) {
                 babies={babies}
                 onDeleteClick={(id) => setDeleteConfirmInfo({ type: 'health', id })}
                 triggerToast={triggerToast}
+                onSwitchTab={setActiveTab}
               />
             )}
             {activeTab === 'food' && (
@@ -486,7 +1060,12 @@ export default function BabyProfileScreen({ profile }) {
           onClose={() => setShowConfirmBirthModal(false)}
           onSaved={() => {
             setShowConfirmBirthModal(false);
-            triggerToast('Chào mừng các bé yêu chào đời! 🎉');
+            const babyA = fetuses[0]?.name || "Bé A";
+            const babyB = fetuses[1]?.name || "Bé B";
+            const msg = isTwinPregnancy 
+              ? `Chúc mừng mẹ và gia đình đã đón ${babyA} và ${babyB}. Chúc mẹ hồi phục thật tốt và hai bé lớn lên bình an.`
+              : `Chào mừng bé yêu chào đời! 🎉`;
+            triggerToast(msg);
           }}
         />
       )}
@@ -557,40 +1136,122 @@ export default function BabyProfileScreen({ profile }) {
    TAB 1: TỔNG QUAN (PREGNANT)
    ════════════════════════════════════════ */
 function OverviewTab({ 
-  pregnancyData, fetuses, currentWeek, showBirthBanner, 
-  activeFetusNames, onEditProfile, onOpenBirthModal 
+  userId, pregnancyData, fetuses, currentWeek, showBirthBanner, 
+  activeFetusNames, onEditProfile, onOpenBirthModal, profileStage, onSwitchTab,
+  isTwinPregnancy, isSingletonPregnancy
 }) {
   const [dismissedBirthBanner, setDismissedBirthBanner] = useState(false);
   const eddStr = pregnancyData?.edd ? formatDate(pregnancyData.edd) : 'Chưa cập nhật';
-  const displayBabyNames = fetuses.map(f => f.name).join(' · ') || 'Chưa đặt';
-  const isTwins = fetuses.length > 1;
+  
+  const isTwins = isTwinPregnancy;
+  const isSingleton = isSingletonPregnancy;
+  const babyAName = fetuses[0]?.name || "Bé A";
+  const babyBName = fetuses[1]?.name || "Bé B";
+  const displayBabyNames = isTwins ? `${babyAName} · ${babyBName}` : (fetuses[0]?.name || 'Chưa đặt tên');
+
+  const weekNum = parseInt(currentWeek, 10) || 0;
+  
+  const stageMeta = PREGNANCY_STAGES[profileStage] || PREGNANCY_STAGES.fallback;
+  const firstFetusName = fetuses[0]?.name || 'bé';
+
+  const formattedDesc = useMemo(() => {
+    if (!stageMeta.overviewDesc) return '';
+    return stageMeta.overviewDesc
+      .replace(/\{babyAName\}/g, babyAName)
+      .replace(/\{babyBName\}/g, babyBName)
+      .replace(/Bé A và Bé B/g, `${babyAName} và ${babyBName}`)
+      .replace(/Bắp và Bon/g, `${babyAName} và ${babyBName}`);
+  }, [stageMeta.overviewDesc, babyAName, babyBName]);
 
   return (
     <div className="tab-content fade-in">
-      <div className="overview-card">
-        <div className="overview-status-badge">Đang theo dõi thai kỳ</div>
-        <h3 className="overview-twins-title">{displayBabyNames}</h3>
-        <p className="overview-week-label">Tuần thai {currentWeek}</p>
+      {/* Near birth banners */}
+      {isSingleton && profileStage === "singleton_near_birth" && (
+        <div className="singleton-near-birth-banner fade-in">
+          <span className="tnb-text">
+            Mẹ sắp gặp {firstFetusName !== "bé" ? firstFetusName : "bé"} rồi. Montessori AI chúc mẹ thật bình an trong những ngày cuối thai kỳ.
+          </span>
+        </div>
+      )}
+      {isTwins && profileStage === "twin_near_birth" && (
+        <div className="twin-near-birth-banner fade-in">
+          <span className="tnb-text">
+            Mẹ sắp gặp {activeFetusNames} rồi. Montessori AI chúc mẹ thật bình an trong những ngày cuối thai kỳ.
+          </span>
+        </div>
+      )}
 
-        <div className="overview-stats-grid">
-          <div className="overview-stat">
-            <span className="overview-stat-lbl">Ngày dự sinh</span>
-            <span className="overview-stat-val">{eddStr}</span>
+      {/* Overview main card */}
+      <div className="overview-card overview-card--compact">
+        <div className="ovc-top-row">
+          <div className={`overview-status-badge${(profileStage === 'singleton_near_birth' || profileStage === 'twin_near_birth') ? ' near-birth-badge' : ''}`}>
+            {stageMeta.badge || "Đang theo dõi thai kỳ"}
           </div>
-          <div className="overview-stat">
-            <span className="overview-stat-lbl">Số lượng bé</span>
-            <span className="overview-stat-val">
-              {fetuses.length === 2 ? 'Thai đôi' : fetuses.length > 2 ? 'Thai ba' : '1 bé'}
-            </span>
-          </div>
+          <button className="ovc-edit-btn" onClick={onEditProfile} aria-label="Chỉnh sửa hồ sơ">
+            <IconPencil /> Chỉnh sửa
+          </button>
         </div>
 
-        <button className="outline-btn" onClick={onEditProfile}>
-          <IconPencil /> Chỉnh sửa hồ sơ thai kỳ
-        </button>
+        <div className="ovc-name-row" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 className="ovc-baby-names" style={{ margin: 0 }}>{displayBabyNames}</h3>
+          {currentWeek ? (
+            <span className="ovc-week-pill">{isTwins ? `Tuần thai ${currentWeek}` : `Tuần ${currentWeek}`}</span>
+          ) : (
+            <button 
+              type="button"
+              className="ovc-week-pill ovc-week-pill--missing-cta" 
+              onClick={onEditProfile}
+              style={{
+                background: 'rgba(255, 107, 107, 0.1)',
+                color: '#ff6b6b',
+                border: '1px dashed #ff6b6b',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: '500',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Chưa đủ thông tin tuần thai · Cập nhật hồ sơ thai kỳ
+            </button>
+          )}
+        </div>
+
+        <div className="ovc-meta-row">
+          <span className="ovc-meta-item">
+            <span className="ovc-meta-lbl">Dự sinh</span>
+            <span className="ovc-meta-val">{eddStr}</span>
+          </span>
+          <span className="ovc-meta-dot">·</span>
+          <span className="ovc-meta-item">
+            <span className="ovc-meta-val">
+              {isTwins ? 'Thai đôi' : fetuses.length > 2 ? 'Thai ba' : 'Thai đơn'}
+            </span>
+          </span>
+        </div>
+
+        {formattedDesc && <p className="ovc-desc">{formattedDesc}</p>}
       </div>
 
-      {/* Nút xác nhận sinh bé (iOS style, có điều kiện hiển thị khi gần EDD) */}
+      {/* Quick summary grids */}
+      {(isSingleton || isTwins) && (
+        <QuickPregnancySummary 
+          userId={userId}
+          profileStage={profileStage}
+          week={weekNum}
+          isTwin={isTwins}
+          fetuses={fetuses}
+          babyName={firstFetusName}
+          pregnancyData={pregnancyData}
+          onSwitchTab={onSwitchTab}
+        />
+      )}
+
+      {/* Birth confirmation card */}
       {showBirthBanner && !dismissedBirthBanner && (
         <div className="birth-confirm-card scale-in">
           <h4 className="birth-confirm-title">Gần đến ngày gặp {isTwins ? 'các bé' : 'bé'} rồi mẹ</h4>
@@ -622,7 +1283,7 @@ function OverviewTab({
         </div>
       )}
 
-      {/* Tùy chọn hồ sơ (Manual birth confirm entry placed subtly outside main card) */}
+      {/* Manual birth confirm entry */}
       {(!showBirthBanner || dismissedBirthBanner) && (
         <div className="profile-options-section scale-in">
           <h4 className="profile-options-title">Tùy chọn hồ sơ</h4>
@@ -644,7 +1305,7 @@ function OverviewTab({
    TAB 2: LỊCH SỬ KHÁM THAI (PREGNANT)
    ════════════════════════════════════════ */
 function PregnancyCheckupTab({ 
-  userId, pregnancyId, selectedSubject, fetuses, onDeleteClick, triggerToast 
+  userId, pregnancyId, selectedSubject, fetuses, isTwinPregnancy, onDeleteClick, triggerToast, currentWeek 
 }) {
   const [records, setRecords]               = useState([]);
   const [showForm, setShowForm]             = useState(false);
@@ -689,9 +1350,9 @@ function PregnancyCheckupTab({
         date,
         notes: notes.trim(),
         nextAppointment: nextAppointment || null,
-        isTwin: true,
-        gestationalWeek: 21,
-        gestationalAgeDays: 147,
+        isTwin: isTwinPregnancy,
+        gestationalWeek: currentWeek ? parseInt(currentWeek, 10) : null,
+        gestationalAgeDays: currentWeek ? parseInt(currentWeek, 10) * 7 : null,
         babyA: {
           bpd: babyA.bpd ? parseFloat(babyA.bpd) : null,
           fl: babyA.fl ? parseFloat(babyA.fl) : null,
@@ -737,8 +1398,8 @@ function PregnancyCheckupTab({
     return Object.values(babyObj).some(v => v !== '') || timThai !== '';
   };
 
-  const babyAName = fetuses[0]?.name || 'Bắp';
-  const babyBName = fetuses[1]?.name || 'Bon';
+  const babyAName = fetuses[0]?.name || 'Bé A';
+  const babyBName = fetuses[1]?.name || 'Bé B';
 
   // Filter local based on selector
   const filteredRecords = records.filter(r => {
@@ -837,7 +1498,7 @@ function PregnancyCheckupTab({
           </div>
 
           <button className="primary-btn save" disabled={saving || !date} onClick={handleSave}>
-            {saving ? 'Đang lưu...' : '💾 Lưu kết quả'}
+            {saving ? 'Đang lưu...' : 'Lưu kết quả'}
           </button>
 
           {/* Portal DatePickers */}
@@ -879,6 +1540,8 @@ function PregnancyCheckupTab({
               record={r}
               babyAName={babyAName}
               babyBName={babyBName}
+              selectedSubject={selectedSubject}
+              isTwin={isTwinPregnancy}
               onDelete={() => onDeleteClick(r.id)}
             />
           ))}
@@ -929,7 +1592,7 @@ function FetusMetricsForm({ metrics, setMetrics, timThai, setTimThai, babyName }
   );
 }
 
-function PregnancyCheckupCard({ record: r, babyAName, babyBName, onDelete }) {
+function PregnancyCheckupCard({ record: r, babyAName, babyBName, selectedSubject, isTwin, onDelete }) {
   const diffEfw = useMemo(() => {
     if (r.babyA?.efw && r.babyB?.efw) {
       return Math.abs(r.babyA.efw - r.babyB.efw);
@@ -937,11 +1600,31 @@ function PregnancyCheckupCard({ record: r, babyAName, babyBName, onDelete }) {
     return null;
   }, [r]);
 
+  const hasBabyAData = useMemo(() => {
+    return r.babyA && Object.values(r.babyA).some(v => v !== null && v !== undefined && v !== '');
+  }, [r.babyA]);
+
+  const hasBabyBData = useMemo(() => {
+    return r.babyB && Object.values(r.babyB).some(v => v !== null && v !== undefined && v !== '');
+  }, [r.babyB]);
+
+  const METRIC_LIST = [
+    { key: 'efw', label: 'EFW (Cân nặng - g)' },
+    { key: 'bpd', label: 'BPD (Lưỡng đỉnh - mm)' },
+    { key: 'fl', label: 'FL (Xương đùi - mm)' },
+    { key: 'ac', label: 'AC (Chu vi bụng - mm)' },
+    { key: 'hc', label: 'HC (Chu vi đầu - mm)' },
+    { key: 'crl', label: 'CRL (Chiều dài - mm)' },
+    { key: 'fetalHeartRate', label: 'Tim thai (lần/phút)' }
+  ];
+
   return (
     <div className="record-card">
       <div className="record-header">
         <div className="record-header-left">
-          <div className="record-disease">Khám thai định kỳ · Tuần 21</div>
+          <div className="record-disease">
+            Khám thai định kỳ{r.gestationalWeek ? ` · Tuần ${r.gestationalWeek}` : ''}
+          </div>
           <div className="record-date">{formatDate(r.date)}</div>
         </div>
         <button type="button" className="delete-btn" onClick={onDelete} aria-label="Xóa">
@@ -952,49 +1635,110 @@ function PregnancyCheckupCard({ record: r, babyAName, babyBName, onDelete }) {
       {r.notes && <p className="record-card-notes">{r.notes}</p>}
 
       {/* So sánh hai bé phong cách Apple premium */}
-      {r.babyA && r.babyB && (
-        <div className="comparison-table-wrapper">
-          <table className="comparison-table">
-            <thead>
-              <tr>
-                <th>Chỉ số</th>
-                <th>{babyAName}</th>
-                <th>{babyBName}</th>
-                <th>Chênh lệch</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[{ key: 'efw', label: 'EFW (Cân nặng - g)' },
-                { key: 'bpd', label: 'BPD (Lưỡng đỉnh - mm)' },
-                { key: 'fl', label: 'FL (Xương đùi - mm)' },
-                { key: 'ac', label: 'AC (Chu vi bụng - mm)' },
-                { key: 'hc', label: 'HC (Chu vi đầu - mm)' },
-                { key: 'crl', label: 'CRL (Chiều dài - mm)' },
-                { key: 'fetalHeartRate', label: 'Tim thai (lần/phút)' }
-              ].map(m => {
-                const valA = r.babyA[m.key];
-                const valB = r.babyB[m.key];
-                if (valA === null && valB === null) return null;
-                const diff = (valA !== null && valB !== null) 
-                  ? Math.abs(valA - valB).toFixed(m.key === 'efw' || m.key === 'fetalHeartRate' ? 0 : 1) 
-                  : '-';
-                return (
-                  <tr key={m.key}>
-                    <td className="metric-lbl">{m.label}</td>
-                    <td>{valA !== null && valA !== undefined ? valA : '—'}</td>
-                    <td>{valB !== null && valB !== undefined ? valB : '—'}</td>
-                    <td className="metric-diff">{diff !== '-' ? `${diff}` : '—'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {diffEfw !== null && diffEfw > 0 && (
-            <p className="comparison-hint">
-              Cân nặng {babyAName} và {babyBName} chênh lệch khoảng {diffEfw}g. Mẹ duy trì dinh dưỡng đều đặn nhé 🌿
-            </p>
-          )}
-        </div>
+      {isTwin && selectedSubject === 'all' && (
+        hasBabyAData && hasBabyBData ? (
+          <div className="comparison-table-wrapper">
+            <table className="comparison-table">
+              <thead>
+                <tr>
+                  <th>Chỉ số</th>
+                  <th>{babyAName}</th>
+                  <th>{babyBName}</th>
+                  <th>Chênh lệch</th>
+                </tr>
+              </thead>
+              <tbody>
+                {METRIC_LIST.map(m => {
+                  const valA = r.babyA[m.key];
+                  const valB = r.babyB[m.key];
+                  if (valA === null && valB === null) return null;
+                  const diff = (valA !== null && valB !== null) 
+                    ? Math.abs(valA - valB).toFixed(m.key === 'efw' || m.key === 'fetalHeartRate' ? 0 : 1) 
+                    : '-';
+                  return (
+                    <tr key={m.key}>
+                      <td className="metric-lbl">{m.label}</td>
+                      <td>{valA !== null && valA !== undefined ? valA : '—'}</td>
+                      <td>{valB !== null && valB !== undefined ? valB : '—'}</td>
+                      <td className="metric-diff">{diff !== '-' ? `${diff}` : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {diffEfw !== null && diffEfw > 0 && (
+              <p className="comparison-hint">
+                Cân nặng {babyAName} và {babyBName} chênh lệch khoảng {diffEfw}g. Mẹ duy trì dinh dưỡng đều đặn nhé 🌿
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="record-tag-badge" style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(0,0,0,0.03)', color: '#666', borderRadius: '8px', display: 'inline-block' }}>
+            Dữ liệu cũ · Chưa phân bé
+          </div>
+        )
+      )}
+
+      {isTwin && selectedSubject === 'baby-a' && (
+        hasBabyAData ? (
+          <div className="comparison-table-wrapper">
+            <table className="singleton-metrics-table">
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left' }}>Chỉ số</th>
+                  <th style={{ textAlign: 'right' }}>{babyAName}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {METRIC_LIST.map(m => {
+                  const val = r.babyA[m.key];
+                  if (val === null || val === undefined || val === '') return null;
+                  return (
+                    <tr key={m.key}>
+                      <td className="sm-label" style={{ textAlign: 'left' }}>{m.label}</td>
+                      <td className="sm-val" style={{ textAlign: 'right', fontWeight: 'bold' }}>{val}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="record-tag-badge" style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(0,0,0,0.03)', color: '#666', borderRadius: '8px', display: 'inline-block' }}>
+            Dữ liệu cũ · Chưa phân bé
+          </div>
+        )
+      )}
+
+      {isTwin && selectedSubject === 'baby-b' && (
+        hasBabyBData ? (
+          <div className="comparison-table-wrapper">
+            <table className="singleton-metrics-table">
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left' }}>Chỉ số</th>
+                  <th style={{ textAlign: 'right' }}>{babyBName}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {METRIC_LIST.map(m => {
+                  const val = r.babyB[m.key];
+                  if (val === null || val === undefined || val === '') return null;
+                  return (
+                    <tr key={m.key}>
+                      <td className="sm-label" style={{ textAlign: 'left' }}>{m.label}</td>
+                      <td className="sm-val" style={{ textAlign: 'right', fontWeight: 'bold' }}>{val}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="record-tag-badge" style={{ marginTop: '8px', padding: '6px 12px', background: 'rgba(0,0,0,0.03)', color: '#666', borderRadius: '8px', display: 'inline-block' }}>
+            Dữ liệu cũ · Chưa phân bé
+          </div>
+        )
       )}
 
       {r.nextAppointment && (
@@ -1104,7 +1848,7 @@ function PregnancyNutritionTab({ userId, selectedSubject, onDeleteClick, trigger
           </p>
 
           <button className="primary-btn save" disabled={saving || !date} onClick={handleSave}>
-            {saving ? 'Đang lưu...' : '💾 Lưu ghi chép'}
+            {saving ? 'Đang lưu...' : 'Lưu ghi chép'}
           </button>
 
           {showDatePicker && createPortal(
@@ -1150,9 +1894,61 @@ function PregnancyNutritionTab({ userId, selectedSubject, onDeleteClick, trigger
 /* ════════════════════════════════════════
    TAB 4: THAI GIÁO MONTESSORI (PREGNANT)
    ════════════════════════════════════════ */
-function PregnancyEducationTab({ userId, currentWeek, activeFetusNames, triggerToast }) {
+function getPregnancySuggestions(week, isTwin, babyAName, babyBName, selectedSubject) {
+  const isSelectedA = selectedSubject === 'baby-a';
+  const isSelectedB = selectedSubject === 'baby-b';
+  
+  const nameA = babyAName;
+  const nameB = babyBName;
+  
+  let targetNames = isTwin ? `${nameA} và ${nameB}` : nameA;
+  if (isSelectedA) targetNames = nameA;
+  if (isSelectedB) targetNames = nameB;
+
+  if (week <= 12) {
+    return [
+      { id: 'music', title: 'Nghe nhạc nhẹ 5–10 phút', desc: 'Chọn bản nhạc cổ điển hoặc không lời êm dịu, giúp mẹ bầu thư giãn tinh thần.' },
+      { id: 'letter_1', title: `Viết lời nhắn đầu tiên cho ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames}`, desc: `Ghi lại những cảm xúc bỡ ngỡ và niềm hạnh phúc đầu tiên khi biết tin đón chào ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames}.` },
+      { id: 'rest', title: 'Nghỉ ngơi và hít thở sâu', desc: 'Mẹ dành 10 phút tĩnh lặng hít thở sâu để giảm căng thẳng và làm dịu các cơn ốm nghén đầu thai kỳ.' },
+      { id: 'diet', title: 'Dinh dưỡng nhẹ nhàng', desc: 'Bổ sung axit folic và vitamin bầu đầy đủ theo chỉ định bác sĩ.' }
+    ];
+  }
+  if (week <= 27) {
+    return [
+      { id: 'talk', title: `Trò chuyện với ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames} 5 phút`, desc: `Đặt tay lên bụng, nói lời yêu thương hoặc kể những chuyện vui hàng ngày để ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames} làm quen với giọng nói trầm ấm của ba mẹ.` },
+      { id: 'touch', title: 'Chạm nhẹ và thở chậm', desc: `Chạm tay vuốt nhẹ nhàng trên bụng theo nhịp thở sâu, chậm rãi giúp mẹ thư giãn và ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames} cảm nhận nhịp yêu thương.` },
+      { id: 'movement', title: `Ghi lại cảm nhận thai máy`, desc: `Dành 10 phút yên tĩnh nằm nghiêng trái để tập trung cảm nhận những cú máy, đạp nhẹ đầu tiên của ${isTwin && !isSelectedA && !isSelectedB ? 'các bé' : targetNames}.` },
+      { id: 'music_mid', title: 'Nghe nhạc thai giáo', desc: 'Lựa chọn âm thanh thiên nhiên hoặc nhạc không lời êm dịu để kích thích thính giác phát triển.' }
+    ];
+  }
+  if (week <= 34) {
+    return [
+      { id: 'story', title: `Đọc truyện ngắn cho ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames} nghe`, desc: `Đọc những câu chuyện cổ tích hoặc ngụ ngôn có giọng điệu tươi vui, ấm áp cho ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames} nghe trước khi đi ngủ.` },
+      { id: 'count_kick', title: `Đếm cử động thai của ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames}`, desc: 'Mẹ chọn thời điểm bé hoạt động nhiều nhất trong ngày để đếm và theo dõi thai máy định kỳ.' },
+      { id: 'letter_late', title: `Lời nhắn ngày gặp ${isTwin && !isSelectedA && !isSelectedB ? 'các bé' : targetNames}`, desc: `Viết những dòng nhật ký gửi ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames}, chia sẻ sự chuẩn bị và mong chờ ngày được ôm bé vào lòng.` },
+      { id: 'stretch', title: 'Vận động nhẹ nhàng', desc: 'Thực hiện các động tác yoga bầu nhẹ nhàng giúp lưu thông khí huyết và giảm đau mỏi lưng.' }
+    ];
+  }
+  // week >= 35
+  return [
+    { id: 'relax', title: 'Nghỉ ngơi tĩnh tâm', desc: 'Mẹ giữ tinh thần thoải mái, ngâm chân nước ấm hoặc mát-xa nhẹ nhàng chuẩn bị cho hành trình vượt cạn.' },
+    { id: 'blessing', title: `Lời chúc bình an gửi ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames}`, desc: `Thầm thì những lời chúc tốt lành, mong ${isTwin && !isSelectedA && !isSelectedB ? 'hai bé' : targetNames} phát triển khoẻ mạnh và chào đời bình an.` },
+    { id: 'prep', title: 'Chuẩn bị giỏ đồ đi sinh', desc: 'Rà soát lại lần cuối danh sách quần áo, tã giấy và giấy tờ cần thiết để sẵn sàng đón bé.' },
+    { id: 'breath', title: 'Tập thở chuẩn bị sinh', desc: 'Thực hành các bài tập thở giúp mẹ bầu kiểm soát cơn gò và giữ sức tốt trong phòng sinh.' }
+  ];
+}
+
+function PregnancyEducationTab({ userId, currentWeek, activeFetusNames, triggerToast, selectedSubject, fetuses, isTwinPregnancy }) {
   const [completedList, setCompletedList] = useState([]);
   const [loading, setLoading]             = useState(false);
+
+  const babyAName = useMemo(() => fetuses[0]?.name || "Bé A", [fetuses]);
+  const babyBName = useMemo(() => fetuses[1]?.name || "Bé B", [fetuses]);
+  const isTwins = isTwinPregnancy;
+
+  const suggestions = useMemo(() => {
+    return getPregnancySuggestions(parseInt(currentWeek, 10) || 0, isTwins, babyAName, babyBName, selectedSubject);
+  }, [currentWeek, isTwins, babyAName, babyBName, selectedSubject]);
 
   const loadCompleted = useCallback(async () => {
     if (!userId) return;
@@ -1204,6 +2000,15 @@ function PregnancyEducationTab({ userId, currentWeek, activeFetusNames, triggerT
     }
   };
 
+  const resolvedFetusNames = useMemo(() => {
+    if (isTwins) {
+      if (selectedSubject === 'baby-a') return babyAName;
+      if (selectedSubject === 'baby-b') return babyBName;
+      return `${babyAName} và ${babyBName}`;
+    }
+    return activeFetusNames;
+  }, [isTwins, selectedSubject, babyAName, babyBName, activeFetusNames]);
+
   return (
     <div className="tab-content fade-in">
       <div className="tab-header-col">
@@ -1211,11 +2016,13 @@ function PregnancyEducationTab({ userId, currentWeek, activeFetusNames, triggerT
           <span className="tab-title-icon"><IconLeaf /></span>
           Thai giáo Montessori
         </h2>
-        <p className="tab-sub">Gợi ý hoạt động kết nối với {activeFetusNames} tuần thai {currentWeek}</p>
+        <p className="tab-sub">
+          {currentWeek ? `Gợi ý hoạt động kết nối với ${resolvedFetusNames} tuần thai ${currentWeek}` : `Gợi ý hoạt động kết nối với ${resolvedFetusNames}`}
+        </p>
       </div>
 
       <div className="play-grid">
-        {PREGNANCY_EDUCATION_SUGGESTIONS.map(s => {
+        {suggestions.map(s => {
           const isCompleted = completedList.includes(s.id);
           return (
             <div key={s.id} className={`play-card${isCompleted ? ' completed' : ''}`}>
@@ -1358,7 +2165,7 @@ function PregnancyNotesTab({
           </div>
 
           <button className="primary-btn save" disabled={saving || !date || !content.trim()} onClick={handleSave}>
-            {saving ? 'Đang lưu...' : '💾 Lưu ghi chú'}
+            {saving ? 'Đang lưu...' : 'Lưu ghi chú'}
           </button>
 
           {showDatePicker && createPortal(
@@ -1411,7 +2218,10 @@ function PregnancyNotesTab({
 /* ════════════════════════════════════════
    TAB 6: SỨC KHỎE BÉ (PARENT)
    ════════════════════════════════════════ */
-function ParentHealthTab({ userId, selectedBabyIndex, babies, onDeleteClick, triggerToast }) {
+/* ════════════════════════════════════════
+   TAB 6: SỨC KHỎE BÉ (PARENT)
+   ════════════════════════════════════════ */
+function ParentHealthTab({ userId, selectedBabyIndex, babies, onDeleteClick, triggerToast, onSwitchTab }) {
   const [records, setRecords]               = useState([]);
   const [showForm, setShowForm]             = useState(false);
   const [saving, setSaving]                 = useState(false);
@@ -1428,6 +2238,8 @@ function ParentHealthTab({ userId, selectedBabyIndex, babies, onDeleteClick, tri
 
   const activeBaby = babies[selectedBabyIndex] || {};
   const activeBabyId = activeBaby.id || 'baby';
+  const babyName = activeBaby.name || 'bé';
+  const ageMonths = activeBaby.dob ? getAgeInMonths(activeBaby.dob) : 99;
 
   const loadHealthRecords = useCallback(async () => {
     if (!userId || !activeBabyId) return;
@@ -1483,8 +2295,8 @@ function ParentHealthTab({ userId, selectedBabyIndex, babies, onDeleteClick, tri
     <div className="tab-content fade-in">
       <div className="tab-header">
         <h2 className="tab-title">
-          <span className="tab-title-icon"><IconHeart /></span>
-          Sức khỏe của bé
+          <span className="tab-title-icon"><IconHealth /></span>
+          Sức khỏe của {babyName}
         </h2>
         <button className="outline-btn small" onClick={() => setShowForm(f => !f)}>
           {showForm ? '✕ Đóng' : '+ Ghi nhận sức khỏe'}
@@ -1537,7 +2349,7 @@ function ParentHealthTab({ userId, selectedBabyIndex, babies, onDeleteClick, tri
           </p>
 
           <button className="primary-btn save" disabled={saving || !date || !disease.trim()} onClick={handleSave}>
-            {saving ? 'Đang lưu...' : '💾 Lưu sức khỏe'}
+            {saving ? 'Đang lưu...' : 'Lưu sức khỏe'}
           </button>
 
           {showDatePicker && createPortal(
@@ -1553,15 +2365,500 @@ function ParentHealthTab({ userId, selectedBabyIndex, babies, onDeleteClick, tri
         </div>
       )}
 
-      {records.length === 0 && !showForm ? (
-        <div className="empty-state">
-          <div className="empty-icon"><IconHeart /></div>
-          <h3 className="empty-title">Chưa có lịch sử sức khỏe</h3>
-          <p className="empty-desc">Mẹ có thể lưu lại các lần khám bệnh, triệu chứng, liều lượng thuốc của bé.</p>
+      {!showForm && (
+        <QuickProfileSummary
+          userId={userId}
+          activeBabyId={activeBabyId}
+          babyName={babyName}
+          ageMonths={ageMonths}
+          latestRecord={records[0] || null}
+          onAddHealth={() => setShowForm(true)}
+          triggerToast={triggerToast}
+          onSwitchTab={onSwitchTab}
+        />
+      )}
+
+      <HealthRecordsHistory
+        records={records}
+        onDeleteClick={onDeleteClick}
+        onAddHealth={() => setShowForm(true)}
+      />
+    </div>
+  );
+}
+
+/* ─── Hồ sơ nhanh SVG Icons ─── */
+const IconHealth = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+    <path d="M3.22 12H9.5l1.5-3 2 6 1.5-3H21" />
+  </svg>
+);
+const IconNotesSummary = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" />
+    <path d="M2 6h4" />
+    <path d="M2 10h4" />
+    <path d="M2 14h4" />
+    <path d="M2 18h4" />
+    <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />
+  </svg>
+);
+const IconHeartOutline = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+  </svg>
+);
+const IconEye = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+const IconToilet = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="6" r="2" />
+    <path d="M9 12h6l-1 7H10Z" />
+    <path d="M7 12c0-2 2-4 5-4s5 2 5 4" />
+    <line x1="8" y1="22" x2="16" y2="22" />
+  </svg>
+);
+const IconPlayBranch = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 20h10" />
+    <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+    <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+    <path d="M14.1 6a7 7 0 0 1 1.4 4.3c0 .87-.11 1.72-.33 2.53C14 12 13 11.5 11.7 10.7" />
+  </svg>
+);
+const IconClockHistory = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+function QuickProfileSummary({ userId, activeBabyId, babyName, ageMonths, latestRecord, onAddHealth, triggerToast, onSwitchTab }) {
+  const [latestNote, setLatestNote] = useState(null);
+  const [likedFoods, setLikedFoods] = useState([]);
+  const [dislikedFoods, setDislikedFoods] = useState([]);
+  const [latestToilet, setLatestToilet] = useState(null);
+  const [latestFeed, setLatestFeed] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Toilet form states
+  const [showToiletForm, setShowToiletForm] = useState(false);
+  const [savingToilet, setSavingToilet] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [toiletDate, setToiletDate] = useState(new Date().toISOString().split('T')[0]);
+  const [toiletType, setToiletType] = useState('both'); // 'pee' | 'poo' | 'both'
+  const [toiletSuccess, setToiletSuccess] = useState(true);
+  const [toiletNotes, setToiletNotes] = useState('');
+
+  useEffect(() => {
+    if (!userId || !activeBabyId) return;
+    setIsLoaded(false);
+  }, [userId, activeBabyId]);
+
+  useEffect(() => {
+    if (!userId || !activeBabyId || isLoaded) return;
+    (async () => {
+      try {
+        const [notesSnap, foodsSnap, toiletSnap, feedingSnap] = await Promise.all([
+          getDocs(query(collection(db, 'users', userId, 'babies', activeBabyId, 'notes'), orderBy('date', 'desc'))),
+          getDocs(query(collection(db, 'users', userId, 'babies', activeBabyId, 'foods'), orderBy('createdAt', 'desc'))),
+          getDocs(query(collection(db, 'users', userId, 'babies', activeBabyId, 'toiletLogs'), orderBy('date', 'desc'))),
+          ageMonths < 6 ? getDocs(query(collection(db, 'users', userId, 'babies', activeBabyId, 'feedingLogs'), orderBy('date', 'desc'))) : Promise.resolve({ docs: [] })
+        ]);
+
+        const notesList = notesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLatestNote(notesList[0] || null);
+
+        const foodsList = foodsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLikedFoods(foodsList.filter(f => !f.disliked).slice(0, 3));
+        setDislikedFoods(foodsList.filter(f => f.disliked).slice(0, 3));
+
+        const toiletList = toiletSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLatestToilet(toiletList[0] || null);
+
+        const feedingList = feedingSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLatestFeed(feedingList[0] || null);
+      } catch (err) {
+        console.error("Error loading QuickProfileSummary data:", err);
+      }
+      setIsLoaded(true);
+    })();
+  }, [userId, activeBabyId, isLoaded, ageMonths]);
+
+  const handleSaveToilet = async () => {
+    if (!toiletDate || savingToilet) return;
+    setSavingToilet(true);
+    try {
+      const entry = {
+        date: toiletDate,
+        type: toiletType,
+        success: toiletSuccess,
+        notes: toiletNotes.trim(),
+        createdAt: serverTimestamp()
+      };
+      await addDoc(collection(db, 'users', userId, 'babies', activeBabyId, 'toiletLogs'), entry);
+      triggerToast('Đã lưu ghi nhận vệ sinh');
+      setLatestToilet({ date: toiletDate, type: toiletType, success: toiletSuccess, notes: toiletNotes.trim() });
+      setShowToiletForm(false);
+      setToiletNotes('');
+    } catch {
+      triggerToast('Chưa lưu được, mẹ thử lại nhé.');
+    } finally {
+      setSavingToilet(false);
+    }
+  };
+
+  const toiletTypeMap = { pee: 'Tiểu', poo: 'Đại tiện', both: 'Cả hai' };
+
+  const getMontessoriSuggestions = (months) => {
+    if (months < 12) {
+      return [
+        { label: "Khám phá hộp cảm giác", desc: "Bé khám phá qua xúc giác" },
+        { label: "Nghe nhạc và vỗ tay", desc: "Phát triển thính giác & nhịp điệu" }
+      ];
+    } else if (months < 18) {
+      return [
+        { label: "Cầm thìa tự xúc ăn", desc: "Luyện vận động tinh & tự lập" },
+        { label: "Bỏ vật vào hộp", desc: "Phối hợp mắt tay" }
+      ];
+    } else if (months < 24) {
+      return [
+        { label: "Rót hạt khô", desc: "Tập trung và kiểm soát tay" },
+        { label: "Phân loại màu sắc", desc: "Nhận thức hình-màu" }
+      ];
+    } else if (months < 36) {
+      return [
+        { label: "Tháo lắp núm vặn", desc: "Vận động tinh và tư duy không gian" },
+        { label: "Xếp hình đơn giản", desc: "Logic và kiên nhẫn" }
+      ];
+    } else {
+      return [
+        { label: "Cắt dán an toàn", desc: "Sáng tạo và vận động tinh" },
+        { label: "Đong đo với nước", desc: "Toán học cụ thể" }
+      ];
+    }
+  };
+
+  const activities = getMontessoriSuggestions(ageMonths);
+
+  return (
+    <div className="qps-container">
+      <div className="qps-section-title">Hồ sơ nhanh</div>
+      <div className="qps-grid">
+        {/* Card 1: Sức khỏe */}
+        <div className="qps-card" onClick={onAddHealth} style={{ cursor: 'pointer' }}>
+          <div className="qps-card-top">
+            <div className="qps-icon-wrap qps-icon-health"><IconHealth /></div>
+            <span className="qps-card-label">Sức khỏe</span>
+          </div>
+          <div className="qps-card-body">
+            {latestRecord ? (
+              <>
+                <div className="qps-card-main">{latestRecord.disease}</div>
+                <div className="qps-card-sub">
+                  {formatDate(latestRecord.date)}
+                  {latestRecord.recovery ? ` · ${latestRecord.recovery}` : ''}
+                </div>
+              </>
+            ) : (
+              <div className="qps-card-empty">Chưa có ghi nhận nào</div>
+            )}
+          </div>
+          <button className="qps-pill-btn" onClick={(e) => { e.stopPropagation(); onAddHealth(); }}>
+            {latestRecord ? 'Xem thêm' : '+ Ghi nhận'}
+          </button>
+        </div>
+
+        {/* Card 2: Ghi chú */}
+        <div className="qps-card" onClick={() => onSwitchTab?.('note')} style={{ cursor: 'pointer' }}>
+          <div className="qps-card-top">
+            <div className="qps-icon-wrap qps-icon-note"><IconNotesSummary /></div>
+            <span className="qps-card-label">Ghi chú</span>
+          </div>
+          <div className="qps-card-body">
+            {latestNote ? (
+              <>
+                {latestNote.title && <div className="qps-card-main">{latestNote.title}</div>}
+                <div className="qps-card-sub qps-clamp">{latestNote.content || latestNote.note || ''}</div>
+              </>
+            ) : (
+              <div className="qps-card-empty">Những điều nhỏ cần nhớ khi chăm bé</div>
+            )}
+          </div>
+          <button className="qps-pill-btn" onClick={(e) => { e.stopPropagation(); onSwitchTab?.('note'); }}>
+            {latestNote ? 'Xem thêm' : '+ Thêm ghi chú'}
+          </button>
+        </div>
+
+        {/* Card 3: Ăn uống (<6m) or Món yêu thích (>=6m) */}
+        {ageMonths < 6 ? (
+          <div className="qps-card" onClick={() => onSwitchTab?.('food')} style={{ cursor: 'pointer' }}>
+            <div className="qps-card-top">
+              <div className="qps-icon-wrap qps-icon-food"><IconHeartOutline /></div>
+              <span className="qps-card-label">Ăn uống</span>
+            </div>
+            <div className="qps-card-body">
+              {latestFeed ? (
+                <>
+                  <div className="qps-card-main">
+                    {latestFeed.feedType === 'breast' ? 'Bú mẹ' : latestFeed.feedType === 'bottle' ? 'Bú bình' : 'Ăn uống'}
+                  </div>
+                  <div className="qps-card-sub">
+                    {latestFeed.durationMin ? `${latestFeed.durationMin} phút` : ''}
+                    {latestFeed.amountMl ? ` · ${latestFeed.amountMl}ml` : ''}
+                  </div>
+                </>
+              ) : (
+                <div className="qps-card-empty">Chưa có ghi nhận cữ bú</div>
+              )}
+            </div>
+            <button className="qps-pill-btn" onClick={(e) => { e.stopPropagation(); onSwitchTab?.('food'); }}>
+              {latestFeed ? 'Xem thêm' : '+ Ghi nhận'}
+            </button>
+          </div>
+        ) : (
+          <div className="qps-card" onClick={() => onSwitchTab?.('food')} style={{ cursor: 'pointer' }}>
+            <div className="qps-card-top">
+              <div className="qps-icon-wrap qps-icon-food"><IconHeartOutline /></div>
+              <span className="qps-card-label">Món yêu thích</span>
+            </div>
+            <div className="qps-card-body">
+              {likedFoods.length > 0 ? (
+                <div className="qps-chip-row">
+                  {likedFoods.map(f => <span key={f.id} className="qps-food-chip">{f.name}</span>)}
+                </div>
+              ) : (
+                <div className="qps-card-empty">Món bé ăn ngon, hợp tác tốt</div>
+              )}
+            </div>
+            <button className="qps-pill-btn" onClick={(e) => { e.stopPropagation(); onSwitchTab?.('food'); }}>
+              {likedFoods.length > 0 ? 'Xem thêm' : '+ Thêm món'}
+            </button>
+          </div>
+        )}
+
+        {/* Card 4: Lịch sử cữ sữa (<6m) or Món cần theo dõi (>=6m) */}
+        {ageMonths < 6 ? (
+          <div className="qps-card" onClick={() => onSwitchTab?.('food')} style={{ cursor: 'pointer' }}>
+            <div className="qps-card-top">
+              <div className="qps-icon-wrap qps-icon-alert"><IconEye /></div>
+              <span className="qps-card-label">Cữ sữa gần nhất</span>
+            </div>
+            <div className="qps-card-body">
+              {latestFeed ? (
+                <>
+                  <div className="qps-card-main">{formatDate(latestFeed.date)}</div>
+                  <div className="qps-card-sub qps-clamp">{latestFeed.notes || 'Bé bú bình thường'}</div>
+                </>
+              ) : (
+                <div className="qps-card-empty">Chăm sóc dinh dưỡng cho bé sơ sinh</div>
+              )}
+            </div>
+            <button className="qps-pill-btn" onClick={(e) => { e.stopPropagation(); onSwitchTab?.('food'); }}>
+              {latestFeed ? 'Xem thêm' : '+ Ghi nhận'}
+            </button>
+          </div>
+        ) : (
+          <div className="qps-card" onClick={() => onSwitchTab?.('food')} style={{ cursor: 'pointer' }}>
+            <div className="qps-card-top">
+              <div className="qps-icon-wrap qps-icon-alert"><IconEye /></div>
+              <span className="qps-card-label">Món cần theo dõi</span>
+            </div>
+            <div className="qps-card-body">
+              {dislikedFoods.length > 0 ? (
+                <div className="qps-chip-row">
+                  {dislikedFoods.map(f => <span key={f.id} className="qps-food-chip qps-chip-watch">{f.name}</span>)}
+                </div>
+              ) : (
+                <div className="qps-card-empty">Chưa có món cần theo dõi</div>
+              )}
+            </div>
+            <button className="qps-pill-btn" onClick={(e) => { e.stopPropagation(); onSwitchTab?.('food'); }}>
+              {dislikedFoods.length > 0 ? 'Xem thêm' : '+ Ghi chú'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Wide Card 1: Toilet Training (18-36m) */}
+      {ageMonths >= 18 && ageMonths < 36 && (
+        <div 
+          className="qps-card qps-card-wide"
+          onClick={() => {
+            if (!showToiletForm) {
+              setShowToiletForm(true);
+            }
+          }}
+          style={{ cursor: showToiletForm ? 'default' : 'pointer' }}
+        >
+          <div className="qps-wide-header">
+            <div className="qps-wide-left">
+              <div className="qps-icon-wrap qps-icon-toilet"><IconToilet /></div>
+              <div>
+                <div className="qps-card-label">Vệ sinh / Tập bô</div>
+                {latestToilet ? (
+                  <div className="qps-card-sub">
+                    {toiletTypeMap[latestToilet.type] || 'Ngồi bô'} · {formatDate(latestToilet.date)}
+                    {latestToilet.success === false ? ' · Chưa thành công' : ' · Thành công'}
+                  </div>
+                ) : (
+                  <div className="qps-card-empty">Chưa có ghi nhận</div>
+                )}
+              </div>
+            </div>
+            <button className="qps-pill-btn" onClick={(e) => { e.stopPropagation(); setShowToiletForm(f => !f); }}>
+              {showToiletForm ? '✕ Đóng' : '+ Ghi nhận'}
+            </button>
+          </div>
+
+          {showToiletForm && (
+            <div className="qps-toilet-form scale-in">
+              <div className="form-group">
+                <label className="form-label">Ngày</label>
+                <button type="button" className="cs-date-trigger-btn" onClick={() => setShowDatePicker(true)}>
+                  <span className="cs-date-icon"><IconCalendar /></span>
+                  <span className="cs-date-text">{formatDate(toiletDate)}</span>
+                </button>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Loại</label>
+                <div className="ms-chip-group">
+                  {[
+                    { id: 'pee', label: 'Tiểu' },
+                    { id: 'poo', label: 'Đại tiện' },
+                    { id: 'both', label: 'Cả hai' }
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`ms-chip${toiletType === t.id ? ' active' : ''}`}
+                      onClick={() => setToiletType(t.id)}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Kết quả</label>
+                <div className="ms-chip-group">
+                  <button
+                    type="button"
+                    className={`ms-chip${toiletSuccess ? ' active' : ''}`}
+                    onClick={() => setToiletSuccess(true)}
+                  >
+                    Thành công
+                  </button>
+                  <button
+                    type="button"
+                    className={`ms-chip${!toiletSuccess ? ' active' : ''}`}
+                    onClick={() => setToiletSuccess(false)}
+                  >
+                    Chưa thành công
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Ghi chú</label>
+                <input
+                  className="ms-input"
+                  placeholder="Bé ngồi bô tự giác, mẹ nhắc..."
+                  value={toiletNotes}
+                  onChange={e => setToiletNotes(e.target.value)}
+                />
+              </div>
+
+              <button className="primary-btn save" disabled={savingToilet} onClick={handleSaveToilet}>
+                {savingToilet ? 'Đang lưu...' : 'Lưu ghi nhận'}
+              </button>
+
+              {showDatePicker && createPortal(
+                <AppDatePicker
+                  value={toiletDate}
+                  onConfirm={str => { setToiletDate(str); setShowDatePicker(false); }}
+                  onCancel={() => setShowDatePicker(false)}
+                  dateType="visitDate"
+                  disableFuture={true}
+                />,
+                document.body
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Wide Card 2: Montessori Activities */}
+      <div 
+        className="qps-card qps-card-wide qps-montessori-card"
+        onClick={() => onSwitchTab?.('play')}
+        style={{ cursor: 'pointer' }}
+      >
+        <div className="qps-wide-header">
+          <div className="qps-wide-left">
+            <div className="qps-icon-wrap qps-icon-play"><IconPlayBranch /></div>
+            <div>
+              <div className="qps-card-label">Hoạt động Montessori</div>
+              <div className="qps-montessori-age">Gợi ý cho bé {ageMonths} tháng tuổi</div>
+            </div>
+          </div>
+          <button className="qps-pill-btn" onClick={(e) => { e.stopPropagation(); onSwitchTab?.('play'); }}>
+            Xem thêm
+          </button>
+        </div>
+
+        <div className="qps-activity-grid">
+          {activities.map((act, index) => (
+            <div key={index} className="qps-activity-chip">
+              <div className="qps-activity-dot" />
+              <div>
+                <div className="qps-activity-name">{act.label}</div>
+                <div className="qps-activity-desc">{act.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HealthRecordsHistory({ records, onDeleteClick, onAddHealth }) {
+  const [showAll, setShowAll] = useState(false);
+  const displayedRecords = showAll ? records : records.slice(0, 3);
+
+  return (
+    <div className="hhs-container">
+      <div className="hhs-heading">
+        <span>Lịch sử sức khỏe</span>
+        {records.length > 3 && !showAll && (
+          <button className="qps-pill-btn" onClick={() => setShowAll(true)}>
+            Xem tất cả ({records.length})
+          </button>
+        )}
+      </div>
+
+      {records.length === 0 ? (
+        <div className="hhs-empty-card">
+          <div className="hhs-empty-icon"><IconClockHistory /></div>
+          <div className="hhs-empty-title">Chưa có lịch sử sức khỏe</div>
+          <div className="hhs-empty-desc">
+            Mẹ có thể lưu lại các lần khám bệnh, triệu chứng hoặc thuốc của bé.
+          </div>
+          <button className="primary-btn save" style={{ marginTop: '8px' }} onClick={onAddHealth}>
+            + Ghi nhận sức khỏe
+          </button>
         </div>
       ) : (
         <div className="records-list">
-          {records.map(r => (
+          {displayedRecords.map(r => (
             <div key={r.id} className="record-card">
               <div className="record-header">
                 <div className="record-header-left">
@@ -1569,17 +2866,42 @@ function ParentHealthTab({ userId, selectedBabyIndex, babies, onDeleteClick, tri
                   <div className="record-date">{formatDate(r.date)}</div>
                 </div>
                 <div className="record-right">
-                  {r.recovery && <span className={`recovery-badge ${r.recovery === 'Đã khỏi hoàn toàn' ? 'ok' : r.recovery === 'Đang theo dõi' ? 'watch' : 'warn'}`}>{r.recovery}</span>}
+                  {r.recovery && (
+                    <span className={`recovery-badge ${r.recovery === 'Đã khỏi hoàn toàn' ? 'ok' : r.recovery === 'Đang theo dõi' ? 'watch' : 'warn'}`}>
+                      {r.recovery}
+                    </span>
+                  )}
                   <button type="button" className="delete-btn" onClick={() => onDeleteClick(r.id)} aria-label="Xóa">
                     <IconTrash />
                   </button>
                 </div>
               </div>
-              {r.medicine && <div className="record-row"><span>💊</span><span>{r.medicine} {r.dosage ? `— ${r.dosage}` : ''}</span></div>}
-              {r.duration && <div className="record-row"><span>⏱️</span><span>Thời gian: {r.duration}</span></div>}
-              {r.symptoms && <div className="record-row"><span>📝</span><span>Triệu chứng: {r.symptoms}</span></div>}
+              {r.medicine && (
+                <div className="record-row">
+                  <span>💊 Thuốc:</span>
+                  <span>{r.medicine} {r.dosage ? `— ${r.dosage}` : ''}</span>
+                </div>
+              )}
+              {r.duration && (
+                <div className="record-row">
+                  <span>⏱️ Thời gian:</span>
+                  <span>{r.duration}</span>
+                </div>
+              )}
+              {r.symptoms && (
+                <div className="record-row">
+                  <span>📝 Triệu chứng:</span>
+                  <span>{r.symptoms}</span>
+                </div>
+              )}
             </div>
           ))}
+
+          {showAll && (
+            <button className="outline-btn small" style={{ width: '100%', marginTop: '8px' }} onClick={() => setShowAll(false)}>
+              Thu gọn
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1688,7 +3010,7 @@ function ParentFoodTab({ userId, selectedBabyIndex, babies, onDeleteClick, trigg
           </div>
 
           <button className="primary-btn save" disabled={saving || !name.trim()} onClick={handleSave}>
-            {saving ? 'Đang lưu...' : '💾 Lưu món ăn'}
+            {saving ? 'Đang lưu...' : 'Lưu món ăn'}
           </button>
         </div>
       )}
@@ -1865,7 +3187,7 @@ function ParentNotesTab({
           </div>
 
           <button className="primary-btn save" disabled={saving || !date || !content.trim()} onClick={handleSave}>
-            {saving ? 'Đang lưu...' : '💾 Lưu ghi chép'}
+            {saving ? 'Đang lưu...' : 'Lưu ghi chép'}
           </button>
 
           {showDatePicker && createPortal(
@@ -2007,11 +3329,11 @@ function EditPregnancyProfileModal({ userId, pregnancyData, fetuses, onClose, on
         <div className="ms-detail-body">
           <div className="form-group">
             <label className="form-label">Tên ở nhà Bé A</label>
-            <input className="ms-input" placeholder="Ví dụ: Bắp" value={tempBabyNameA} onChange={e => setTempBabyNameA(e.target.value)} />
+            <input className="ms-input" placeholder="Ví dụ: Bé A" value={tempBabyNameA} onChange={e => setTempBabyNameA(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">Tên ở nhà Bé B</label>
-            <input className="ms-input" placeholder="Ví dụ: Bon" value={tempBabyNameB} onChange={e => setTempBabyNameB(e.target.value)} />
+            <input className="ms-input" placeholder="Ví dụ: Bé B" value={tempBabyNameB} onChange={e => setTempBabyNameB(e.target.value)} />
           </div>
 
           <div className="form-group">
@@ -2035,7 +3357,7 @@ function EditPregnancyProfileModal({ userId, pregnancyData, fetuses, onClose, on
 
         <div className="ms-detail-footer">
           <button className="primary-btn save" disabled={saving || !tempEdd} onClick={handleSave}>
-            {saving ? 'Đang lưu...' : '💾 Lưu thông tin'}
+            {saving ? 'Đang lưu...' : 'Lưu thông tin'}
           </button>
         </div>
       </div>
@@ -2061,8 +3383,8 @@ function ConfirmBirthModal({ userId, fetuses, pregnancyData, onClose, onSaved })
   const [headA, setHeadA]     = useState('');
   const [headB, setHeadB]     = useState('');
 
-  const babyAName = fetuses[0]?.name || 'Bắp';
-  const babyBName = fetuses[1]?.name || 'Bon';
+  const babyAName = fetuses[0]?.name || 'Bé A';
+  const babyBName = fetuses[1]?.name || 'Bé B';
 
   const handleSave = async () => {
     if (!birthDate || saving) return;

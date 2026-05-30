@@ -191,7 +191,7 @@ export default function OnboardingScreen({ onComplete }) {
   return (
     <div className="onboarding-container">
       <div className="onboarding-card">
-        <div className="onboarding-logo">🌿</div>
+        <img src="/icon-192.png" className="onboarding-logo-img" alt="logo" />
 
         {/* Progress */}
         {step !== 'login' && (

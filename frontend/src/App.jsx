@@ -13,6 +13,12 @@ import CommunityScreen from './pages/CommunityScreen.jsx';
 import './App.css';
 
 /* ══ SVG Outline Navigation Icons ══ */
+const HomeIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
 const LeafIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/>
@@ -46,7 +52,7 @@ const MomentsIcon = () => (
 );
 
 const NAV_TABS = [
-  { id: 'chat',      IconComponent: LeafIcon,      label: 'Trợ lý' },
+  { id: 'chat',      IconComponent: HomeIcon,      label: 'Trang chủ' },
   { id: 'growth',    IconComponent: GrowthIcon,    label: 'Tăng trưởng' },
   { id: 'community', IconComponent: CommunityIcon, label: 'Cộng đồng' },
   { id: 'moments',   IconComponent: MomentsIcon,   label: 'Khoảnh khắc' },
@@ -235,7 +241,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="loading-screen">
-        <div className="loading-logo">🌿</div>
+        <img src="/icon-512.png" className="loading-logo-img" alt="logo" />
         <div className="loading-spinner" />
         <div className="loading-text">Đang tải...</div>
       </div>
@@ -260,7 +266,7 @@ export default function App() {
       {activeTab !== 'chat' && (
         <div className="top-bar">
           <div className="top-bar-brand">
-            <div className="top-bar-icon">🌿</div>
+            <img src="/icon-192.png" className="top-bar-logo-img" alt="logo" />
             <div>
               <div className="top-bar-name">Montessori AI</div>
               <div className="top-bar-sub">Trợ lý mẹ & bé</div>
@@ -282,7 +288,7 @@ export default function App() {
       {/* ── SIDEBAR (desktop) ── */}
       <aside className="sidebar-desktop">
         <div className="sidebar-brand-desk">
-          <div className="sidebar-brand-icon">🌿</div>
+          <img src="/icon-192.png" className="sidebar-logo-img" alt="logo" />
           <div>
             <div className="sidebar-brand-name">Montessori AI</div>
             <div className="sidebar-brand-sub">Trợ lý mẹ & bé</div>

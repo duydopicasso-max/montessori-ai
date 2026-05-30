@@ -14,6 +14,7 @@ import {
 import { db } from '../firebase.js';
 import AppDatePicker from '../components/AppDatePicker.jsx';
 import './MomentsScreen.css';
+import { getCurrentPregnancyWeek } from '../utils/pregnancyWeek.js';
 
 
 /* ─── Cloudinary config ─── */
@@ -240,8 +241,7 @@ export default function MomentsScreen({ profile }) {
   const rawBabies   = [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0));
   const pregnancyId = safeStr(profile?.pregnancyId || profile?.currentPregnancyId || profile?.pregnancyInfo?.id);
   // pregnancyInfo is stored in profile as { weeks, days, dueDate } from onboarding
-  const currentWeek = profile?.pregnancyWeek || profile?.currentWeek
-    || safeStr(profile?.pregnancyInfo?.weeks) || '';
+  const currentWeek = isPregnant ? (getCurrentPregnancyWeek(profile, null) || '') : '';
 
   // For pregnant: fetuses come from the babies array (childKey = 'baby-a', 'baby-b', 'baby-c')
   // Each baby doc has: childKey, name, childOrder
@@ -283,9 +283,10 @@ export default function MomentsScreen({ profile }) {
 
   const buildSubtitle = () => {
     if (isPregnant) {
-      if (fetuses.length >= 2) {
-        const names = fetuses.map(f => f.name).filter(Boolean);
-        if (names.length >= 2) return `Lưu lại hành trình của mẹ, ${names.join(' và ')}`;
+      if (fetuses.length === 2) {
+        return 'Lưu lại hành trình của mẹ và 2 bé';
+      }
+      if (fetuses.length > 2) {
         return 'Lưu lại hành trình của mẹ và các bé';
       }
       const name = safeStr(fetuses[0]?.name);
@@ -497,22 +498,7 @@ export default function MomentsScreen({ profile }) {
         </button>
       </header>
 
-      {/* ── Baby / Fetus Selector (only if multiple) ── */}
-      {needsSubjectSelector && (
-        <div className="ms-selector-wrap">
-          <div className="ms-selector">
-            {subjectOptions.map(opt => (
-              <button
-                key={opt.id}
-                className={`ms-selector-pill${selectedSubject === opt.id ? ' active' : ''}`}
-                onClick={() => setSelectedSubject(opt.id)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Baby / Fetus Selector removed per user request */}
 
       {/* ── Filter bar ── */}
       <div className="ms-filter-wrap">
@@ -1064,7 +1050,7 @@ function MomentForm({
               {mediaUrls.length > 0 ? (
                 <div className="ms-upload-preview">
                   {mediaUrls.map((url, i) => (
-                    <img key={i} src={url} alt="" className="ms-upload-preview-img" />
+                    <img key={i} src={url} alt={`Preview ${i + 1}`} className="ms-upload-preview-img" />
                   ))}
                   <button
                     className="ms-upload-add-more"
