@@ -212,10 +212,30 @@ export default function App() {
           setLoading(false);
         });
       } else {
-        setAuthUser(null);
-        setProfile(null);
-        babiesLoadedFromSubcollection = false;
-        setLoading(false);
+        if (import.meta.env.DEV && typeof window !== 'undefined' && localStorage.getItem('test_baby_age_days') !== null) {
+          const mockUser = { uid: null, photoURL: null };
+          setAuthUser(mockUser);
+          setProfile({
+            user: mockUser,
+            momName: 'Đô',
+            numBabies: 1,
+            status: 'born',
+            babies: [
+              {
+                id: 'baby-0',
+                name: 'Bé Đô',
+                dob: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                childOrder: 0
+              }
+            ]
+          });
+          setLoading(false);
+        } else {
+          setAuthUser(null);
+          setProfile(null);
+          babiesLoadedFromSubcollection = false;
+          setLoading(false);
+        }
         if (profileUnsub) profileUnsub();
         if (babiesUnsub) { babiesUnsub(); babiesUnsub = null; }
       }

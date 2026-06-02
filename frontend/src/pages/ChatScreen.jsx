@@ -15,6 +15,334 @@ import AppDatePicker from '../components/AppDatePicker.jsx';
 import './ChatScreen.css';
 import { getCurrentPregnancyWeek, parseLocalDate, todayLocal } from '../utils/pregnancyWeek.js';
 
+import { BABY_0_8_DAILY_MISSIONS } from '../data/dailyMissions/baby0To8Missions.js';
+import { BABY_9_18_DAILY_MISSIONS } from '../data/dailyMissions/baby9To18Missions.js';
+import { BABY_18_36_DAILY_MISSIONS } from '../data/dailyMissions/baby18To36Missions.js';
+import { PREGNANCY_DAILY_MISSIONS } from '../data/dailyMissions/pregnancyDailyMissions.js';
+import { PREGNANCY_TODAY_ACTIVITIES } from '../data/pregnancyTodayActivities.js';
+import { BORN_TODAY_ACTIVITIES } from '../data/bornTodayActivities.js';
+
+const ClockIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+const BookmarkIcon = ({ size = 16, className = "" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const parseProfileDate = (rawDate) => {
+  if (!rawDate) return null;
+  try {
+    if (rawDate && typeof rawDate.toDate === 'function') {
+      const d = rawDate.toDate();
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    if (rawDate instanceof Date) {
+      return new Date(rawDate.getFullYear(), rawDate.getMonth(), rawDate.getDate());
+    }
+    if (typeof rawDate === 'string') {
+      const yyyymmddRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (yyyymmddRegex.test(rawDate)) {
+        const [year, month, day] = rawDate.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      }
+      const parsed = new Date(rawDate);
+      if (!isNaN(parsed.getTime())) {
+        return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+      }
+    }
+    return null;
+  } catch (e) {
+    console.error("Error parsing profile date:", e);
+    return null;
+  }
+};
+
+const todayLocalMidnight = () => {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+};
+
+const getDayOfYear = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now - start;
+  const oneDay = 1000 * 60 * 60 * 24;
+  return Math.floor(diff / oneDay);
+};
+
+const getPregnancyQuoteImage = (imagePath) => {
+  if (!imagePath) return `${import.meta.env.BASE_URL}quote-images/pregnancy/pregnancy-quote-01-belly-touch.png`;
+  const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+  return `${import.meta.env.BASE_URL}${cleanPath}`;
+};
+
+const PREGNANCY_MONTESSORI_QUOTES = [
+  {
+    text: "Mỗi ngày mẹ bình an hơn một chút, bé cũng cảm nhận được sự dịu dàng ấy.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-01-belly-touch.png"
+  },
+  {
+    text: "Thai kỳ không cần vội. Mỗi nhịp thở của mẹ cũng là một cách kết nối với bé.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-01-belly-touch.png"
+  },
+  {
+    text: "Trước khi con nhìn thấy thế giới, con đã cảm nhận thế giới qua sự bình yên của mẹ.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-01-belly-touch.png"
+  },
+  {
+    text: "Một dòng mẹ viết hôm nay có thể trở thành ký ức dịu dàng của con mai sau.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-02-journal-flower.png"
+  },
+  {
+    text: "Mẹ không cần chuẩn bị mọi thứ hoàn hảo, chỉ cần chuẩn bị bằng tình yêu và sự lắng nghe.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-02-journal-flower.png"
+  },
+  {
+    text: "Hành trình làm mẹ bắt đầu từ những điều rất nhỏ: một suy nghĩ dịu dàng, một mong mỏi an yên.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-02-journal-flower.png"
+  },
+  {
+    text: "Những món đồ nhỏ xinh của bé gợi nhắc mẹ về một sự sống mới đang chuẩn bị bước vào cuộc đời.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-03-baby-clothes.png"
+  },
+  {
+    text: "Chuẩn bị môi trường cho con bắt đầu từ sự ngăn nắp, tinh tế và đầy tình yêu thương.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-03-baby-clothes.png"
+  },
+  {
+    text: "Mỗi chiếc áo nhỏ mẹ xếp hôm nay mang theo niềm hạnh phúc đón chào con yêu.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-03-baby-clothes.png"
+  },
+  {
+    text: "Đọc sách cùng con từ trong bụng mẹ là nuôi dưỡng tình yêu ngôn ngữ từ những ngày đầu.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-04-reading-book.png"
+  },
+  {
+    text: "Giọng nói của mẹ là âm thanh dịu dàng nhất, định hình cảm nhận đầu tiên của con về thế giới.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-04-reading-book.png"
+  },
+  {
+    text: "Lắng nghe những trang sách hay giúp mẹ và bé cùng nuôi dưỡng sự thông thái.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-04-reading-book.png"
+  },
+  {
+    text: "Yêu thương con là chăm sóc bản thân mình thật tốt, uống đủ nước và ăn lành mạnh mỗi ngày.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-05-water-vitamins.png"
+  },
+  {
+    text: "Mẹ khỏe mạnh, bé vững vàng. Nuôi dưỡng thân tâm mẹ là xây dựng nền móng cho con.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-05-water-vitamins.png"
+  },
+  {
+    text: "Từng ngụm nước lọc trong lành giúp thanh lọc cơ thể mẹ và nuôi dưỡng nguồn sống cho bé.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-05-water-vitamins.png"
+  },
+  {
+    text: "Âm nhạc nhẹ nhàng giúp xoa dịu tâm hồn mẹ và khơi gợi những cảm xúc bình yên nơi bé.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-06-soft-music.png"
+  },
+  {
+    text: "Tần số của tình yêu thương truyền qua những giai điệu êm ái, vỗ về bé yêu thức giấc.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-06-soft-music.png"
+  },
+  {
+    text: "Hãy cùng con tận hưởng những phút giây thư giãn trong không gian tràn ngập âm nhạc.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-06-soft-music.png"
+  },
+  {
+    text: "Tách trà thảo mộc ấm áp giúp mẹ tĩnh tâm, cảm nhận rõ rệt sự hiện diện thiêng liêng của con.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-07-herbal-tea.png"
+  },
+  {
+    text: "Sống chậm lại một chút để lắng nghe nhịp đập bé nhỏ đang lớn dần trong mẹ.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-07-herbal-tea.png"
+  },
+  {
+    text: "Sự thư thái của mẹ bầu là món quà vô giá nhất dành cho sự phát triển của em bé.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-07-herbal-tea.png"
+  },
+  {
+    text: "Viết nhật ký giúp mẹ giải tỏa những âu lo và lưu giữ những cột mốc xúc cảm kỳ diệu.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-08-emotion-journal.png"
+  },
+  {
+    text: "Mỗi cảm xúc của mẹ đều xứng đáng được lắng nghe, đón nhận và ôm ấp vỗ về.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-08-emotion-journal.png"
+  },
+  {
+    text: "Nhật ký thai kỳ là nhịp cầu nối dài yêu thương giữa hai thế giới của mẹ và con.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-08-emotion-journal.png"
+  },
+  {
+    text: "Góc nhỏ của bé không cần quá nhiều đồ chơi, chỉ cần sự an toàn, ngăn nắp và tự do.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-09-nursery-corner.png"
+  },
+  {
+    text: "Môi trường Montessori trong lành và gọn gàng giúp bé phát triển tối đa tiềm năng tự nhiên.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-09-nursery-corner.png"
+  },
+  {
+    text: "Chuẩn bị phòng cho con là chuẩn bị một không gian của sự tôn trọng và khám phá tự lập.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-09-nursery-corner.png"
+  },
+  {
+    text: "Sự kết nối giữa mẹ và con là mối liên kết thiêng liêng nhất, không có gì thay thế được.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-10-mother-connection.png"
+  },
+  {
+    text: "Khi mẹ đặt tay lên bụng, mẹ đang nói với con rằng: Mẹ luôn ở đây, yêu thương con vô điều kiện.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-10-mother-connection.png"
+  },
+  {
+    text: "Con đã chọn mẹ để đồng hành. Hãy tin vào bản năng làm mẹ và đi cùng con bằng sự an yên.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/pregnancy/pregnancy-quote-10-mother-connection.png"
+  }
+];
+
+const getBornQuoteImage = (imagePath) => {
+  if (!imagePath) return `${import.meta.env.BASE_URL}quote-images/quote-01-practical-life.webp`;
+  const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
+  return `${import.meta.env.BASE_URL}${cleanPath}`;
+};
+
+const BORN_MONTESSORI_QUOTES = [
+  {
+    id: 'born-quote-01',
+    text: "Mỗi lần con tự thử một điều nhỏ bé, con đang lớn lên bằng chính đôi tay của mình.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-01-self-try.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-02',
+    text: "Điều quý giá mẹ có thể dành cho con không chỉ là giúp đỡ, mà là cơ hội để con tự làm.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-02-give-chance.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-03',
+    text: "Sự tập trung của trẻ là một mầm non mong manh; khi được tôn trọng, nó sẽ lớn thành nội lực.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-03-child-focus.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-04',
+    text: "Bàn tay bận rộn là dấu hiệu của một tâm trí đang được nuôi dưỡng.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-04-busy-hands.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-05',
+    text: "Con không cần bị thúc ép để lớn lên; con cần một môi trường đủ yên bình để tự phát triển.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-05-peaceful-environment.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-06',
+    text: "Mỗi ngày con lặp lại một hành động, là mỗi ngày con đang xây dựng trật tự bên trong mình.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-06-inner-order.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-07',
+    text: "Quan sát con thật kỹ, mẹ sẽ thấy: phía sau mỗi hành động nhỏ đều là một nhu cầu phát triển lớn.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-07-observe-child.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-08',
+    text: "Trẻ học bằng trải nghiệm thật, bằng chạm, bằng nghe, bằng nhìn, bằng chính cuộc sống quanh mình.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-08-real-experience.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-09',
+    text: "Khi mẹ chậm lại để lắng nghe con, con cũng học được cách bình an với thế giới.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-09-slow-listening.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-10',
+    text: "Không phải làm thay con thật nhiều, mà là chuẩn bị cho con một môi trường vừa tầm để con tự tin bước vào.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-10-prepared-environment.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-11',
+    text: "Sự tự lập không đến trong một ngày; nó lớn dần từ những việc nhỏ con được phép tự thử mỗi hôm.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-11-growing-independence.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-12',
+    text: "Một đứa trẻ được tôn trọng sẽ học cách tôn trọng bản thân, người khác và môi trường xung quanh.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-12-respect-child.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-13',
+    text: "Mẹ không cần hoàn hảo; chỉ cần đủ dịu dàng để đồng hành và đủ tin tưởng để con được là chính mình.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-13-gentle-mother.png",
+    objectPosition: "center center"
+  },
+  {
+    id: 'born-quote-14',
+    text: "Trưởng thành của con bắt đầu từ những điều rất nhỏ: một lần tự cầm thìa, một lần tự chọn, một lần được mẹ kiên nhẫn chờ.",
+    author: "Cảm hứng Montessori",
+    image: "/quote-images/born/born-quote-14-patient-waiting.png",
+    objectPosition: "center center"
+  }
+];
+
+
 const API_BASE      = import.meta.env.VITE_API_URL || '/api';
 const CLOUD_NAME    = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
@@ -583,7 +911,12 @@ export function getPregnancyMontessoriSuggestion(weeks) {
 }
 
 export default function ChatScreen({ profile, setActiveTab, setGrowthPendingAction }) {
-  const status = profile?.status || 'born';
+  const overrideStatus = typeof window !== 'undefined' ? localStorage.getItem('test_user_status') : null;
+  const status = (overrideStatus === 'pregnant' || overrideStatus === 'pregnancy')
+    ? 'pregnant'
+    : (overrideStatus === 'born' || overrideStatus === 'postpartum')
+      ? 'born'
+      : (profile?.status || 'born');
   const userId = profile?.user?.uid;
   const babies = useMemo(() => [...(profile?.babies || [])].sort((a, b) => (a.childOrder ?? 0) - (b.childOrder ?? 0)), [profile?.babies]);
   const baby = babies[0] || {};
@@ -613,6 +946,345 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
     }, 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  // ── DAILY CHECKLIST STATE & CALCULATION HELPERS ──
+  const [completedMissions, setCompletedMissions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('montessori_completed_missions');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const toggleMission = useCallback((missionId) => {
+    setCompletedMissions(prev => {
+      const next = { ...prev, [missionId]: !prev[missionId] };
+      try {
+        localStorage.setItem('montessori_completed_missions', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  }, []);
+
+  const pregnancyDayIndex = useMemo(() => {
+    const override = typeof window !== 'undefined' ? localStorage.getItem('test_pregnancy_day_index') : null;
+    if (override !== null && override !== undefined && override !== '') {
+      const parsed = parseInt(override, 10);
+      return isNaN(parsed) ? null : parsed;
+    }
+    
+    const dueDateStr = profile?.dueDate || pregnancyInfo?.dueDate;
+    const dueDate = parseProfileDate(dueDateStr);
+    if (!dueDate) return null;
+    
+    const today = todayLocalMidnight();
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return 280 - diffDays;
+  }, [profile, pregnancyInfo]);
+
+  const babyAgeDays = useMemo(() => {
+    const override = typeof window !== 'undefined' ? localStorage.getItem('test_baby_age_days') : null;
+    if (override !== null && override !== undefined && override !== '') {
+      const parsed = parseInt(override, 10);
+      return isNaN(parsed) ? null : parsed;
+    }
+    
+    const childDobStr = baby?.dob || dob;
+    const childDob = parseProfileDate(childDobStr);
+    if (!childDob) return null;
+    
+    const today = todayLocalMidnight();
+    const diffTime = today.getTime() - childDob.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 ? diffDays : 0;
+  }, [baby, dob]);
+
+  const getDailyMissionsData = useCallback(() => {
+    const isPregnant = status === 'pregnant';
+    
+    if (isPregnant) {
+      const dayIndex = pregnancyDayIndex;
+      if (dayIndex === null) {
+        return { error: 'missing_due_date' };
+      }
+      if (dayIndex < 56) {
+        return { hidden: true };
+      }
+      const missionDay = dayIndex - 55;
+      const dayData = PREGNANCY_DAILY_MISSIONS?.days?.[missionDay];
+      if (!dayData || dayData.length === 0) {
+        return { hidden: true };
+      }
+      return {
+        title: `Nhiệm vụ Ngày ${missionDay} thai kỳ`,
+        missions: dayData,
+        stage: 'pregnancy'
+      };
+    } else {
+      const ageDays = babyAgeDays;
+      if (ageDays === null) {
+        return { error: 'missing_birth_date' };
+      }
+      
+      let missionDay = 0;
+      let dataset = null;
+      let titleLabel = '';
+      
+      if (ageDays >= 0 && ageDays <= 273) {
+        dataset = BABY_0_8_DAILY_MISSIONS;
+        missionDay = ageDays + 1;
+        titleLabel = `Nhiệm vụ Ngày ${missionDay}`;
+      } else if (ageDays >= 274 && ageDays <= 547) {
+        dataset = BABY_9_18_DAILY_MISSIONS;
+        missionDay = ageDays - 274 + 1;
+        titleLabel = `Nhiệm vụ Ngày ${missionDay}`;
+      } else if (ageDays >= 548 && ageDays <= 1094) {
+        dataset = BABY_18_36_DAILY_MISSIONS;
+        missionDay = ageDays - 548 + 1;
+        titleLabel = `Nhiệm vụ Ngày ${missionDay}`;
+      } else {
+        return { hidden: true };
+      }
+      
+      const dayData = dataset?.days?.[missionDay];
+      if (!dayData || dayData.length === 0) {
+        return { hidden: true };
+      }
+      
+      return {
+        title: titleLabel,
+        missions: dayData,
+        stage: 'postpartum'
+      };
+    }
+  }, [status, pregnancyDayIndex, babyAgeDays]);
+
+  const renderDailyMissionsSection = () => {
+    const data = getDailyMissionsData();
+    if (data.hidden) return null;
+    
+    if (data.error === 'missing_due_date') {
+      return (
+        <div className="journey-section">
+          <div className="journey-section-header">
+            <h3 className="journey-section-title">Hành trình hôm nay</h3>
+          </div>
+          <div className="journey-fallback-card">
+            <p style={{
+              margin: 0,
+              fontSize: '13px',
+              lineHeight: '1.5',
+              color: '#55685B',
+              fontWeight: '500'
+            }}>
+              Cập nhật ngày dự sinh để nhận nhiệm vụ thai kỳ phù hợp mỗi ngày.
+            </p>
+            <button
+              className="journey-fallback-btn"
+              onClick={() => {
+                if (setGrowthPendingAction) setGrowthPendingAction('openEditProfile');
+                setActiveTab('growth');
+              }}
+            >
+              Cập nhật hồ sơ
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    if (data.error === 'missing_birth_date') {
+      return (
+        <div className="journey-section">
+          <div className="journey-section-header">
+            <h3 className="journey-section-title">Hành trình hôm nay</h3>
+          </div>
+          <div className="journey-fallback-card">
+            <p style={{
+              margin: 0,
+              fontSize: '13px',
+              lineHeight: '1.5',
+              color: '#55685B',
+              fontWeight: '500'
+            }}>
+              Cập nhật ngày sinh của bé để nhận hoạt động phù hợp mỗi ngày.
+            </p>
+            <button
+              className="journey-fallback-btn"
+              onClick={() => {
+                if (setGrowthPendingAction) setGrowthPendingAction('openEditProfile');
+                setActiveTab('growth');
+              }}
+            >
+              Cập nhật hồ sơ
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="journey-section">
+        <div className="journey-section-header">
+          <h3 className="journey-section-title">Hành trình hôm nay</h3>
+          <span className="journey-section-link" onClick={handleSuggestionAction}>Gợi ý hoạt động</span>
+        </div>
+        <div className="journey-card">
+          {data.missions.map((item, index) => {
+            const isCompleted = !!completedMissions[item.id];
+            
+            let iconWrapClass = `idx-${index % 3}`;
+            if (item.type) {
+              iconWrapClass = `type-${item.type}`;
+            }
+            
+            let taskIcon = '🌱';
+            if (item.icon === 'hand' || item.type === 'fine_motor' || item.type === 'gross_motor') taskIcon = '👐';
+            else if (item.icon === 'home' || item.type === 'environment') taskIcon = '🏠';
+            else if (item.icon === 'sparkle' || item.type === 'sensory') taskIcon = '✨';
+            else if (item.icon === 'book' || item.type === 'fixed' || item.type === 'mindfulness') taskIcon = '🧘';
+            else if (item.type === 'connection') taskIcon = '🤝';
+            else if (item.type === 'care' || item.type === 'hygiene') taskIcon = '🍼';
+            
+            return (
+              <div key={item.id || index} className="journey-item" style={{
+                opacity: isCompleted ? 0.75 : 1,
+                transition: 'opacity 0.2s ease'
+              }}>
+                <div className={`journey-icon-wrap ${iconWrapClass}`}>
+                  <span style={{ fontSize: '18px' }}>{taskIcon}</span>
+                </div>
+                <div className="journey-content" style={{ textAlign: 'left' }}>
+                  <span className="journey-category">{item.category}</span>
+                  <h4 className="journey-item-title" style={{
+                    textDecoration: isCompleted ? 'line-through' : 'none',
+                    color: isCompleted ? '#7B8A82' : '#1F2D26'
+                  }}>{item.title}</h4>
+                  <p className="journey-item-desc">{item.description}</p>
+                  {item.duration && (
+                    <span className="journey-item-duration">
+                      <ClockIcon size={10} className="journey-duration-clock" />
+                      {item.duration}
+                    </span>
+                  )}
+                </div>
+                <button
+                  className={`journey-btn ${isCompleted ? 'completed' : ''}`}
+                  onClick={() => toggleMission(item.id)}
+                >
+                  {isCompleted ? 'Hoàn thành ✓' : 'Làm ngay'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPostpartumCarouselSection = () => {
+    if (babyAgeDays === null) return null;
+    
+    const isInfant0To8 = babyAgeDays >= 0 && babyAgeDays <= 273;
+    const isToddler9To18 = babyAgeDays >= 274 && babyAgeDays <= 547;
+    const isChild18To36 = babyAgeDays >= 548 && babyAgeDays <= 1094;
+    let carouselMissions = [];
+    
+    if (isInfant0To8) {
+      const groupIndex = babyAgeDays % 5;
+      const startIndex = groupIndex * 3;
+      carouselMissions = BORN_TODAY_ACTIVITIES.infant_0_8.slice(startIndex, startIndex + 3);
+    } else if (isToddler9To18) {
+      const daysInStage = babyAgeDays - 274;
+      const groupIndex = ((daysInStage % 7) + 7) % 7;
+      const startIndex = groupIndex * 3;
+      carouselMissions = BORN_TODAY_ACTIVITIES.toddler_9_18.slice(startIndex, startIndex + 3);
+    } else if (isChild18To36) {
+      const daysInStage = babyAgeDays - 548;
+      const groupIndex = ((daysInStage % 7) + 7) % 7;
+      const startIndex = groupIndex * 3;
+      carouselMissions = BORN_TODAY_ACTIVITIES.child_18_36.slice(startIndex, startIndex + 3);
+    } else {
+      // Bé lớn hơn 3 tuổi (>= 1095 ngày): Ẩn sạch section
+      return null;
+    }
+    
+    if (!carouselMissions || carouselMissions.length === 0) return null;
+    
+    return (
+      <div className="preg-grow-together-section">
+        <div className="preg-section-header">
+          <h3 className="preg-section-title">Hôm nay, mình cùng con</h3>
+          <span className="preg-section-link" onClick={handleSuggestionAction}>Xem chi tiết</span>
+        </div>
+        <div className="preg-horizontal-scroll-container">
+          {(() => {
+            const babyImages = [
+              'quote-images/quote-01-practical-life.webp',
+              'quote-images/quote-02-pompom.webp',
+              'quote-images/quote-03-montessori-corner.webp',
+              'quote-images/quote-04-wiping-table.webp',
+              'quote-images/quote-05-mom-observing.webp',
+              'quote-images/quote-06-wooden-blocks.webp',
+              'quote-images/quote-07-window-tray.webp',
+              'quote-images/quote-08-reading-book.webp',
+              'quote-images/quote-09-self-feeding.webp',
+              'quote-images/quote-10-plant-wooden-toys.webp'
+            ];
+            
+            return carouselMissions.map((act, i) => {
+              const imgPath = act.image
+                ? `${import.meta.env.BASE_URL}${act.image.startsWith('/') ? act.image.slice(1) : act.image}`
+                : `${import.meta.env.BASE_URL}${babyImages[((babyAgeDays || 0) + i) % 10]}`;
+              
+              let tagClass = 'tag-connect';
+              const tagVal = act.tag || act.category || '';
+              const typeVal = act.type || '';
+              
+              const selfCareTags = ['Tự lập', 'Tự chăm sóc', 'Vệ sinh', 'Chăm sóc', 'Nhịp ngủ'];
+              const montessoriTags = [
+                'Môi trường', 'Trật tự', 'An toàn', 'Thiên nhiên', 'Khám phá', 
+                'Quan sát', 'Tập trung', 'Ngôn ngữ', 'Vận động tay', 'Việc nhà', 'Nhận thức'
+              ];
+              
+              if (selfCareTags.includes(tagVal) || typeVal === 'care' || typeVal === 'hygiene') {
+                tagClass = 'tag-selfcare';
+              } else if (montessoriTags.includes(tagVal) || tagVal === 'Môi trường' || tagVal === 'Trật tự' || typeVal === 'environment') {
+                tagClass = 'tag-montessori';
+              }
+              
+              return (
+                <div key={act.id || i} className="preg-scroll-card" onClick={handleSuggestionAction} style={{ cursor: 'pointer' }}>
+                  <div className="preg-card-image-wrap">
+                    <img
+                      src={imgPath}
+                      alt={act.title}
+                      className="preg-card-img"
+                    />
+                  </div>
+                  <div className="preg-card-body">
+                    <span className={`preg-card-tag-inline ${tagClass}`}>{tagVal}</span>
+                    <h4 className="preg-card-title">{act.title}</h4>
+                    <p className="preg-card-subtitle">{act.subtitle || act.description}</p>
+                    <div className="preg-card-footer">
+                      <span className="preg-card-duration">
+                        <ClockIcon size={12} className="preg-card-clock-icon" />
+                        {act.duration}
+                      </span>
+                      <BookmarkIcon size={14} className="preg-card-bookmark" />
+                    </div>
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      </div>
+    );
+  };
 
   // Active bottom sheets
   const [activeBottomSheet, setActiveBottomSheet] = useState(null); // 'nutrition' | 'sleep' | 'diaper' | 'growth' | 'kick' | 'contractions' | 'preg_weight' | 'preg_reminders' | 'preg_clinic' | 'preg_emotion'
@@ -3733,100 +4405,145 @@ ${logsDesc}`;
         </div>
       )}
 
-      {/* 🤰 PREGNANCY BANNER */}
+      {/* 🤰 PREGNANCY HERO CARD & CAROUSEL & CHECKLIST */}
       {status === 'pregnant' && (
-        <div className="pregnancy-ad-avocado-card animate-float-slow">
-          <div className="avocado-baby-illustration">
-            {fruitInfo && fruitInfo.fruit ? fruitInfo.fruit : '👶'}
-          </div>
-          <div className="pregnancy-avocado-text-wrap">
-            <h4 className="avocado-growth-banner">
-              {isTwin
-                ? `Tuần ${pregWeeks}: ${twinWording} đang lớn dần mỗi ngày`
-                : (fruitInfo && fruitInfo.fruitName
-                    ? `Tuần ${pregWeeks}: ${headerBabyName} đang lớn bằng ${fruitInfo.fruitName} ${fruitInfo.fruit}`
-                    : `Tuần ${pregWeeks}: ${headerBabyName} đang lớn lên từng ngày`)
-              }
-            </h4>
-            <p className="avocado-growth-sub">
-              {isTwin
-                ? `${twinWording.charAt(0).toUpperCase() + twinWording.slice(1)} đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.`
-                : (fruitInfo && fruitInfo.desc
-                    ? fruitInfo.desc
-                    : 'Bé yêu đang phát triển kỳ diệu và khỏe mạnh mỗi ngày trong bụng mẹ.')
-              }
-            </p>
-            {daysRemaining !== null ? (
-              <span className="pregnancy-countdown-pill">
-                {daysRemaining > 0
-                  ? `Còn khoảng ${daysRemaining} ngày nữa là gặp ${isTwin ? twinWording : headerBabyName}!`
-                  : `${isTwin ? (twinWording.charAt(0).toUpperCase() + twinWording.slice(1)) : headerBabyName} đã sẵn sàng chào đời!`}
-              </span>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px' }}>
-                <span style={{ fontSize: '12px', color: '#4A6B56', fontWeight: '500' }}>
-                  Thêm ngày dự sinh để tính ngày gặp bé chính xác hơn.
+        <>
+          {/* Hero Card thai kỳ */}
+          <div className="pregnancy-hero-card">
+            <img
+              className="hero-card-bg-image"
+              src={getPregnancyQuoteImage(PREGNANCY_MONTESSORI_QUOTES[getDayOfYear() % 30].image)}
+              alt="Belly"
+            />
+            <div className="hero-card-content">
+              <h4 className="hero-card-title">
+                {(() => {
+                  const displayName = isTwin 
+                    ? twinWording 
+                    : (profile?.babyName || pregnancyInfo?.babyName || 'bé');
+                  return `Tuần ${pregWeeks}: ${displayName} đang bình an lớn lên từng ngày`;
+                })()}
+              </h4>
+              <p className="hero-card-desc">
+                {daysRemaining !== null ? (
+                  daysRemaining > 0
+                    ? (() => {
+                        const meetTarget = isTwin
+                          ? twinWording
+                          : (profile?.babyName || pregnancyInfo?.babyName || 'con');
+                        return `Còn khoảng ${daysRemaining} ngày nữa là gặp ${meetTarget}`;
+                      })()
+                    : `Bé đã sẵn sàng chào đời!`
+                ) : (
+                  'Hãy cập nhật ngày dự sinh của mẹ'
+                )}
+              </p>
+              <div className="hero-card-quote-section">
+                <p className="hero-card-quote-text">
+                  “{PREGNANCY_MONTESSORI_QUOTES[getDayOfYear() % 30].text}”
+                </p>
+                <span className="hero-card-quote-author">
+                  — {PREGNANCY_MONTESSORI_QUOTES[getDayOfYear() % 30].author}
                 </span>
-                <button
-                  type="button"
-                  className="pregnancy-add-due-date-btn"
-                  onClick={() => {
-                    if (setGrowthPendingAction) setGrowthPendingAction('openEditProfile');
-                    setActiveTab('growth');
-                  }}
-                  style={{
-                    background: 'transparent',
-                    color: '#2F6B4F',
-                    border: '1px solid rgba(47, 107, 79, 0.3)',
-                    padding: '4px 10px',
-                    borderRadius: '100px',
-                    fontSize: '11.5px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    width: 'fit-content',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Thêm ngày dự sinh
-                </button>
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 🌿 DAILY MONTESSORI RECOMMENDATION CARD */}
-      {(!status || status !== 'pregnant' ? babies.length > 0 : true) && (
-        <div className="montessori-daily-suggestion-card" onClick={suggestionData.action}>
-          <SparkleIcon size={20} strokeWidth={1.8} className="suggestion-card-floating-sparkle" />
-          <div className="suggestion-card-header">
-            <span className="suggestion-card-icon-wrap">
-              <LeafIcon size={18} strokeWidth={2.2} className="suggestion-leaf-icon" />
-            </span>
-            <div className="suggestion-header-text-col">
-              <h3>Gợi ý hôm nay cho mẹ</h3>
             </div>
           </div>
-          
-          <p className="suggestion-card-body">
-            {suggestionData.text}
-          </p>
 
-          <div className="suggestion-card-footer">
-            <span className="suggestion-metadata-item">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', verticalAlign: 'middle', display: 'inline-block' }}>
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              <span style={{ verticalAlign: 'middle' }}>{suggestionData.meta}</span>
-            </span>
-            <span className="suggestion-card-more-link">
-              Xem thêm <span className="suggestion-card-more-arrow">→</span>
-            </span>
+          {/* Carousel "Hôm nay, mẹ và bé cùng lớn lên" */}
+          <div className="preg-grow-together-section">
+            <div className="preg-section-header">
+              <h3 className="preg-section-title">Hôm nay, mẹ và bé cùng lớn lên</h3>
+              <span className="preg-section-link" onClick={handleSuggestionAction}>Xem chi tiết</span>
+            </div>
+            <div className="preg-horizontal-scroll-container">
+              {(() => {
+                const dayIdx = pregnancyDayIndex !== null && !isNaN(pregnancyDayIndex) ? pregnancyDayIndex : 0;
+                const startIdx = (Math.max(0, dayIdx) % 7) * 3;
+                const activities = PREGNANCY_TODAY_ACTIVITIES.slice(startIdx, startIdx + 3);
+                return activities.map((act, i) => {
+                  let tagClass = 'tag-connect';
+                  if (act.tag === 'Hiểu Montessori' || act.tag === 'Montessori') tagClass = 'tag-montessori';
+                  else if (act.tag === 'Chăm sóc mẹ') tagClass = 'tag-selfcare';
+                  
+                  return (
+                    <div key={i} className="preg-scroll-card" onClick={handleSuggestionAction} style={{ cursor: 'pointer' }}>
+                      <div className="preg-card-image-wrap">
+                        <img
+                          src={act.image ? `${import.meta.env.BASE_URL}${act.image.startsWith('/') ? act.image.slice(1) : act.image}` : `${import.meta.env.BASE_URL}quote-images/pregnancy/pregnancy-quote-01-belly-touch.png`}
+                          alt={act.title}
+                          className="preg-card-img"
+                        />
+                      </div>
+                      <div className="preg-card-body">
+                        <span className={`preg-card-tag-inline ${tagClass}`}>{act.tag}</span>
+                        <h4 className="preg-card-title">{act.title}</h4>
+                        <p className="preg-card-subtitle">{act.subtitle}</p>
+                        <div className="preg-card-footer">
+                          <span className="preg-card-duration">
+                            <ClockIcon size={12} className="preg-card-clock-icon" />
+                            {act.duration}
+                          </span>
+                          <BookmarkIcon size={14} className="preg-card-bookmark" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
           </div>
-        </div>
+
+          {/* Checklist "Hành trình hôm nay" */}
+          {renderDailyMissionsSection()}
+        </>
+      )}
+
+      {/* 🌿 POSTPARTUM MONTESSORI RECOMMENDATION CARD & CAROUSEL & CHECKLIST */}
+      {status === 'born' && babies.length > 0 && (
+        <>
+          {/* Card Quote Montessori cho đã sinh */}
+          {(() => {
+            const quoteIndex = getDayOfYear() % BORN_MONTESSORI_QUOTES.length;
+            const quoteObj = BORN_MONTESSORI_QUOTES[quoteIndex];
+            return (
+              <div className="born-quote-hero-card">
+                <img
+                  className="hero-card-bg-image"
+                  src={getBornQuoteImage(quoteObj.image)}
+                  alt="Cảm hứng Montessori"
+                  style={{ objectPosition: quoteObj.objectPosition || 'center center' }}
+                  onError={(e) => {
+                    if (e.target.getAttribute('data-retry') !== 'true') {
+                      e.target.setAttribute('data-retry', 'true');
+                      e.target.src = getBornQuoteImage(BORN_MONTESSORI_QUOTES[0].image);
+                    } else {
+                      e.target.style.display = 'none';
+                      const card = e.target.closest('.born-quote-hero-card');
+                      if (card) card.style.background = 'linear-gradient(135deg, #FCFAF7 0%, #EAEFEA 100%)';
+                    }
+                  }}
+                />
+                <div className="hero-card-overlay-gradient" />
+                <div className="hero-card-content">
+                  <div className="hero-card-quote-section">
+                    <p className="hero-card-quote-text">
+                      “{quoteObj.text}”
+                    </p>
+                    <span className="hero-card-quote-author">
+                      — {quoteObj.author}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Carousel "Hôm nay, mình cùng con" */}
+          {renderPostpartumCarouselSection()}
+
+          {/* Checklist "Hành trình hôm nay" */}
+          {renderDailyMissionsSection()}
+        </>
       )}
       {/* 📊 2X2 DASHBOARD TRACKERS GRID */}
       {(!status || status !== 'pregnant' ? babies.length > 0 : true) && (

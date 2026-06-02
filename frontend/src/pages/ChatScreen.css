@@ -5058,3 +5058,664 @@
 .msg-time {
   color: #9AA09D !important; /* subtle gray-slate */
 }
+
+
+/* ══════════════════════════════════════
+   RESTORED DASHBOARD COMPONENTS STYLES
+   ══════════════════════════════════════ */
+
+/* ── 1. Pregnancy Hero Card ── */
+.pregnancy-hero-card {
+  margin: 12px 20px 8px;
+  padding: 20px 24px;
+  background: #FCFAF7;
+  border-radius: 24px;
+  border: 1px solid rgba(92, 158, 122, 0.12);
+  box-shadow: 0 4px 16px rgba(138, 149, 143, 0.06);
+  position: relative;
+  min-height: 240px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.pregnancy-hero-card .hero-card-bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 1;
+  object-position: 80% center;
+  border-radius: 24px;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+.pregnancy-hero-card .hero-card-content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  max-width: 52%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.pregnancy-hero-card .hero-card-title {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1F2D26;
+  margin: 0 0 6px 0;
+  line-height: 1.35;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.85);
+}
+
+.pregnancy-hero-card .hero-card-desc {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #5C7868;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.85);
+}
+
+.pregnancy-hero-card .hero-card-quote-section {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 16px;
+}
+
+.pregnancy-hero-card .hero-card-quote-text {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #4D5E54;
+  margin: 0 0 3px 0;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.85);
+}
+
+.pregnancy-hero-card .hero-card-quote-author {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: #8A9B91;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.85);
+}
+
+@media (max-width: 360px) {
+  .pregnancy-hero-card {
+    min-height: 220px;
+    height: auto;
+    padding: 16px;
+  }
+  .pregnancy-hero-card .hero-card-bg-image {
+    display: none;
+  }
+  .pregnancy-hero-card .hero-card-content {
+    max-width: 100%;
+  }
+}
+
+/* ── 2. "Together We Grow" Section (Hôm nay, mẹ và bé cùng lớn lên) ── */
+.preg-grow-together-section {
+  margin: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preg-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preg-section-title {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1F2D26;
+  margin: 0;
+}
+
+.preg-section-link {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 11px;
+  color: #5C9E7A;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preg-horizontal-scroll-container {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 0 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.preg-horizontal-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.preg-scroll-card {
+  width: clamp(148px, 42vw, 168px);
+  min-height: 235px;
+  max-height: 250px;
+  flex-shrink: 0;
+  border-radius: 18px;
+  background: #FCFAF7;
+  border: 1px solid rgba(92, 158, 122, 0.12);
+  box-shadow: 0 4px 12px rgba(138, 149, 143, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.preg-scroll-card:active {
+  transform: scale(0.98);
+}
+
+.preg-card-image-wrap {
+  width: 100%;
+  height: 110px;
+  position: relative;
+  background: linear-gradient(135deg, #F9F6F0 0%, #E6EFE9 100%);
+  overflow: hidden;
+}
+
+.preg-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.preg-card-body {
+  padding: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.preg-card-tag-inline {
+  align-self: flex-start;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.preg-card-tag-inline.tag-connect {
+  background: #EBF3EE;
+  color: #2F6B4F;
+  border: 1px solid rgba(97, 133, 114, 0.12);
+}
+
+.preg-card-tag-inline.tag-selfcare {
+  background: #FDF2F0;
+  color: #D96D55;
+  border: 1px solid rgba(217, 109, 85, 0.12);
+}
+
+.preg-card-tag-inline.tag-montessori {
+  background: #FAF6EB;
+  color: #A3753E;
+  border: 1px solid rgba(163, 117, 62, 0.12);
+}
+
+.preg-card-title {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1F2D26;
+  margin: 0 0 4px 0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 32px;
+}
+
+.preg-card-subtitle {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: #7A8B80;
+  margin: 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.preg-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.preg-card-duration {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #5C7868;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.preg-card-clock-icon {
+  color: #8A9B91;
+  flex-shrink: 0;
+}
+
+.preg-card-bookmark {
+  color: #A0B0A6;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.preg-card-bookmark:hover {
+  color: #5C9E7A;
+}
+
+/* ── 3. Journey Checklist Section ("Hành trình hôm nay") ── */
+.journey-section {
+  margin: 14px 0 22px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.journey-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.journey-section-title {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: #1F2D26;
+  margin: 0;
+}
+
+.journey-section-link {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #7B8A82;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.journey-section-link:hover {
+  color: #2F6B4F;
+}
+
+.journey-card {
+  margin: 0 20px;
+  background: #FFFFFF;
+  border-radius: 20px;
+  border: 1px solid rgba(47, 107, 79, 0.06);
+  box-shadow: 0 4px 12px rgba(47, 107, 79, 0.03), 0 1px 3px rgba(0, 0, 0, 0.01);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 16px;
+  box-sizing: border-box;
+}
+
+.journey-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px dashed rgba(47, 107, 79, 0.08);
+  min-height: 76px;
+  box-sizing: border-box;
+}
+
+.journey-item:last-child {
+  border-bottom: none;
+}
+
+.journey-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.journey-icon-wrap.idx-0 {
+  background: #F0F5F2; /* sage green pastel */
+  color: #2F6B4F;
+}
+
+.journey-icon-wrap.idx-1 {
+  background: #FFFDF0; /* cream pastel */
+  color: #B59F3F;
+}
+
+.journey-icon-wrap.idx-2 {
+  background: #FFF0F2; /* rose pastel */
+  color: #D67280;
+}
+
+/* Color mappings for pregnancy mission types */
+.journey-icon-wrap.type-fixed {
+  background: #EBF3EE;
+  color: #2F6B4F;
+}
+.journey-icon-wrap.type-environment {
+  background: #FAF6EB;
+  color: #5C7868;
+}
+.journey-icon-wrap.type-connection {
+  background: #FDF2F0;
+  color: #D96D55;
+}
+.journey-icon-wrap.type-care {
+  background: #FAF0EC;
+  color: #D96D55;
+}
+.journey-icon-wrap.type-mindfulness {
+  background: #EBF3EE;
+  color: #2F6B4F;
+}
+
+.journey-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.journey-category {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #7B8A82;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.journey-item-title {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1F2D26;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.journey-item-desc {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 11.5px;
+  color: #55685B;
+  margin: 3px 0 0 0;
+  line-height: 1.4;
+}
+
+.journey-item-duration {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #7B8A82;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.journey-duration-clock {
+  color: #92A197;
+  flex-shrink: 0;
+}
+
+.journey-btn {
+  background: #F0F5F2;
+  border: none;
+  color: #2F6B4F;
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(47, 107, 79, 0.04);
+}
+
+.journey-btn:hover {
+  background: #E6EFE9;
+}
+
+.journey-btn:active {
+  transform: scale(0.97) translateY(0);
+  background: #DEECE4;
+}
+
+.journey-btn.completed {
+  background: #FAF0EC;
+  color: #D96D55;
+}
+
+.journey-btn.completed:hover {
+  background: #F5E5DF;
+}
+
+/* ── 4. Journey Fallback Card ── */
+.journey-fallback-card {
+  padding: 16px 20px;
+  background: #FAFBF9;
+  border: 1.5px dashed #D6E0DA;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 20px 20px;
+}
+
+.journey-fallback-btn {
+  background: #EAEFEA;
+  border: none;
+  color: #2F6B4F;
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.journey-fallback-btn:hover {
+  background: #DFE8DF;
+}
+
+.journey-fallback-btn:active {
+  transform: scale(0.97);
+}
+
+/* 🌿 POSTPARTUM BORN MONTESSORI QUOTE CARD STYLES */
+.born-quote-hero-card {
+  width: calc(100% - 40px);
+  margin: 12px 20px 8px;
+  background: #FCFAF7;
+  border-radius: 24px;
+  border: 1px solid rgba(92, 158, 122, 0.1);
+  box-shadow: 0 4px 16px rgba(138, 149, 143, 0.05);
+  position: relative;
+  aspect-ratio: 21 / 9;
+  min-height: 200px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.born-quote-hero-card .hero-card-bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 1;
+  z-index: 1;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.born-quote-hero-card .hero-card-overlay-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(252, 250, 247, 0.72) 0%,
+    rgba(252, 250, 247, 0.45) 45%,
+    rgba(252, 250, 247, 0.08) 72%,
+    rgba(252, 250, 247, 0) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+.born-quote-hero-card .hero-card-content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  max-width: 52%; /* Restrict width to 52% (approx 48%-55% range) so it doesn't overlap action on the right */
+  padding: 20px 22px; /* left/right padding around 22px */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.born-quote-hero-card .hero-card-quote-section {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.born-quote-hero-card .hero-card-quote-text {
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600; /* Semibold nhẹ */
+  color: #1F2D24; /* xanh rêu đậm mềm */
+  margin: 0 0 10px 0;
+  line-height: 1.55; /* line-height thoáng */
+  text-shadow: 0 1px 1px rgba(252, 250, 247, 0.8);
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: none;
+}
+
+.born-quote-hero-card .hero-card-quote-author {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  color: #7A8B80; /* Màu sage/xám dịu */
+  text-shadow: 0 1px 1px rgba(252, 250, 247, 0.8);
+}
+
+/* Responsive adjustment for Mobile viewports (< 480px) */
+@media (max-width: 480px) {
+  .born-quote-hero-card {
+    aspect-ratio: auto;
+    min-height: 180px;
+    height: clamp(175px, 46vw, 210px);
+  }
+
+  .born-quote-hero-card .hero-card-content {
+    max-width: 58%;
+    padding: 16px 20px;
+  }
+
+  .born-quote-hero-card .hero-card-overlay-gradient {
+    background: linear-gradient(
+      90deg,
+      rgba(252, 250, 247, 0.8) 0%,
+      rgba(252, 250, 247, 0.55) 50%,
+      rgba(252, 250, 247, 0.15) 75%,
+      rgba(252, 250, 247, 0) 100%
+    );
+  }
+
+  .born-quote-hero-card .hero-card-quote-text {
+    font-size: 12.5px;
+    line-height: 1.5;
+    -webkit-line-clamp: none;
+    display: block;
+    overflow: visible;
+  }
+}
+
+/* Responsive adjustment for very small viewports (<= 360px) */
+@media (max-width: 360px) {
+  .born-quote-hero-card {
+    min-height: 175px;
+    height: auto;
+  }
+
+  .born-quote-hero-card .hero-card-content {
+    max-width: 68%;
+    padding: 14px 18px;
+  }
+  
+  .born-quote-hero-card .hero-card-overlay-gradient {
+    background: linear-gradient(
+      90deg,
+      rgba(252, 250, 247, 0.88) 0%,
+      rgba(252, 250, 247, 0.65) 55%,
+      rgba(252, 250, 247, 0.25) 80%,
+      rgba(252, 250, 247, 0) 100%
+    );
+  }
+
+  .born-quote-hero-card .hero-card-quote-text {
+    font-size: 11.5px;
+    line-height: 1.45;
+    -webkit-line-clamp: none;
+    display: block;
+    overflow: visible;
+  }
+}
+
