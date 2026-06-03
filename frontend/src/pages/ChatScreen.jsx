@@ -3433,229 +3433,170 @@ ${logsDesc}`;
   const renderPregnancyGrid = (weeks) => {
     if (weeks < 16) {
       return (
-        <div className="dashboard-trackers-grid">
-          {/* Card 1: Vitamin & Nước */}
-          <div className="tracker-item-card mint-light" onClick={() => setActiveBottomSheet('preg_reminders')}>
-            <div className="tracker-card-icon">
-              <PregRemindersIcon />
-            </div>
-            <h4 className="tracker-card-name">Vitamin &amp; Nước</h4>
-            <span className="tracker-card-status-text">{getVitaminStatusText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Ghi nhận
-            </button>
-          </div>
+        <div className="preg-quick-track-section">
+          <p className="preg-quick-track-label">Theo dõi nhanh hôm nay</p>
+          <div className="preg-quick-track-scroll">
 
-          {/* Card 2: Cân nặng thai kỳ */}
-          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_weight')}>
-            <div className="tracker-card-icon">
-              <PregWeightIcon />
+            {/* Card 1: Vitamin & Nước */}
+            <div className="preg-quick-track-card pqt-vitamin" onClick={() => setActiveBottomSheet('preg_reminders')}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregRemindersIcon />
+              </div>
+              <p className="preg-quick-track-title">Vitamin &amp; Nước</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getVitaminStatusText();
+                return t && t.length < 12 ? t : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{getVitaminStatusText()}</p>
             </div>
-            <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
-            {isTwin && <span className="tracker-card-twin-hint">của mẹ, không phải thai nhi</span>}
-            <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Cập nhật
-            </button>
-          </div>
 
-          {/* Card 3: Lịch khám thai */}
-          <div className="tracker-item-card mint-light" onClick={() => {
-            if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
-            setActiveTab('growth');
-          }}>
-            <div className="tracker-card-icon">
-              <PregClinicIcon />
+            {/* Card 2: Cân nặng thai kỳ */}
+            <div className="preg-quick-track-card pqt-weight" onClick={() => setActiveBottomSheet('preg_weight')}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregWeightIcon />
+              </div>
+              <p className="preg-quick-track-title">Cân nặng</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getLastPregWeightText();
+                const m = t.match(/[\d.]+\s*kg/);
+                return m ? m[0] : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{isTwin ? 'Cân nặng mẹ' : 'Thai kỳ'}</p>
             </div>
-            <h4 className="tracker-card-name">Lịch khám thai</h4>
-            <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Ghi nhận
-            </button>
-          </div>
 
-          {/* Card 4: Cảm xúc hôm nay */}
-          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_emotion')}>
-            <div className="tracker-card-icon">
-              <PregEmotionIcon />
-            </div>
-            <h4 className="tracker-card-name">Cảm xúc hôm nay</h4>
-            <span className="tracker-card-status-text">{getLastEmotionText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Ghi nhận
-            </button>
-          </div>
-
-          {/* Full-width Info Card below 2x2 grid */}
-          <div className="tracker-info-card-full mint-light" style={{
-            gridColumn: '1 / -1',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            padding: '18px 20px',
-            borderRadius: '24px',
-            background: 'linear-gradient(135deg, #F4FAF6 0%, #E9F5EE 100%)',
-            border: '1.5px solid rgba(74, 166, 114, 0.16)',
-            boxShadow: '0 8px 20px rgba(47, 107, 79, 0.03)',
-            marginTop: '6px'
-          }}>
-            <div className="tracker-card-icon" style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '16px',
-              background: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(47, 107, 79, 0.08)',
-              color: '#2F6B4F',
-              flexShrink: 0
+            {/* Card 3: Lịch khám thai */}
+            <div className="preg-quick-track-card pqt-clinic" onClick={() => {
+              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+              setActiveTab('growth');
             }}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregClinicIcon />
+              </div>
+              <p className="preg-quick-track-title">Khám thai</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getLastClinicText();
+                return t && t.length < 10 ? t : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{getLastClinicText()}</p>
+            </div>
+
+            {/* Card 4: Cảm xúc hôm nay */}
+            <div className="preg-quick-track-card pqt-emotion" onClick={() => setActiveBottomSheet('preg_emotion')}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregEmotionIcon />
+              </div>
+              <p className="preg-quick-track-title">Cảm xúc</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getLastEmotionText();
+                return t && t.length < 10 ? t : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">Hôm nay</p>
+            </div>
+
+          </div>
+
+          {/* Info card: Thai máy (< 16 tuần) */}
+          <div className="preg-info-card-full">
+            <div className="preg-info-card-full-icon">
               <PregKickIcon />
             </div>
-            <div style={{ flex: 1 }}>
-              <h4 style={{ color: '#2F6B4F', fontSize: '15px', fontWeight: '700', margin: '0 0 4px 0' }}>Thai máy (Tuần &lt; 16)</h4>
-              <p style={{ color: '#4A5D54', fontSize: '13px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
-                Thai máy thường bắt đầu rõ nét từ tuần 16-20. Mẹ hãy tìm hiểu trước cách theo dõi nhé!
+            <div className="preg-info-card-full-body">
+              <p className="preg-info-card-full-title">Thai máy (Tuần &lt; 16)</p>
+              <p className="preg-info-card-full-desc">
+                Thai máy thường bắt đầu rõ nét từ tuần 16–20. Mẹ hãy tìm hiểu trước cách theo dõi nhé!
               </p>
             </div>
-            <button 
+            <button
               type="button"
-              className="tracker-action-trigger-btn"
+              className="preg-info-card-full-btn"
               onClick={() => {
                 setIsChatOpen(true);
                 sendMessage("Khi nào thai máy bắt đầu rõ nét và cách theo dõi cử động của thai nhi ra sao?");
               }}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '100px',
-                background: '#2F6B4F',
-                color: 'white',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                boxShadow: '0 4px 10px rgba(47, 107, 79, 0.2)',
-                whiteSpace: 'nowrap',
-                margin: 0,
-                width: 'auto',
-                position: 'static'
-              }}
             >
-              Tìm hiểu thêm
+              Tìm hiểu
             </button>
           </div>
         </div>
       );
     } else if (weeks >= 16 && weeks <= 27) {
       return (
-        <div className="dashboard-trackers-grid">
-          {/* Card 1: Đếm thai máy */}
-          <div className="tracker-item-card mint-light" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
-            <div className="tracker-card-icon">
-              <PregKickIcon />
-            </div>
-            <h4 className="tracker-card-name">Đếm thai máy</h4>
-            <span className="tracker-card-status-text">{getKickStatusText(weeks)}</span>
-            <button 
-              type="button"
-              className="tracker-action-trigger-btn" 
-            >
-              Bắt đầu đếm
-            </button>
-          </div>
+        <div className="preg-quick-track-section">
+          <p className="preg-quick-track-label">Theo dõi nhanh hôm nay</p>
+          <div className="preg-quick-track-scroll">
 
-          {/* Card 2: Cân nặng thai kỳ */}
-          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_weight')}>
-            <div className="tracker-card-icon">
-              <PregWeightIcon />
+            {/* Card 1: Đếm thai máy */}
+            <div className="preg-quick-track-card pqt-sage" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregKickIcon />
+              </div>
+              <p className="preg-quick-track-title">Thai máy</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getKickStatusText(weeks);
+                const m = t.match(/\d+/);
+                return m ? `${m[0]} lần` : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{getKickStatusText(weeks)}</p>
             </div>
-            <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
-            <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Cập nhật
-            </button>
-          </div>
 
-          {/* Card 3: Lịch khám thai */}
-          <div className="tracker-item-card mint-light" onClick={() => {
-            if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
-            setActiveTab('growth');
-          }}>
-            <div className="tracker-card-icon">
-              <PregClinicIcon />
+            {/* Card 2: Cân nặng thai kỳ */}
+            <div className="preg-quick-track-card pqt-weight" onClick={() => setActiveBottomSheet('preg_weight')}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregWeightIcon />
+              </div>
+              <p className="preg-quick-track-title">Cân nặng</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getLastPregWeightText();
+                const m = t.match(/[\d.]+\s*kg/);
+                return m ? m[0] : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{isTwin ? 'Cân nặng mẹ' : 'Thai kỳ'}</p>
             </div>
-            <h4 className="tracker-card-name">Lịch khám thai</h4>
-            <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Ghi nhận
-            </button>
-          </div>
 
-          {/* Card 4: Cảm xúc hôm nay */}
-          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_emotion')}>
-            <div className="tracker-card-icon">
-              <PregEmotionIcon />
-            </div>
-            <h4 className="tracker-card-name">Cảm xúc hôm nay</h4>
-            <span className="tracker-card-status-text">{getLastEmotionText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Ghi nhận
-            </button>
-          </div>
-
-          {/* Full-width Vitamin Card below 2x2 grid */}
-          <div className="tracker-info-card-full mint-light" style={{
-            gridColumn: '1 / -1',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            padding: '18px 20px',
-            borderRadius: '24px',
-            background: 'linear-gradient(135deg, #F4FAF6 0%, #E9F5EE 100%)',
-            border: '1.5px solid rgba(74, 166, 114, 0.16)',
-            boxShadow: '0 8px 20px rgba(47, 107, 79, 0.03)',
-            marginTop: '6px'
-          }}>
-            <div className="tracker-card-icon" style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '16px',
-              background: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(47, 107, 79, 0.08)',
-              color: '#2F6B4F',
-              flexShrink: 0
+            {/* Card 3: Lịch khám thai */}
+            <div className="preg-quick-track-card pqt-clinic" onClick={() => {
+              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+              setActiveTab('growth');
             }}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregClinicIcon />
+              </div>
+              <p className="preg-quick-track-title">Khám thai</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getLastClinicText();
+                return t && t.length < 10 ? t : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{getLastClinicText()}</p>
+            </div>
+
+            {/* Card 4: Cảm xúc hôm nay */}
+            <div className="preg-quick-track-card pqt-emotion" onClick={() => setActiveBottomSheet('preg_emotion')}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregEmotionIcon />
+              </div>
+              <p className="preg-quick-track-title">Cảm xúc</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getLastEmotionText();
+                return t && t.length < 10 ? t : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">Hôm nay</p>
+            </div>
+
+          </div>
+
+          {/* Info card: Vitamin & Nước */}
+          <div className="preg-info-card-full">
+            <div className="preg-info-card-full-icon">
               <PregRemindersIcon />
             </div>
-            <div style={{ flex: 1 }}>
-              <h4 style={{ color: '#2F6B4F', fontSize: '15px', fontWeight: '700', margin: '0 0 4px 0' }}>Vitamin &amp; Nước</h4>
-              <p style={{ color: '#4A5D54', fontSize: '13px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
-                {getVitaminStatusText()}
-              </p>
+            <div className="preg-info-card-full-body">
+              <p className="preg-info-card-full-title">Vitamin &amp; Nước</p>
+              <p className="preg-info-card-full-desc">{getVitaminStatusText()}</p>
             </div>
-            <button 
+            <button
               type="button"
-              className="tracker-action-trigger-btn"
+              className="preg-info-card-full-btn"
               onClick={() => setActiveBottomSheet('preg_reminders')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '100px',
-                background: '#2F6B4F',
-                color: 'white',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                boxShadow: '0 4px 10px rgba(47, 107, 79, 0.2)',
-                whiteSpace: 'nowrap',
-                margin: 0,
-                width: 'auto',
-                position: 'static'
-              }}
             >
               Ghi nhận
             </button>
@@ -3664,173 +3605,102 @@ ${logsDesc}`;
       );
     } else {
       return (
-        <div className="dashboard-trackers-grid">
-          {/* Card 1: Đếm thai máy */}
-          <div className="tracker-item-card mint-light" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
-            <div className="tracker-card-icon">
-              <PregKickIcon />
-            </div>
-            <h4 className="tracker-card-name">Đếm thai máy</h4>
-            <span className="tracker-card-status-text">{getKickStatusText(weeks)}</span>
-            <button 
-              type="button"
-              className="tracker-action-trigger-btn" 
-            >
-              Bắt đầu đếm
-            </button>
-          </div>
+        <div className="preg-quick-track-section">
+          <p className="preg-quick-track-label">Theo dõi nhanh hôm nay</p>
+          <div className="preg-quick-track-scroll">
 
-          {/* Card 2: Đếm cơn gò */}
-          <div className="tracker-item-card pink-light" onClick={() => { setActiveBottomSheet('contractions'); setContraSecs(0); setContraCount(0); }}>
-            <div className="tracker-card-icon">
-              <PregContraIcon />
+            {/* Card 1: Đếm thai máy */}
+            <div className="preg-quick-track-card pqt-sage" onClick={() => { setActiveBottomSheet('kick'); setKickSecs(0); setKickCount(0); }}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregKickIcon />
+              </div>
+              <p className="preg-quick-track-title">Thai máy</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getKickStatusText(weeks);
+                const m = t.match(/\d+/);
+                return m ? `${m[0]} lần` : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{getKickStatusText(weeks)}</p>
             </div>
-            <h4 className="tracker-card-name">Đếm cơn gò</h4>
-            <span className="tracker-card-status-text">{getContractionsStatusText()}</span>
-            <button 
-              type="button"
-              className="tracker-action-trigger-btn" 
-            >
-              Bắt đầu đếm
-            </button>
-          </div>
 
-          {/* Card 3: Cân nặng thai kỳ */}
-          <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('preg_weight')}>
-            <div className="tracker-card-icon">
-              <PregWeightIcon />
+            {/* Card 2: Đếm cơn gò */}
+            <div className="preg-quick-track-card pqt-contra" onClick={() => { setActiveBottomSheet('contractions'); setContraSecs(0); setContraCount(0); }}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregContraIcon />
+              </div>
+              <p className="preg-quick-track-title">Cơn gò</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getContractionsStatusText();
+                const m = t.match(/\d+/);
+                return m ? `${m[0]} lần` : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{getContractionsStatusText()}</p>
             </div>
-            <h4 className="tracker-card-name">Cân nặng thai kỳ</h4>
-            <span className="tracker-card-status-text">{getLastPregWeightText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Cập nhật
-            </button>
-          </div>
 
-          {/* Card 4: Lịch khám thai */}
-          <div className="tracker-item-card mint-light" onClick={() => {
-            if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
-            setActiveTab('growth');
-          }}>
-            <div className="tracker-card-icon">
-              <PregClinicIcon />
+            {/* Card 3: Cân nặng thai kỳ */}
+            <div className="preg-quick-track-card pqt-weight" onClick={() => setActiveBottomSheet('preg_weight')}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregWeightIcon />
+              </div>
+              <p className="preg-quick-track-title">Cân nặng</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getLastPregWeightText();
+                const m = t.match(/[\d.]+\s*kg/);
+                return m ? m[0] : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{isTwin ? 'Cân nặng mẹ' : 'Thai kỳ'}</p>
             </div>
-            <h4 className="tracker-card-name">Lịch khám thai</h4>
-            <span className="tracker-card-status-text">{getLastClinicText()}</span>
-            <button type="button" className="tracker-action-trigger-btn">
-              Ghi nhận
-            </button>
-          </div>
 
-          {/* Card 5: Vitamin & Nước (Full width) */}
-          <div className="tracker-info-card-full mint-light" style={{
-            gridColumn: '1 / -1',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            padding: '18px 20px',
-            borderRadius: '24px',
-            background: 'linear-gradient(135deg, #F4FAF6 0%, #E9F5EE 100%)',
-            border: '1.5px solid rgba(74, 166, 114, 0.16)',
-            boxShadow: '0 8px 20px rgba(47, 107, 79, 0.03)',
-            marginTop: '6px'
-          }}>
-            <div className="tracker-card-icon" style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '16px',
-              background: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(47, 107, 79, 0.08)',
-              color: '#2F6B4F',
-              flexShrink: 0
+            {/* Card 4: Lịch khám thai */}
+            <div className="preg-quick-track-card pqt-clinic" onClick={() => {
+              if (setGrowthPendingAction) setGrowthPendingAction('openCheckupSheet');
+              setActiveTab('growth');
             }}>
+              <div className="preg-quick-track-icon-wrap">
+                <PregClinicIcon />
+              </div>
+              <p className="preg-quick-track-title">Khám thai</p>
+              <p className="preg-quick-track-value">{(() => {
+                const t = getLastClinicText();
+                return t && t.length < 10 ? t : '—';
+              })()}</p>
+              <p className="preg-quick-track-meta">{getLastClinicText()}</p>
+            </div>
+
+          </div>
+
+          {/* Info card: Vitamin & Nước */}
+          <div className="preg-info-card-full">
+            <div className="preg-info-card-full-icon">
               <PregRemindersIcon />
             </div>
-            <div style={{ flex: 1 }}>
-              <h4 style={{ color: '#2F6B4F', fontSize: '15px', fontWeight: '700', margin: '0 0 4px 0' }}>Vitamin &amp; Nước</h4>
-              <p style={{ color: '#4A5D54', fontSize: '13px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
-                {getVitaminStatusText()}
-              </p>
+            <div className="preg-info-card-full-body">
+              <p className="preg-info-card-full-title">Vitamin &amp; Nước</p>
+              <p className="preg-info-card-full-desc">{getVitaminStatusText()}</p>
             </div>
-            <button 
+            <button
               type="button"
-              className="tracker-action-trigger-btn"
+              className="preg-info-card-full-btn"
               onClick={() => setActiveBottomSheet('preg_reminders')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '100px',
-                background: '#2F6B4F',
-                color: 'white',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                boxShadow: '0 4px 10px rgba(47, 107, 79, 0.2)',
-                whiteSpace: 'nowrap',
-                margin: 0,
-                width: 'auto',
-                position: 'static'
-              }}
             >
               Ghi nhận
             </button>
           </div>
 
-          {/* Card 6: Cảm xúc hôm nay (Full width) */}
-          <div className="tracker-info-card-full pink-light" style={{
-            gridColumn: '1 / -1',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            padding: '18px 20px',
-            borderRadius: '24px',
-            background: 'linear-gradient(135deg, #FDF7F5 0%, #F9E1DD 100%)',
-            border: '1.5px solid rgba(217, 109, 85, 0.16)',
-            boxShadow: '0 8px 20px rgba(217, 109, 85, 0.03)',
-            marginTop: '6px'
-          }}>
-            <div className="tracker-card-icon" style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '16px',
-              background: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 10px rgba(217, 109, 85, 0.08)',
-              color: '#D96D55',
-              flexShrink: 0
-            }}>
+          {/* Info card: Cảm xúc hôm nay */}
+          <div className="preg-info-card-full" style={{ marginTop: 8, background: 'linear-gradient(135deg, #FDF7F5 0%, #F9E1DD 100%)', borderColor: 'rgba(217,109,85,0.16)' }}>
+            <div className="preg-info-card-full-icon" style={{ color: '#D96D55', boxShadow: '0 2px 8px rgba(217,109,85,0.12)' }}>
               <PregEmotionIcon />
             </div>
-            <div style={{ flex: 1 }}>
-              <h4 style={{ color: '#8C3D2B', fontSize: '15px', fontWeight: '700', margin: '0 0 4px 0' }}>Cảm xúc hôm nay</h4>
-              <p style={{ color: '#A65B49', fontSize: '13px', margin: 0, fontWeight: '500', lineHeight: '1.4' }}>
-                {getLastEmotionText()}
-              </p>
+            <div className="preg-info-card-full-body">
+              <p className="preg-info-card-full-title" style={{ color: '#8C3D2B' }}>Cảm xúc hôm nay</p>
+              <p className="preg-info-card-full-desc" style={{ color: '#A65B49' }}>{getLastEmotionText()}</p>
             </div>
-            <button 
+            <button
               type="button"
-              className="tracker-action-trigger-btn"
+              className="preg-info-card-full-btn"
+              style={{ background: '#D96D55', boxShadow: '0 4px 10px rgba(217,109,85,0.2)' }}
               onClick={() => setActiveBottomSheet('preg_emotion')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '100px',
-                background: '#D96D55',
-                color: 'white',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                boxShadow: '0 4px 10px rgba(217, 109, 85, 0.2)',
-                whiteSpace: 'nowrap',
-                margin: 0,
-                width: 'auto',
-                position: 'static'
-              }}
             >
               Ghi nhận
             </button>
