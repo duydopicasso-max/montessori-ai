@@ -947,21 +947,39 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
     return () => clearTimeout(timer);
   }, []);
 
-  // ── DAILY CHECKLIST STATE & CALCULATION HELPERS ──
+  // ── JOURNEY MISSION COMPLETION — localStorage with date+group scoped keys ──
+  // Key format: preg:YYYY-MM-DD:day{N}:{missionId}  or  born:YYYY-MM-DD:age{N}:{missionId}
+  // Stored in: journey_mission_completions_v1
+  const JOURNEY_STORAGE_KEY = 'journey_mission_completions_v1';
+
+  const getLocalDateStr = useCallback(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  }, []);
+
   const [completedMissions, setCompletedMissions] = useState(() => {
     try {
-      const saved = localStorage.getItem('montessori_completed_missions');
+      const saved = localStorage.getItem('journey_mission_completions_v1');
       return saved ? JSON.parse(saved) : {};
     } catch (e) {
       return {};
     }
   });
 
-  const toggleMission = useCallback((missionId) => {
+  // contextKey: scoped prefix e.g. 'preg:2026-06-03:day1' or 'born:2026-06-03:age0'
+  const buildMissionKey = useCallback((contextKey, missionId) => {
+    return `${contextKey}:${missionId}`;
+  }, []);
+
+  // Toggle: pass the full scoped key (contextKey + missionId already joined)
+  const toggleMission = useCallback((fullKey) => {
     setCompletedMissions(prev => {
-      const next = { ...prev, [missionId]: !prev[missionId] };
+      const next = { ...prev, [fullKey]: !prev[fullKey] };
       try {
-        localStorage.setItem('montessori_completed_missions', JSON.stringify(next));
+        localStorage.setItem('journey_mission_completions_v1', JSON.stringify(next));
       } catch (e) {}
       return next;
     });
@@ -1138,6 +1156,12 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
       );
     }
     
+    // Build context key for this render (used by original function — not used in prod now)
+    const dateStr = getLocalDateStr();
+    const contextKey = status === 'pregnant'
+      ? `preg:${dateStr}:day${pregnancyDayIndex != null ? pregnancyDayIndex - 55 : 0}`
+      : `born:${dateStr}:age${babyAgeDays ?? 0}`;
+
     return (
       <div className="journey-section">
         <div className="journey-section-header">
@@ -1146,7 +1170,9 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
         </div>
         <div className="journey-card">
           {data.missions.map((item, index) => {
-            const isCompleted = !!completedMissions[item.id];
+            const missionId = item.id || `${index}-${item.title}`;
+            const fullKey = buildMissionKey(contextKey, missionId);
+            const isCompleted = !!completedMissions[fullKey];
             
             let iconWrapClass = `idx-${index % 3}`;
             if (item.type) {
@@ -1162,7 +1188,7 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
             else if (item.type === 'care' || item.type === 'hygiene') taskIcon = '🍼';
             
             return (
-              <div key={item.id || index} className="journey-item" style={{
+              <div key={fullKey} className="journey-item" style={{
                 opacity: isCompleted ? 0.75 : 1,
                 transition: 'opacity 0.2s ease'
               }}>
@@ -1185,9 +1211,9 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
                 </div>
                 <button
                   className={`journey-btn ${isCompleted ? 'completed' : ''}`}
-                  onClick={() => toggleMission(item.id)}
+                  onClick={() => toggleMission(fullKey)}
                 >
-                  {isCompleted ? 'Hoàn thành ✓' : 'Làm ngay'}
+                  {isCompleted ? 'Đã xong ✓' : 'Làm ngay'}
                 </button>
               </div>
             );
@@ -1226,6 +1252,9 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
       );
     }
 
+    // Scoped context key: born + date + babyAge prevents cross-day/cross-stage leaking
+    const dateStr = getLocalDateStr();
+    const contextKey = `born:${dateStr}:age${babyAgeDays ?? 0}`;
     // SVG icon renderer — line-art, no emoji
     const renderBornMissionIcon = (type, icon) => {
       const t = (type || '').toLowerCase();
@@ -1323,13 +1352,15 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
         </div>
         <div className="journey-card baby-journey-card">
           {data.missions.map((item, index) => {
-            const isCompleted = !!completedMissions[item.id];
-            const expandKey = item.id || `${index}-${item.title}`;
+            const missionId = item.id || `${index}-${item.title}`;
+            const fullKey = buildMissionKey(contextKey, missionId);
+            const isCompleted = !!completedMissions[fullKey];
+            const expandKey = missionId;
             const isExpanded = !!expandedBornMissionIds[expandKey];
             const iconColors = getBornIconColor(item.type);
 
             return (
-              <div key={expandKey} className="journey-item" style={{
+              <div key={fullKey} className="journey-item" style={{
                 opacity: isCompleted ? 0.75 : 1,
                 transition: 'opacity 0.2s ease'
               }}>
@@ -1373,9 +1404,9 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
                 {/* Action button — 'Cùng làm' instead of 'Làm ngay' */}
                 <button
                   className={`baby-journey-btn${isCompleted ? ' completed' : ''}`}
-                  onClick={() => toggleMission(item.id)}
+                  onClick={() => toggleMission(fullKey)}
                 >
-                  {isCompleted ? 'Hoàn thành ✓' : 'Cùng làm'}
+                  {isCompleted ? 'Đã xong ✓' : 'Cùng làm'}
                 </button>
               </div>
             );
@@ -1386,7 +1417,7 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
   };
 
   // ── PREGNANCY-ONLY version of the daily missions section ──
-  // SVG icons, 'Ực hành', per-item expand/collapse
+  // SVG icons, 'Thực hành', per-item expand/collapse
   // IMPORTANT: renderDailyMissionsSection() (original) is untouched
   const renderPregDailyMissionsSection = () => {
     const data = getDailyMissionsData();
@@ -1506,6 +1537,11 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
       return { color: '#2F6B4F', bg: '#EBF4EE' }; // default sage
     };
 
+    // Scoped context key: preg + date + missionDay prevents cross-day leaking
+    const dateStr = getLocalDateStr();
+    const missionDay = pregnancyDayIndex != null ? pregnancyDayIndex - 55 : 0;
+    const contextKey = `preg:${dateStr}:day${missionDay}`;
+
     return (
       <div className="journey-section">
         <div className="journey-section-header">
@@ -1514,13 +1550,15 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
         </div>
         <div className="journey-card preg-journey-card">
           {data.missions.map((item, index) => {
-            const isCompleted = !!completedMissions[item.id];
-            const expandKey = item.id || `${index}-${item.title}`;
+            const missionId = item.id || `${index}-${item.title}`;
+            const fullKey = buildMissionKey(contextKey, missionId);
+            const isCompleted = !!completedMissions[fullKey];
+            const expandKey = missionId;
             const isExpanded = !!expandedPregMissionIds[expandKey];
             const iconColors = getPregIconColor(item.type);
 
             return (
-              <div key={expandKey} className="journey-item preg-journey-item" style={{
+              <div key={fullKey} className="journey-item preg-journey-item" style={{
                 opacity: isCompleted ? 0.75 : 1,
                 transition: 'opacity 0.2s ease'
               }}>
@@ -1564,9 +1602,9 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
                 {/* 'Thực hành' button — replaces 'Làm ngay' */}
                 <button
                   className={`preg-journey-btn${isCompleted ? ' completed' : ''}`}
-                  onClick={() => toggleMission(item.id)}
+                  onClick={() => toggleMission(fullKey)}
                 >
-                  {isCompleted ? 'Hoàn thành ✓' : 'Thực hành'}
+                  {isCompleted ? 'Đã xong ✓' : 'Thực hành'}
                 </button>
               </div>
             );
