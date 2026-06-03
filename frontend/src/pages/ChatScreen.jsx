@@ -21,6 +21,7 @@ import { BABY_18_36_DAILY_MISSIONS } from '../data/dailyMissions/baby18To36Missi
 import { PREGNANCY_DAILY_MISSIONS } from '../data/dailyMissions/pregnancyDailyMissions.js';
 import { PREGNANCY_TODAY_ACTIVITIES } from '../data/pregnancyTodayActivities.js';
 import { BORN_TODAY_ACTIVITIES } from '../data/bornTodayActivities.js';
+import BornJourneySummaryScreen from './BornJourneySummaryScreen.jsx';
 
 const ClockIcon = ({ size = 16, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -991,6 +992,50 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
     setExpandedBornMissionIds(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
+  // ── BORN JOURNEY SUMMARY SCREEN — toggle state ──
+  const [showBornJourneySummary, setShowBornJourneySummary] = useState(false);
+
+  // ── BORN MISSION COMPLETE WITH METADATA ──
+  // Saves rich object instead of plain true, enabling the summary screen
+  // to show category, type, title, completedAt, etc.
+  const toggleBornMissionWithMeta = useCallback((fullKey, item) => {
+    setCompletedMissions(prev => {
+      const current = prev[fullKey];
+      let next;
+      if (current && (current === true || (typeof current === 'object' && current.completed))) {
+        // Already completed: toggle OFF — remove key
+        next = { ...prev };
+        delete next[fullKey];
+      } else {
+        // Mark completed with metadata
+        const now = new Date();
+        const metaValue = {
+          completed: true,
+          completedAt: now.toISOString(),
+          localDate: (() => {
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+          })(),
+          userGroup: 'born',
+          babyAgeInDays: babyAgeDays ?? 0,
+          missionId: item?.id || '',
+          title: item?.title || '',
+          category: item?.category || '',
+          type: item?.type || '',
+          duration: item?.duration || '',
+          image: item?.image || null
+        };
+        next = { ...prev, [fullKey]: metaValue };
+      }
+      try {
+        localStorage.setItem('journey_mission_completions_v1', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  }, [babyAgeDays]);
+
   // ── PREGNANCY JOURNEY — expand/collapse state (separate from born) ──
   const [expandedPregMissionIds, setExpandedPregMissionIds] = useState({});
   const togglePregMissionExpand = useCallback((key) => {
@@ -1348,7 +1393,16 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
       <div className="journey-section">
         <div className="journey-section-header">
           <h3 className="journey-section-title">Hành trình hôm nay</h3>
-          <span className="journey-section-link" onClick={handleSuggestionAction}>Gợi ý hoạt động</span>
+          <span
+            className="journey-section-link"
+            onClick={() => setShowBornJourneySummary(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '2px' }}
+          >
+            Xem hành trình
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginTop: '1px' }}>
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </span>
         </div>
         <div className="journey-card baby-journey-card">
           {data.missions.map((item, index) => {
@@ -1404,7 +1458,7 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
                 {/* Action button — 'Cùng làm' instead of 'Làm ngay' */}
                 <button
                   className={`baby-journey-btn${isCompleted ? ' completed' : ''}`}
-                  onClick={() => toggleMission(fullKey)}
+                  onClick={() => toggleBornMissionWithMeta(fullKey, item)}
                 >
                   {isCompleted ? 'Đã xong ✓' : 'Cùng làm'}
                 </button>
@@ -4594,6 +4648,14 @@ ${logsDesc}`;
 
   return (
     <div className="chat-screen">
+      {/* Born Journey Monthly Summary Overlay */}
+      {status === 'born' && showBornJourneySummary && (
+        <BornJourneySummaryScreen
+          onBack={() => setShowBornJourneySummary(false)}
+          babyName={baby?.name || ''}
+        />
+      )}
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="premium-toast-container">
