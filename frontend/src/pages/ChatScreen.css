@@ -5882,6 +5882,90 @@
   transform: scale(0.97);
 }
 
+/* ══════════════════════════════════════
+   BORN USER — HÀNH TRÌNH HÔM NAY (baby-journey-*)
+   Scoped to avoid affecting pregnancy journey or other sections
+   ══════════════════════════════════════ */
+
+/* SVG icon wrapper — replaces emoji span */
+.baby-journey-icon-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* background and color set via inline style per type */
+}
+.baby-journey-icon-wrap svg {
+  width: 23px;
+  height: 23px;
+  display: block;
+}
+
+/* Description — default: 2-line clamp */
+.baby-journey-item-desc {
+  font-size: 13px;
+  color: #4A5D54;
+  font-weight: 500;
+  line-height: 1.45;
+  margin: 2px 0 0;
+}
+.baby-journey-item-desc.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Xem thêm / Thu gọn link */
+.baby-journey-more-btn {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2F6B4F;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-primary), sans-serif;
+  line-height: 1.4;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+.baby-journey-more-btn:hover { opacity: 0.72; }
+
+/* "Cùng làm" pill button — sage pastel */
+.baby-journey-btn {
+  background: #EAF3EE;
+  border: none;
+  color: #2F6B4F;
+  padding: 7px 15px;
+  border-radius: 100px;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-start;
+  transition: background 0.18s ease, transform 0.15s ease;
+  box-shadow: 0 2px 6px rgba(47, 107, 79, 0.07);
+}
+.baby-journey-btn:hover { background: #DFF0E7; }
+.baby-journey-btn:active {
+  transform: scale(0.97);
+  background: #D3EAE0;
+}
+.baby-journey-btn.completed {
+  background: #FAF0EC;
+  color: #D96D55;
+}
+.baby-journey-btn.completed:hover { background: #F5E5DF; }
+
 /* 🌿 POSTPARTUM BORN MONTESSORI QUOTE CARD STYLES */
 .born-quote-hero-card {
   width: calc(100% - 40px);

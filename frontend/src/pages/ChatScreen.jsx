@@ -967,6 +967,12 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
     });
   }, []);
 
+  // ── BORN JOURNEY — expand/collapse state per mission item ──
+  const [expandedBornMissionIds, setExpandedBornMissionIds] = useState({});
+  const toggleBornMissionExpand = useCallback((key) => {
+    setExpandedBornMissionIds(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
   const pregnancyDayIndex = useMemo(() => {
     const override = typeof window !== 'undefined' ? localStorage.getItem('test_pregnancy_day_index') : null;
     if (override !== null && override !== undefined && override !== '') {
@@ -1176,6 +1182,194 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
                   onClick={() => toggleMission(item.id)}
                 >
                   {isCompleted ? 'Hoàn thành ✓' : 'Làm ngay'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ── BORN-ONLY version of the daily missions section with SVG icons, 'Cùng làm', and expand/collapse ──
+  const renderBornDailyMissionsSection = () => {
+    const data = getDailyMissionsData();
+    if (data.hidden) return null;
+
+    if (data.error === 'missing_birth_date') {
+      return (
+        <div className="journey-section">
+          <div className="journey-section-header">
+            <h3 className="journey-section-title">Hành trình hôm nay</h3>
+          </div>
+          <div className="journey-fallback-card">
+            <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.5', color: '#55685B', fontWeight: '500' }}>
+              Cập nhật ngày sinh của bé để nhận hoạt động phù hợp mỗi ngày.
+            </p>
+            <button
+              className="journey-fallback-btn"
+              onClick={() => {
+                if (setGrowthPendingAction) setGrowthPendingAction('openEditProfile');
+                setActiveTab('growth');
+              }}
+            >
+              Cập nhật hồ sơ
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // SVG icon renderer — line-art, no emoji
+    const renderBornMissionIcon = (type, icon) => {
+      const t = (type || '').toLowerCase();
+      const ic = (icon || '').toLowerCase();
+
+      // Hand / Fine motor / Gross motor
+      if (ic === 'hand' || t === 'fine_motor' || t === 'gross_motor' || t === 'vận động tay') {
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 11V6a2 2 0 0 0-4 0v5"/>
+            <path d="M14 10V4a2 2 0 0 0-4 0v6"/>
+            <path d="M10 10.5V6a2 2 0 0 0-4 0v8"/>
+            <path d="M6 14a4 4 0 0 0 4 4h4a6 6 0 0 0 6-6v-1a2 2 0 0 0-2-2h-1"/>
+          </svg>
+        );
+      }
+      // Home / Environment / Order
+      if (ic === 'home' || t === 'environment' || t === 'môi trường' || t === 'trật tự') {
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+            <path d="M9 21V12h6v9"/>
+          </svg>
+        );
+      }
+      // Sparkle / Sensory
+      if (ic === 'sparkle' || t === 'sensory' || t === 'giác quan') {
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        );
+      }
+      // Eye / Observation
+      if (ic === 'eye' || t === 'observation' || t === 'quan sát') {
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        );
+      }
+      // Book / Language / Cognitive / Mindfulness
+      if (ic === 'book' || t === 'language' || t === 'cognitive' || t === 'ngôn ngữ' || t === 'nhận thức' || t === 'fixed' || t === 'mindfulness') {
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+        );
+      }
+      // Heart / Connection
+      if (ic === 'heart' || t === 'connection' || t === 'kết nối' || t === 'gắn kết') {
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        );
+      }
+      // Droplet / Self care / Hygiene / Care
+      if (ic === 'droplet' || t === 'self_care' || t === 'hygiene' || t === 'care' || t === 'tự lập' || t === 'vệ sinh') {
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+          </svg>
+        );
+      }
+      // Leaf / Nature — default fallback
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 8C8 10 5.9 16.17 3.82 19.34c-.39.53.32 1.18.81.78l.27-.21A5 5 0 0 1 8 19c3 0 5-2 5-2 1.5 1.5 3 2 5 2s4-1 4-4c0-2-1-4-2-5s-3-4-3-4z"/>
+        </svg>
+      );
+    };
+
+    // Icon wrapper color class by type
+    const getBornIconColor = (type) => {
+      const t = (type || '').toLowerCase();
+      if (t === 'fine_motor' || t === 'gross_motor' || t === 'vận động tay') return { color: '#2F6B4F', bg: '#E8F4EE' };
+      if (t === 'environment' || t === 'môi trường' || t === 'trật tự') return { color: '#7B6A3E', bg: '#F5F0E4' };
+      if (t === 'sensory' || t === 'giác quan') return { color: '#4A6FA5', bg: '#EBF0F8' };
+      if (t === 'language' || t === 'ngôn ngữ') return { color: '#5A4A7B', bg: '#EEE8F5' };
+      if (t === 'connection' || t === 'kết nối') return { color: '#B85472', bg: '#F8EBF0' };
+      if (t === 'care' || t === 'hygiene' || t === 'self_care') return { color: '#3A7DB5', bg: '#E5F0F8' };
+      if (t === 'cognitive' || t === 'nhận thức') return { color: '#5A6B3A', bg: '#EBF0E2' };
+      if (t === 'observation') return { color: '#6B4F2F', bg: '#F0EAE2' };
+      return { color: '#2F6B4F', bg: '#E8F4EE' }; // default sage
+    };
+
+    return (
+      <div className="journey-section">
+        <div className="journey-section-header">
+          <h3 className="journey-section-title">Hành trình hôm nay</h3>
+          <span className="journey-section-link" onClick={handleSuggestionAction}>Gợi ý hoạt động</span>
+        </div>
+        <div className="journey-card baby-journey-card">
+          {data.missions.map((item, index) => {
+            const isCompleted = !!completedMissions[item.id];
+            const expandKey = item.id || `${index}-${item.title}`;
+            const isExpanded = !!expandedBornMissionIds[expandKey];
+            const iconColors = getBornIconColor(item.type);
+
+            return (
+              <div key={expandKey} className="journey-item" style={{
+                opacity: isCompleted ? 0.75 : 1,
+                transition: 'opacity 0.2s ease'
+              }}>
+                {/* SVG Icon wrapper — scoped .baby-journey-icon-wrap */}
+                <div
+                  className="baby-journey-icon-wrap"
+                  style={{ background: iconColors.bg, color: iconColors.color }}
+                >
+                  {renderBornMissionIcon(item.type, item.icon)}
+                </div>
+
+                <div className="journey-content" style={{ textAlign: 'left' }}>
+                  <span className="journey-category">{item.category}</span>
+                  <h4 className="journey-item-title" style={{
+                    textDecoration: isCompleted ? 'line-through' : 'none',
+                    color: isCompleted ? '#7B8A82' : '#1F2D26'
+                  }}>{item.title}</h4>
+
+                  {/* Description with 2-line clamp + expand toggle */}
+                  <p className={`baby-journey-item-desc${isExpanded ? '' : ' is-clamped'}`}>
+                    {item.description}
+                  </p>
+                  {item.description && item.description.length > 80 && (
+                    <button
+                      type="button"
+                      className="baby-journey-more-btn"
+                      onClick={() => toggleBornMissionExpand(expandKey)}
+                    >
+                      {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                    </button>
+                  )}
+
+                  {item.duration && (
+                    <span className="journey-item-duration">
+                      <ClockIcon size={10} className="journey-duration-clock" />
+                      {item.duration}
+                    </span>
+                  )}
+                </div>
+
+                {/* Action button — 'Cùng làm' instead of 'Làm ngay' */}
+                <button
+                  className={`baby-journey-btn${isCompleted ? ' completed' : ''}`}
+                  onClick={() => toggleMission(item.id)}
+                >
+                  {isCompleted ? 'Hoàn thành ✓' : 'Cùng làm'}
                 </button>
               </div>
             );
@@ -4423,7 +4617,7 @@ ${logsDesc}`;
           {renderPostpartumCarouselSection()}
 
           {/* Checklist "Hành trình hôm nay" */}
-          {renderDailyMissionsSection()}
+          {renderBornDailyMissionsSection()}
         </>
       )}
       {/* 📊 2X2 DASHBOARD TRACKERS GRID */}
