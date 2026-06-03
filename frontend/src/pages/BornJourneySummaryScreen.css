@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    BORN JOURNEY SUMMARY SCREEN — Tổng kết hành trình tháng
    Scoped to .bjs-* prefix — no impact on any other component
-   Premium iOS × Montessori aesthetic: cream, sage, ivory
+   Polish v2: warm, premium, emotional Montessori aesthetic
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Overlay container ── */
@@ -9,12 +9,12 @@
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: #F5F2EC;
+  background: #F5F1EB;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
-  animation: bjs-slide-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: bjs-slide-in 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 @keyframes bjs-slide-in {
   from { transform: translateX(100%); opacity: 0; }
@@ -26,64 +26,57 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(245, 242, 236, 0.96);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: 52px 20px 16px;
+  background: rgba(245, 241, 235, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 52px 20px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid rgba(47, 107, 79, 0.07);
+  border-bottom: 1px solid rgba(47, 107, 79, 0.06);
 }
 
 /* ── Back button ── */
 .bjs-back-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: #fff;
-  border: none;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(47,107,79,0.12);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
   transition: transform 0.15s ease, background 0.15s ease;
 }
 .bjs-back-btn:hover { background: #EDF5F0; }
 .bjs-back-btn:active { transform: scale(0.92); }
-.bjs-back-btn svg {
-  width: 18px;
-  height: 18px;
-  color: #2F6B4F;
-}
+.bjs-back-btn svg { width: 17px; height: 17px; color: #2F6B4F; }
 
-.bjs-header-titles {
-  flex: 1;
-  min-width: 0;
-}
+.bjs-header-titles { flex: 1; min-width: 0; }
 .bjs-header-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   color: #1F2D26;
   margin: 0;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 .bjs-header-sub {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #7B8A82;
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-weight: 500;
+  line-height: 1.4;
 }
-
 .bjs-month-pill {
-  background: #E9F3EE;
+  background: #E6F0EA;
   color: #2F6B4F;
   border: none;
   padding: 5px 12px;
   border-radius: 100px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   cursor: default;
   white-space: nowrap;
@@ -94,158 +87,134 @@
 /* ── Scroll body ── */
 .bjs-body {
   flex: 1;
-  padding: 20px 16px 40px;
+  padding: 18px 16px 44px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   max-width: 480px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
 }
 
-/* ── Generic card ── */
+/* ── Generic white card ── */
 .bjs-card {
   background: #fff;
-  border-radius: 24px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 22px;
+  padding: 18px 18px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.03);
 }
 
-/* ── Stats card ── */
+/* ═══ A. STATS CARD — white, warm, with icons ═══ */
 .bjs-stats-card {
-  background: linear-gradient(135deg, #2F6B4F 0%, #3A8260 100%);
-  border-radius: 24px;
-  padding: 22px 20px;
+  background: #fff;
+  border-radius: 22px;
+  padding: 20px 16px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03);
   display: flex;
-  gap: 0;
-  box-shadow: 0 4px 18px rgba(47, 107, 79, 0.22);
+  align-items: stretch;
 }
 .bjs-stat {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   position: relative;
+  padding: 0 8px;
 }
 .bjs-stat:not(:last-child)::after {
   content: '';
   position: absolute;
   right: 0;
-  top: 10%;
-  height: 80%;
+  top: 8%;
+  height: 84%;
   width: 1px;
-  background: rgba(255,255,255,0.22);
+  background: #EEF1EE;
 }
+.bjs-stat-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+.bjs-stat-icon-wrap svg { width: 22px; height: 22px; }
 .bjs-stat-number {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 800;
-  color: #fff;
+  color: #1F2D26;
   line-height: 1;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
 }
 .bjs-stat-label {
-  font-size: 11px;
-  color: rgba(255,255,255,0.82);
+  font-size: 10.5px;
+  color: #7B8A82;
   font-weight: 600;
   text-align: center;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
-/* ── Section title inside card ── */
-.bjs-section-title {
-  font-size: 13px;
+/* ═══ SKILLS inside stats card ═══ */
+.bjs-skills-divider {
+  height: 1px;
+  background: #F0F3F0;
+  margin: 16px -2px 14px;
+}
+.bjs-skills-label {
+  font-size: 11px;
   font-weight: 700;
-  color: #1F2D26;
-  margin: 0 0 14px;
-  letter-spacing: 0.01em;
+  color: #7B8A82;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
 }
-
-/* ── Skills grid ── */
-.bjs-skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-  gap: 10px;
+.bjs-skills-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
 }
 .bjs-skill-chip {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 12px 8px;
-  background: #F7FAF8;
-  border-radius: 16px;
+  gap: 5px;
+  width: 54px;
 }
-.bjs-skill-icon-wrap {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+.bjs-skill-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 }
-.bjs-skill-icon-wrap svg {
-  width: 18px;
-  height: 18px;
-}
+.bjs-skill-icon-circle svg { width: 18px; height: 18px; }
 .bjs-skill-name {
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 600;
-  color: #3A4F44;
+  color: #4A5D54;
   text-align: center;
-  line-height: 1.3;
-}
-.bjs-skill-count {
-  font-size: 10px;
-  font-weight: 700;
-  color: #2F6B4F;
-  background: #E9F3EE;
-  border-radius: 100px;
-  padding: 1px 7px;
+  line-height: 1.2;
 }
 
-/* ── Favorite activity card ── */
-.bjs-fav-row {
+/* ═══ C. FAVORITE ACTIVITY — 2 col layout ═══ */
+.bjs-fav-inner {
   display: flex;
   gap: 14px;
   align-items: flex-start;
 }
-.bjs-fav-thumb {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.bjs-fav-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 16px;
-}
-.bjs-fav-thumb-gradient {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #EAF3EE 0%, #D4EDE0 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.bjs-fav-thumb-gradient svg {
-  width: 28px;
-  height: 28px;
-  color: #2F6B4F;
-  opacity: 0.7;
-}
-.bjs-fav-info {
-  flex: 1;
-  min-width: 0;
+.bjs-fav-left { flex: 1; min-width: 0; }
+.bjs-fav-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #7B8A82;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 8px;
 }
 .bjs-fav-title {
   font-size: 14px;
@@ -254,43 +223,105 @@
   margin: 0 0 3px;
   line-height: 1.3;
 }
-.bjs-fav-category {
-  font-size: 11px;
-  color: #7B8A82;
-  font-weight: 600;
-  margin: 0 0 8px;
-}
 .bjs-fav-times {
-  font-size: 11px;
+  font-size: 11.5px;
   color: #2F6B4F;
   font-weight: 700;
+  margin: 6px 0 8px;
+  display: block;
 }
 .bjs-progress-bar-wrap {
   height: 5px;
   background: #EDF5F0;
   border-radius: 100px;
-  margin-top: 6px;
   overflow: hidden;
 }
 .bjs-progress-bar-fill {
   height: 100%;
   background: linear-gradient(90deg, #2F6B4F, #5DAA80);
   border-radius: 100px;
-  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+.bjs-fav-right {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  align-self: flex-start;
+}
+.bjs-fav-right img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bjs-fav-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #E2EEE7 0%, #C9E0D5 50%, #D8EBE1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bjs-fav-placeholder svg { width: 32px; height: 32px; color: #2F6B4F; opacity: 0.55; }
 
-/* ── Calendar progress ── */
-.bjs-calendar-title {
+/* ═══ D. CALENDAR — compact ═══ */
+.bjs-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+.bjs-cal-title {
   font-size: 13px;
   font-weight: 700;
   color: #1F2D26;
-  margin: 0 0 6px;
+  margin: 0;
 }
+.bjs-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.bjs-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  color: #5A6B62;
+  font-weight: 500;
+}
+.bjs-legend-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.bjs-legend-dot.done  { background: #2F6B4F; }
+.bjs-legend-dot.part  { background: #E8C44A; }
+.bjs-legend-dot.skip  { background: #D8DDD9; }
+
+.bjs-weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 12px;
+}
+.bjs-weekday-label {
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #A0ABA3;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 2px 0;
+}
+
 .bjs-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-  margin-top: 14px;
+  gap: 4px;
+  margin-top: 3px;
 }
 .bjs-day-cell {
   aspect-ratio: 1;
@@ -298,104 +329,110 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   cursor: default;
   position: relative;
+  max-width: 36px;
+  max-height: 36px;
+  width: 100%;
+  height: 100%;
+  margin: 0 auto;
 }
-.bjs-day-cell.done {
-  background: #2F6B4F;
-  color: #fff;
-}
-.bjs-day-cell.partial {
-  background: #F5C84E;
-  color: #4A3800;
-}
-.bjs-day-cell.skipped {
-  background: #E8EDE9;
-  color: #8C9C90;
-}
-.bjs-day-cell.future {
-  background: #F5F2EC;
-  color: #C0C8C2;
-}
-.bjs-day-cell.today-ring {
-  box-shadow: 0 0 0 2px #2F6B4F;
-}
+.bjs-day-cell.done    { background: #2F6B4F; color: #fff; }
+.bjs-day-cell.partial { background: #F0D060; color: #5A4200; }
+.bjs-day-cell.skipped { background: #E8ECE9; color: #8C9C90; }
+.bjs-day-cell.future  { background: transparent; color: #C0CAC3; }
+.bjs-day-cell.today-ring { box-shadow: 0 0 0 2px #2F6B4F; }
+.bjs-day-cell.today-ring.future { box-shadow: 0 0 0 1.5px rgba(47,107,79,0.5); }
 
-.bjs-legend {
-  display: flex;
-  gap: 14px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-.bjs-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
-  color: #5A6B62;
-  font-weight: 500;
-}
-.bjs-legend-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
-.bjs-legend-dot.done  { background: #2F6B4F; }
-.bjs-legend-dot.part  { background: #F5C84E; }
-.bjs-legend-dot.skip  { background: #E8EDE9; }
-
-/* ── Emotional closing card ── */
+/* ═══ E. CLOSING CARD — visual on right ═══ */
 .bjs-closing-card {
-  background: linear-gradient(135deg, #F5F0E4 0%, #EEF5F0 100%);
-  border-radius: 24px;
-  padding: 22px 20px;
+  border-radius: 22px;
+  overflow: hidden;
+  position: relative;
+  min-height: 120px;
   display: flex;
-  gap: 16px;
+  align-items: stretch;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.bjs-closing-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, #EEF7F2 0%, #E8F0E9 40%, #F5EFE4 100%);
+  z-index: 0;
+}
+.bjs-closing-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
   align-items: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  width: 100%;
+  gap: 0;
 }
-.bjs-closing-text {
+.bjs-closing-text-col {
   flex: 1;
+  padding: 20px 16px 20px 20px;
 }
-.bjs-closing-text p {
+.bjs-closing-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  color: #2F6B4F;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+}
+.bjs-closing-text-col p {
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: #2A3D30;
   margin: 0;
   font-weight: 500;
 }
-.bjs-closing-text p strong {
+.bjs-closing-text-col p strong {
   font-weight: 800;
   color: #2F6B4F;
 }
-.bjs-closing-graphic {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #EAF3EE 0%, #C9E8D7 100%);
+.bjs-closing-visual {
+  width: 110px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.bjs-closing-visual-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    #D4EBE0 0%,
+    #B8DAC8 35%,
+    #C9E2D4 60%,
+    #E0EEE7 100%
+  );
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  gap: 6px;
 }
-.bjs-closing-graphic svg {
+.bjs-closing-visual-gradient svg {
   width: 30px;
   height: 30px;
   color: #2F6B4F;
+  opacity: 0.7;
+}
+.bjs-closing-visual-dots {
+  display: flex;
+  gap: 4px;
+}
+.bjs-closing-visual-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(47,107,79,0.25);
 }
 
-/* ── Empty state ── */
-.bjs-empty-message {
-  font-size: 13px;
-  line-height: 1.55;
-  color: #5A6B62;
-  margin: 8px 0 0;
-  font-weight: 500;
-}
-
-/* ── CTA buttons ── */
+/* ═══ F. CTA BUTTONS ═══ */
 .bjs-cta-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -405,42 +442,47 @@
   .bjs-cta-row { grid-template-columns: 1fr; }
 }
 .bjs-cta-btn {
-  border: none;
-  padding: 14px 12px;
-  border-radius: 16px;
+  border-radius: 100px;
+  padding: 14px 10px;
   font-family: inherit;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   text-align: center;
   transition: transform 0.15s ease, background 0.18s ease;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 .bjs-cta-btn:active { transform: scale(0.97); }
 .bjs-cta-btn.primary {
   background: #2F6B4F;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(47, 107, 79, 0.22);
+  border: none;
+  box-shadow: 0 3px 10px rgba(47,107,79,0.22);
 }
 .bjs-cta-btn.primary:hover { background: #265e44; }
 .bjs-cta-btn.secondary {
-  background: #EAF3EE;
+  background: #fff;
   color: #2F6B4F;
+  border: 1.5px solid rgba(47,107,79,0.3);
 }
-.bjs-cta-btn.secondary:hover { background: #DFF0E7; }
+.bjs-cta-btn.secondary:hover { background: #EDF5F0; }
 
-/* ── Weekday header row ── */
-.bjs-weekday-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-  margin-top: 8px;
+/* ── Empty message ── */
+.bjs-empty-message {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #5A6B62;
+  margin: 4px 0 0;
+  font-weight: 500;
 }
-.bjs-weekday-label {
-  text-align: center;
-  font-size: 9.5px;
-  font-weight: 700;
-  color: #8C9C90;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+.bjs-empty-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #EDF5F0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
 }
+.bjs-empty-icon svg { width: 20px; height: 20px; color: #2F6B4F; }

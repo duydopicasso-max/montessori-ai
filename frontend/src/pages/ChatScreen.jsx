@@ -992,50 +992,6 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
     setExpandedBornMissionIds(prev => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  // ── BORN JOURNEY SUMMARY SCREEN — toggle state ──
-  const [showBornJourneySummary, setShowBornJourneySummary] = useState(false);
-
-  // ── BORN MISSION COMPLETE WITH METADATA ──
-  // Saves rich object instead of plain true, enabling the summary screen
-  // to show category, type, title, completedAt, etc.
-  const toggleBornMissionWithMeta = useCallback((fullKey, item) => {
-    setCompletedMissions(prev => {
-      const current = prev[fullKey];
-      let next;
-      if (current && (current === true || (typeof current === 'object' && current.completed))) {
-        // Already completed: toggle OFF — remove key
-        next = { ...prev };
-        delete next[fullKey];
-      } else {
-        // Mark completed with metadata
-        const now = new Date();
-        const metaValue = {
-          completed: true,
-          completedAt: now.toISOString(),
-          localDate: (() => {
-            const y = now.getFullYear();
-            const m = String(now.getMonth() + 1).padStart(2, '0');
-            const d = String(now.getDate()).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-          })(),
-          userGroup: 'born',
-          babyAgeInDays: babyAgeDays ?? 0,
-          missionId: item?.id || '',
-          title: item?.title || '',
-          category: item?.category || '',
-          type: item?.type || '',
-          duration: item?.duration || '',
-          image: item?.image || null
-        };
-        next = { ...prev, [fullKey]: metaValue };
-      }
-      try {
-        localStorage.setItem('journey_mission_completions_v1', JSON.stringify(next));
-      } catch (e) {}
-      return next;
-    });
-  }, [babyAgeDays]);
-
   // ── PREGNANCY JOURNEY — expand/collapse state (separate from born) ──
   const [expandedPregMissionIds, setExpandedPregMissionIds] = useState({});
   const togglePregMissionExpand = useCallback((key) => {
@@ -1136,6 +1092,50 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
       };
     }
   }, [status, pregnancyDayIndex, babyAgeDays]);
+
+  // ── BORN JOURNEY SUMMARY SCREEN — toggle state ──
+  const [showBornJourneySummary, setShowBornJourneySummary] = useState(false);
+
+  // ── BORN MISSION COMPLETE WITH METADATA ──
+  // Saves rich object instead of plain true, enabling the summary screen
+  // to show category, type, title, completedAt, etc.
+  const toggleBornMissionWithMeta = useCallback((fullKey, item) => {
+    setCompletedMissions(prev => {
+      const current = prev[fullKey];
+      let next;
+      if (current && (current === true || (typeof current === 'object' && current.completed))) {
+        // Already completed: toggle OFF — remove key
+        next = { ...prev };
+        delete next[fullKey];
+      } else {
+        // Mark completed with metadata
+        const now = new Date();
+        const metaValue = {
+          completed: true,
+          completedAt: now.toISOString(),
+          localDate: (() => {
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+          })(),
+          userGroup: 'born',
+          babyAgeInDays: babyAgeDays ?? 0,
+          missionId: item?.id || '',
+          title: item?.title || '',
+          category: item?.category || '',
+          type: item?.type || '',
+          duration: item?.duration || '',
+          image: item?.image || null
+        };
+        next = { ...prev, [fullKey]: metaValue };
+      }
+      try {
+        localStorage.setItem('journey_mission_completions_v1', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  }, [babyAgeDays]);
 
   const renderDailyMissionsSection = () => {
     const data = getDailyMissionsData();
