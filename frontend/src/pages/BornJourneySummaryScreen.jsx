@@ -128,36 +128,29 @@ function getSkillColors(type) {
 function MonthCalendar({ year, month, countMap }) {
   const today = getLocalDateStr();
   const daysInMonth = new Date(year, month, 0).getDate();
-  const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
-  const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
-  const cells = [];
-  for (let i = 0; i < firstDayOfWeek; i++) cells.push(<div key={`e-${i}`} />);
-
-  for (let d = 1; d <= daysInMonth; d++) {
+  const buildCell = (d) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const count = countMap[dateStr] || 0;
     const isFuture = dateStr > today;
     const isToday = dateStr === today;
-
     let cls = 'bjs-day-cell ';
     if (isFuture) cls += 'future';
     else if (count >= 3) cls += 'done';
     else if (count >= 1) cls += 'partial';
     else cls += 'skipped';
     if (isToday) cls += ' today-ring';
+    return <div key={dateStr} className={cls} title={`${d}/${month}: ${count}`}>{d}</div>;
+  };
 
-    cells.push(
-      <div key={dateStr} className={cls} title={`${d}/${month}: ${count} nv`}>{d}</div>
-    );
-  }
+  // Split into 2 rows: days 1-15, days 16-end
+  const row1 = Array.from({ length: Math.min(15, daysInMonth) }, (_, i) => buildCell(i + 1));
+  const row2 = Array.from({ length: Math.max(0, daysInMonth - 15) }, (_, i) => buildCell(i + 16));
 
   return (
-    <div>
-      <div className="bjs-weekday-row">
-        {WEEKDAYS.map(d => <div key={d} className="bjs-weekday-label">{d}</div>)}
-      </div>
-      <div className="bjs-calendar-grid">{cells}</div>
+    <div className="bjs-cal-strip">
+      <div className="bjs-cal-row">{row1}</div>
+      {row2.length > 0 && <div className="bjs-cal-row">{row2}</div>}
     </div>
   );
 }
