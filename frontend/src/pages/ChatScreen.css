@@ -1148,6 +1148,110 @@
 .tracker-action-trigger-btn:active { transform: scale(0.96); }
 
 /* ══════════════════════════════════════
+   BORN USER — QUICK ACTION CARDS (compact 2×2)
+   Scoped with .born-quick-action-* to avoid
+   affecting pregnancy cards or other sections
+   ══════════════════════════════════════ */
+.born-quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 4px 16px 16px;
+  flex-shrink: 0;
+}
+
+.born-quick-action-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  border-radius: 16px;
+  padding: 14px 12px;
+  min-height: 72px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
+  border: none;
+  text-align: left;
+  background: white;
+  /* Remove default button styles */
+  font-family: var(--font-primary);
+}
+
+.born-quick-action-card:active {
+  transform: scale(0.96);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+}
+
+/* Color variants — pastel, matched to app palette */
+.born-quick-action-card.bqa-mint   { background: #EAF5EC; }
+.born-quick-action-card.bqa-peach  { background: #FDEEE9; }
+.born-quick-action-card.bqa-sky    { background: #E8F2FB; }
+.born-quick-action-card.bqa-lilac  { background: #F0EDFB; }
+
+/* Icon wrapper — small, line-art style */
+.born-quick-action-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.7);
+}
+.born-quick-action-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  color: rgba(0,0,0,0.65);
+}
+
+/* Text block */
+.born-quick-action-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.born-quick-action-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1A1A1A;
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.born-quick-action-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(0,0,0,0.45);
+  margin: 0;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Chevron arrow */
+.born-quick-action-chevron {
+  flex-shrink: 0;
+  opacity: 0.3;
+  display: flex;
+  align-items: center;
+}
+.born-quick-action-chevron svg {
+  width: 14px;
+  height: 14px;
+  color: #1A1A1A;
+}
+
+/* ══════════════════════════════════════
    DAILY TIMELINE — with vertical connecting line
    ══════════════════════════════════════ */
 .daily-timeline-section {

@@ -3871,58 +3871,69 @@ ${logsDesc}`;
     }
 
     return (
-      <div className="dashboard-trackers-grid">
+      <div className="born-quick-actions-grid">
         {/* CARD 1: Ăn uống */}
-        <div className="tracker-item-card mint-light" onClick={() => setActiveBottomSheet('nutrition')}>
-          <div className="tracker-card-icon">
+        <div className="born-quick-action-card bqa-mint" onClick={() => setActiveBottomSheet('nutrition')}>
+          <div className="born-quick-action-icon">
             <BottleIcon />
           </div>
-          <h4 className="tracker-card-name">Ăn uống</h4>
-          <span className="tracker-card-status-text">{getLastNutriText()}</span>
-          <button type="button" className="tracker-action-trigger-btn">
-            Ghi nhận ăn
-          </button>
+          <div className="born-quick-action-text">
+            <p className="born-quick-action-title">Ăn uống</p>
+            <p className="born-quick-action-sub">{getLastNutriText()}</p>
+          </div>
+          <div className="born-quick-action-chevron">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
         </div>
 
         {/* CARD 2: Ngủ */}
-        <div className="tracker-item-card pink-light" onClick={() => { setActiveBottomSheet('sleep'); setSleepSecs(0); }}>
-          <div className="tracker-card-icon">
+        <div className="born-quick-action-card bqa-peach" onClick={() => { setActiveBottomSheet('sleep'); setSleepSecs(0); }}>
+          <div className="born-quick-action-icon">
             <MoonStarIcon />
           </div>
-          <h4 className="tracker-card-name">Ngủ</h4>
-          <span className="tracker-card-status-text">{getLastSleepText()}</span>
-          <button type="button" className="tracker-action-trigger-btn">
-            Ghi nhận ngủ
-          </button>
+          <div className="born-quick-action-text">
+            <p className="born-quick-action-title">Ngủ</p>
+            <p className="born-quick-action-sub">{getLastSleepText()}</p>
+          </div>
+          <div className="born-quick-action-chevron">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
         </div>
 
         {/* CARD 3: Thay tã / Vệ sinh / Tập bô */}
-        <div className="tracker-item-card pink-light" onClick={() => setActiveBottomSheet('diaper')}>
-          <div className="tracker-card-icon">
+        <div className="born-quick-action-card bqa-sky" onClick={() => setActiveBottomSheet('diaper')}>
+          <div className="born-quick-action-icon">
             <DiaperIcon />
           </div>
-          <h4 className="tracker-card-name">{diaperCardTitle}</h4>
-          <span className="tracker-card-status-text">
-            {diaperCardStatus}
-          </span>
-          <button 
-            type="button" 
-            className="tracker-action-trigger-btn" 
-          >
-            {diaperCardButtonText}
-          </button>
+          <div className="born-quick-action-text">
+            <p className="born-quick-action-title">{diaperCardTitle}</p>
+            <p className="born-quick-action-sub">{diaperCardStatus}</p>
+          </div>
+          <div className="born-quick-action-chevron">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
         </div>
 
         {/* CARD 4: Phát triển */}
-        <div className="tracker-item-card mint-light" onClick={() => setActiveTab('growth')}>
-          <div className="tracker-card-icon">
+        <div className="born-quick-action-card bqa-mint" onClick={() => setActiveTab('growth')}>
+          <div className="born-quick-action-icon">
             <ScaleIcon />
           </div>
-          <h4 className="tracker-card-name">Phát triển</h4>
-          <span className="tracker-card-status-text">{getLastGrowthText()}</span>
-          <button type="button" className="tracker-action-trigger-btn">
-            Xem thống kê
-          </button>
+          <div className="born-quick-action-text">
+            <p className="born-quick-action-title">Phát triển</p>
+            <p className="born-quick-action-sub">{getLastGrowthText()}</p>
+          </div>
+          <div className="born-quick-action-chevron">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
         </div>
       </div>
     );
