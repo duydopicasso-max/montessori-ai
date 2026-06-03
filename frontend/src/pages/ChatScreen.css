@@ -5884,34 +5884,60 @@
 
 /* ══════════════════════════════════════
    BORN USER — HÀNH TRÌNH HÔM NAY (baby-journey-*)
-   Scoped to avoid affecting pregnancy journey or other sections
+   Compact overrides — scoped to avoid affecting pregnancy or other sections
    ══════════════════════════════════════ */
 
-/* SVG icon wrapper — replaces emoji span */
+/* Override .journey-item padding/min-height ONLY inside born journey card */
+.baby-journey-card .journey-item {
+  padding: 10px 0;
+  min-height: unset;
+  align-items: flex-start;
+  gap: 10px;
+}
+.baby-journey-card .journey-item:last-child {
+  border-bottom: none;
+}
+
+/* SVG icon wrapper — compact 44px */
 .baby-journey-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
   flex-shrink: 0;
   align-self: flex-start;
+  margin-top: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* background and color set via inline style per type */
 }
 .baby-journey-icon-wrap svg {
-  width: 23px;
-  height: 23px;
+  width: 20px;
+  height: 20px;
   display: block;
+}
+
+/* Content column — tighter gap between text nodes */
+.baby-journey-content {
+  gap: 1px !important;
+}
+
+/* Title — max 2 lines, ellipsis */
+.baby-journey-item-title {
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Description — default: 2-line clamp */
 .baby-journey-item-desc {
-  font-size: 13px;
+  font-size: 12px;
   color: #4A5D54;
   font-weight: 500;
-  line-height: 1.45;
-  margin: 2px 0 0;
+  line-height: 1.4;
+  margin: 1px 0 0;
 }
 .baby-journey-item-desc.is-clamped {
   display: -webkit-box;
@@ -5920,11 +5946,11 @@
   overflow: hidden;
 }
 
-/* Xem thêm / Thu gọn link */
+/* Xem thêm / Thu gọn */
 .baby-journey-more-btn {
   display: inline-block;
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: 3px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #2F6B4F;
   background: none;
@@ -5932,18 +5958,17 @@
   padding: 0;
   cursor: pointer;
   font-family: var(--font-primary), sans-serif;
-  line-height: 1.4;
-  text-decoration: none;
+  line-height: 1.3;
   transition: opacity 0.15s ease;
 }
 .baby-journey-more-btn:hover { opacity: 0.72; }
 
-/* "Cùng làm" pill button — sage pastel */
+/* "Cùng làm" pill button — compact */
 .baby-journey-btn {
   background: #EAF3EE;
   border: none;
   color: #2F6B4F;
-  padding: 7px 15px;
+  padding: 6px 12px;
   border-radius: 100px;
   font-family: var(--font-primary), sans-serif;
   font-size: 11px;
@@ -5952,8 +5977,9 @@
   white-space: nowrap;
   flex-shrink: 0;
   align-self: flex-start;
+  margin-top: 2px;
   transition: background 0.18s ease, transform 0.15s ease;
-  box-shadow: 0 2px 6px rgba(47, 107, 79, 0.07);
+  box-shadow: 0 1px 4px rgba(47, 107, 79, 0.08);
 }
 .baby-journey-btn:hover { background: #DFF0E7; }
 .baby-journey-btn:active {
@@ -5965,6 +5991,7 @@
   color: #D96D55;
 }
 .baby-journey-btn.completed:hover { background: #F5E5DF; }
+
 
 /* 🌿 POSTPARTUM BORN MONTESSORI QUOTE CARD STYLES */
 .born-quote-hero-card {

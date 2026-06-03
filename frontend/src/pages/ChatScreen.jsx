@@ -1335,9 +1335,9 @@ export default function ChatScreen({ profile, setActiveTab, setGrowthPendingActi
                   {renderBornMissionIcon(item.type, item.icon)}
                 </div>
 
-                <div className="journey-content" style={{ textAlign: 'left' }}>
+                <div className="journey-content baby-journey-content" style={{ textAlign: 'left' }}>
                   <span className="journey-category">{item.category}</span>
-                  <h4 className="journey-item-title" style={{
+                  <h4 className="journey-item-title baby-journey-item-title" style={{
                     textDecoration: isCompleted ? 'line-through' : 'none',
                     color: isCompleted ? '#7B8A82' : '#1F2D26'
                   }}>{item.title}</h4>
