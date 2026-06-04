@@ -33,3 +33,8 @@ Thumbs.db
 
 # Symlink target nội bộ (không cần track)
 # .agent/ được quản lý qua symlink
+
+# Firebase service account keys — NEVER commit these
+*adminsdk*.json
+*service-account*.json
+firebase-key.json
