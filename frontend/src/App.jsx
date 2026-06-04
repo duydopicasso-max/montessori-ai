@@ -78,7 +78,8 @@ export default function App() {
   const [authUser, setAuthUser]   = useState(null);
   const [profile, setProfile]     = useState(null);
   const [loading, setLoading]     = useState(true);
-  const [growthPendingAction, setGrowthPendingAction] = useState(null); // 'openCheckupSheet' | null
+  const [growthPendingAction, setGrowthPendingAction] = useState(null);
+  const [communityNotifCount, setCommunityNotifCount] = useState(0);
 
   // Initialize Global History Stack Overlay Coordinator (LIFO)
   useEffect(() => {
@@ -353,7 +354,7 @@ export default function App() {
         {activeTab === 'chat'      && <ChatScreen    profile={{ ...sharedProfile, displayName: `Mẹ ${momName}`, role: 'Mẹ' }} setActiveTab={setActiveTab} setGrowthPendingAction={setGrowthPendingAction} />}
         {activeTab === 'tracker'   && <TrackerScreen profile={sharedProfile} />}
         {activeTab === 'growth'    && <GrowthScreen  profile={sharedProfile} setActiveTab={setActiveTab} pendingAction={growthPendingAction} onConsumePendingAction={() => setGrowthPendingAction(null)} />}
-        {activeTab === 'community' && <CommunityScreen profile={sharedProfile} />}
+        {activeTab === 'community' && <CommunityScreen profile={sharedProfile} onNotificationCountChange={setCommunityNotifCount} />}
         {activeTab === 'baby'      && <BabyProfileScreen profile={sharedProfile} authUser={authUser} onLogout={handleLogout} />}
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}
         {activeTab === 'ingest'    && <IngestScreen />}
@@ -368,7 +369,14 @@ export default function App() {
               className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
             >
-              <span className="nav-tab-icon"><tab.IconComponent /></span>
+              <span className="nav-tab-icon" style={{ position: 'relative' }}>
+                <tab.IconComponent />
+                {tab.id === 'community' && communityNotifCount > 0 && (
+                  <span className="nav-community-badge">
+                    {communityNotifCount > 9 ? '9+' : communityNotifCount}
+                  </span>
+                )}
+              </span>
               <span className="nav-tab-label">{tab.label}</span>
             </button>
           ))}

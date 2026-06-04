@@ -155,7 +155,7 @@ const RefreshIcon = ({ size = 14 }) => (
 /* ════════════════════════════════════════════════
    MAIN COMPONENT
 ════════════════════════════════════════════════ */
-export default function CommunityScreen({ profile }) {
+export default function CommunityScreen({ profile, onNotificationCountChange }) {
   const user        = profile?.user;
   const babies      = profile?.babies || [];
   const userStatus  = user?.status || 'parent'; // 'pregnant' | 'parent'
@@ -183,6 +183,16 @@ export default function CommunityScreen({ profile }) {
   const [activeConversation, setActiveConversation] = useState(null);
   const [showDMRequestSheet, setShowDMRequestSheet] = useState(null); // { uid, name, photo, baby }
   const [dmToast, setDmToast]                 = useState('');
+
+  // Compute unread conversation count (messages not yet read by current user)
+  const unreadConvCount = conversations.filter(c => {
+    const myCount = c.unreadCounts?.[user?.uid];
+    return myCount && myCount > 0;
+  }).length;
+
+  // Total inbox notification = pending DM requests + conversations with unread messages
+  const inboxBadgeCount = dmRequests.length + unreadConvCount;
+  const inboxBadgeLabel = inboxBadgeCount > 9 ? '9+' : inboxBadgeCount > 0 ? String(inboxBadgeCount) : null;
 
   /* ── Load custom rooms (with 3-day auto-expire) ── */
   useEffect(() => {
@@ -251,6 +261,11 @@ export default function CommunityScreen({ profile }) {
 
     return () => { unsubReqs(); unsubConvs(); };
   }, [user?.uid]);
+
+  // Emit total notification count to parent whenever it changes
+  useEffect(() => {
+    onNotificationCountChange?.(inboxBadgeCount);
+  }, [inboxBadgeCount, onNotificationCountChange]);
 
 
   /* ── Accept DM request → create conversation ── */
@@ -447,8 +462,8 @@ export default function CommunityScreen({ profile }) {
           onClick={() => setTab('inbox')}
         >
           Hộp thư
-          {(dmRequests.length > 0) && (
-            <span className="tab-badge">{dmRequests.length > 9 ? '9+' : dmRequests.length}</span>
+          {inboxBadgeLabel && (
+            <span className="tab-badge">{inboxBadgeLabel}</span>
           )}
         </button>
       </div>
