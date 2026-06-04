@@ -5385,10 +5385,11 @@
   box-shadow: 0 4px 16px rgba(138, 149, 143, 0.06);
   position: relative;
   min-height: 240px;
-  height: 250px;
+  /* Bỏ height cứng — cho phép card tự giãn khi quote dài */
+  height: auto;
   display: flex;
   align-items: center;
-  overflow: hidden;
+  overflow: hidden; /* giữ để ảnh nền không tràn ra ngoài border-radius */
 }
 
 .pregnancy-hero-card .hero-card-bg-image {
@@ -5413,7 +5414,9 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  height: 100%;
+  /* height: auto — nội dung tự giãn khi quote dài */
+  height: auto;
+  padding: 4px 0;
 }
 
 .pregnancy-hero-card .hero-card-title {
@@ -5449,10 +5452,12 @@
   color: #4D5E54;
   margin: 0 0 3px 0;
   line-height: 1.45;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /* Hiển thị đầy đủ quote — không cắt dòng, không ellipsis */
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
   text-shadow: 0 1px 1px rgba(255, 255, 255, 0.85);
 }
 
@@ -5475,6 +5480,10 @@
   }
   .pregnancy-hero-card .hero-card-content {
     max-width: 100%;
+  }
+  /* Giảm nhẹ font-size quote trên mobile nhỏ thay vì cắt dòng */
+  .pregnancy-hero-card .hero-card-quote-text {
+    font-size: 10.5px;
   }
 }
 
@@ -5508,27 +5517,24 @@
   cursor: pointer;
 }
 
+/* Grid 3 cột đều — luôn hiện đủ 3 card, không cắt, không scroll ngang */
 .preg-horizontal-scroll-container {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
   padding: 4px 0 12px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.preg-horizontal-scroll-container::-webkit-scrollbar {
-  display: none;
+  /* Bỏ overflow-x scroll — grid tự chia đều */
+  overflow-x: visible;
+  overflow-y: visible;
 }
 
 .preg-scroll-card {
-  width: clamp(148px, 42vw, 168px);
-  min-height: 235px;
-  max-height: 250px;
-  flex-shrink: 0;
-  border-radius: 18px;
+  /* Bỏ width cứng — grid tự co card theo cột */
+  width: 100%;
+  min-height: 220px;
+  max-height: none;
+  /* Bỏ flex-shrink: 0 — không cần khi dùng grid */
+  border-radius: 14px;
   background: #FCFAF7;
   border: 1px solid rgba(92, 158, 122, 0.12);
   box-shadow: 0 4px 12px rgba(138, 149, 143, 0.04);
@@ -5545,7 +5551,7 @@
 
 .preg-card-image-wrap {
   width: 100%;
-  height: 110px;
+  height: 90px; /* giảm nhẹ từ 110px để compact hơn trong grid 3 cột */
   position: relative;
   background: linear-gradient(135deg, #F9F6F0 0%, #E6EFE9 100%);
   overflow: hidden;
@@ -5559,7 +5565,7 @@
 }
 
 .preg-card-body {
-  padding: 12px;
+  padding: 8px; /* compact hơn trong grid 3 cột */
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -5568,13 +5574,17 @@
 .preg-card-tag-inline {
   align-self: flex-start;
   font-family: var(--font-primary), sans-serif;
-  font-size: 10.5px;
+  font-size: 9px; /* nhỏ hơn để vừa grid 3 cột */
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 2px 6px;
   border-radius: 999px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   line-height: 1;
   display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .preg-card-tag-inline.tag-connect {
@@ -5597,21 +5607,21 @@
 
 .preg-card-title {
   font-family: var(--font-primary), sans-serif;
-  font-size: 12px;
+  font-size: 11px; /* compact trong grid 3 cột */
   font-weight: 700;
   color: #1F2D26;
-  margin: 0 0 4px 0;
-  line-height: 1.35;
+  margin: 0 0 3px 0;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  height: 32px;
+  /* bỏ height cứng 32px — để tự co */
 }
 
 .preg-card-subtitle {
   font-family: var(--font-primary), sans-serif;
-  font-size: 10px;
+  font-size: 9.5px; /* compact trong grid 3 cột */
   font-weight: 500;
   color: #7A8B80;
   margin: 0;
@@ -5653,6 +5663,55 @@
 
 .preg-card-bookmark:hover {
   color: #5C9E7A;
+}
+
+
+/* ── Responsive: 3 card grid compact cho màn nhỏ ── */
+@media (max-width: 420px) {
+  .preg-horizontal-scroll-container {
+    gap: 8px;
+  }
+  .preg-card-image-wrap {
+    height: 80px;
+  }
+  .preg-card-body {
+    padding: 6px;
+  }
+  .preg-card-title {
+    font-size: 10.5px;
+  }
+  .preg-card-subtitle {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 360px) {
+  .preg-horizontal-scroll-container {
+    gap: 6px;
+  }
+  .preg-scroll-card {
+    border-radius: 12px;
+    min-height: 190px;
+  }
+  .preg-card-image-wrap {
+    height: 70px;
+  }
+  .preg-card-body {
+    padding: 5px;
+  }
+  .preg-card-tag-inline {
+    font-size: 8px;
+    padding: 2px 4px;
+  }
+  .preg-card-title {
+    font-size: 9.5px;
+  }
+  .preg-card-subtitle {
+    font-size: 8.5px;
+  }
+  .preg-card-duration {
+    font-size: 8px;
+  }
 }
 
 /* ── 3. Journey Checklist Section ("Hành trình hôm nay") ── */

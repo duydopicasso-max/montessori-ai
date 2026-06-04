@@ -69,19 +69,40 @@ const todayLocalMidnight = () => {
   return new Date(today.getFullYear(), today.getMonth(), today.getDate());
 };
 
+// Trả về ngày trong năm (1–365/366), cố định trong ngày, không random khi reload.
+// Dev override: localStorage.setItem('test_quote_day_of_year', '4') để test ảnh/quote cụ thể.
 const getDayOfYear = () => {
+  if (typeof window !== 'undefined') {
+    const devOverride = localStorage.getItem('test_quote_day_of_year');
+    if (devOverride !== null) {
+      const parsed = parseInt(devOverride, 10);
+      if (!isNaN(parsed) && parsed >= 1) return parsed;
+    }
+  }
   const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 0);
+  const start = new Date(now.getFullYear(), 0, 1); // ngày 1 Jan
   const diff = now - start;
   const oneDay = 1000 * 60 * 60 * 24;
-  return Math.floor(diff / oneDay);
+  return Math.floor(diff / oneDay) + 1; // ngày 1 Jan = 1
 };
 
-const getPregnancyQuoteImage = (imagePath) => {
-  if (!imagePath) return `${import.meta.env.BASE_URL}quote-images/pregnancy/pregnancy-quote-01-belly-touch.png`;
+// Tính quoteIndex từ dayOfYear, xoay vòng qua toàn bộ quotes.
+// imageIndex = Math.floor(quoteIndex / 3) % totalImages → mỗi ảnh cho 3 quotes.
+const getPregnancyDailyIndices = (totalQuotes) => {
+  const dayOfYear = getDayOfYear();
+  const quoteIndex = dayOfYear % totalQuotes;
+  return { quoteIndex, dayOfYear };
+};
+
+// Build URL ảnh từ path. Trả về null nếu path rỗng.
+const getPregnancyQuoteImageUrl = (imagePath) => {
+  if (!imagePath) return null;
   const cleanPath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
   return `${import.meta.env.BASE_URL}${cleanPath}`;
 };
+
+// Fallback URL khi ảnh chính lỗi — ảnh đầu tiên trong kho pregnancy.
+const PREGNANCY_FALLBACK_IMAGE = `${import.meta.env.BASE_URL}quote-images/pregnancy/pregnancy-quote-01-belly-touch.png`;
 
 const PREGNANCY_MONTESSORI_QUOTES = [
   {
@@ -4781,45 +4802,63 @@ ${logsDesc}`;
       {status === 'pregnant' && (
         <>
           {/* Hero Card thai kỳ */}
-          <div className="pregnancy-hero-card">
-            <img
-              className="hero-card-bg-image"
-              src={getPregnancyQuoteImage(PREGNANCY_MONTESSORI_QUOTES[getDayOfYear() % 30].image)}
-              alt="Belly"
-            />
-            <div className="hero-card-content">
-              <h4 className="hero-card-title">
-                {(() => {
-                  const displayName = isTwin 
-                    ? twinWording 
-                    : (profile?.babyName || pregnancyInfo?.babyName || 'bé');
-                  return `Tuần ${pregWeeks}: ${displayName} đang bình an lớn lên từng ngày`;
-                })()}
-              </h4>
-              <p className="hero-card-desc">
-                {daysRemaining !== null ? (
-                  daysRemaining > 0
-                    ? (() => {
-                        const meetTarget = isTwin
-                          ? twinWording
-                          : (profile?.babyName || pregnancyInfo?.babyName || 'con');
-                        return `Còn khoảng ${daysRemaining} ngày nữa là gặp ${meetTarget}`;
-                      })()
-                    : `Bé đã sẵn sàng chào đời!`
-                ) : (
-                  'Hãy cập nhật ngày dự sinh của mẹ'
-                )}
-              </p>
-              <div className="hero-card-quote-section">
-                <p className="hero-card-quote-text">
-                  “{PREGNANCY_MONTESSORI_QUOTES[getDayOfYear() % 30].text}”
-                </p>
-                <span className="hero-card-quote-author">
-                  — {PREGNANCY_MONTESSORI_QUOTES[getDayOfYear() % 30].author}
-                </span>
+          {(() => {
+            // Cache quoteIndex một lần — đảm bảo quote + ảnh nhất quán trong cùng render.
+            const { quoteIndex } = getPregnancyDailyIndices(PREGNANCY_MONTESSORI_QUOTES.length);
+            const currentQuote = PREGNANCY_MONTESSORI_QUOTES[quoteIndex];
+            const heroImageUrl = getPregnancyQuoteImageUrl(currentQuote.image);
+
+            return (
+              <div className="pregnancy-hero-card">
+                <img
+                  className="hero-card-bg-image"
+                  src={heroImageUrl || PREGNANCY_FALLBACK_IMAGE}
+                  alt=""
+                  onError={(e) => {
+                    // Chỉ fallback khi ảnh chính thực sự lỗi, không ghi đè khi src đang đúng.
+                    if (e.target.src !== PREGNANCY_FALLBACK_IMAGE) {
+                      e.target.src = PREGNANCY_FALLBACK_IMAGE;
+                    } else {
+                      // Cả fallback cũng lỗi: ẩn ảnh, layout giữ gradient từ CSS.
+                      e.target.style.display = 'none';
+                    }
+                  }}
+                />
+                <div className="hero-card-content">
+                  <h4 className="hero-card-title">
+                    {(() => {
+                      const displayName = isTwin
+                        ? twinWording
+                        : (profile?.babyName || pregnancyInfo?.babyName || 'bé');
+                      return `Tuần ${pregWeeks}: ${displayName} đang bình an lớn lên từng ngày`;
+                    })()}
+                  </h4>
+                  <p className="hero-card-desc">
+                    {daysRemaining !== null ? (
+                      daysRemaining > 0
+                        ? (() => {
+                            const meetTarget = isTwin
+                              ? twinWording
+                              : (profile?.babyName || pregnancyInfo?.babyName || 'con');
+                            return `Còn khoảng ${daysRemaining} ngày nữa là gặp ${meetTarget}`;
+                          })()
+                        : `Bé đã sẵn sàng chào đời!`
+                    ) : (
+                      'Hãy cập nhật ngày dự sinh của mẹ'
+                    )}
+                  </p>
+                  <div className="hero-card-quote-section">
+                    <p className="hero-card-quote-text">
+                      “{currentQuote.text}”
+                    </p>
+                    <span className="hero-card-quote-author">
+                      — {currentQuote.author}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Carousel "Hôm nay, mẹ và bé cùng lớn lên" */}
           <div className="preg-grow-together-section">
