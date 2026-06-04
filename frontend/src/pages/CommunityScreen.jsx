@@ -155,7 +155,7 @@ const RefreshIcon = ({ size = 14 }) => (
 /* ════════════════════════════════════════════════
    MAIN COMPONENT
 ════════════════════════════════════════════════ */
-export default function CommunityScreen({ profile, onNotificationCountChange }) {
+export default function CommunityScreen({ profile }) {
   const user        = profile?.user;
   const babies      = profile?.babies || [];
   const userStatus  = user?.status || 'parent'; // 'pregnant' | 'parent'
@@ -261,11 +261,6 @@ export default function CommunityScreen({ profile, onNotificationCountChange }) 
 
     return () => { unsubReqs(); unsubConvs(); };
   }, [user?.uid]);
-
-  // Emit total notification count to parent whenever it changes
-  useEffect(() => {
-    onNotificationCountChange?.(inboxBadgeCount);
-  }, [inboxBadgeCount, onNotificationCountChange]);
 
 
   /* ── Accept DM request → create conversation ── */

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, onSnapshot, collection } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { auth, db } from './firebase.js';
 import ChatScreen      from './pages/ChatScreen.jsx';
 import TrackerScreen   from './pages/TrackerScreen.jsx';
@@ -79,6 +79,7 @@ export default function App() {
   const [profile, setProfile]     = useState(null);
   const [loading, setLoading]     = useState(true);
   const [growthPendingAction, setGrowthPendingAction] = useState(null);
+  // Community notification: only pending DM requests (not ongoing convs)
   const [communityNotifCount, setCommunityNotifCount] = useState(0);
 
   // Initialize Global History Stack Overlay Coordinator (LIFO)
@@ -256,6 +257,22 @@ export default function App() {
     };
   }, []);
 
+  // ── Subscribe dmRequests at App level ──
+  // Runs always, regardless of active tab, so badge updates in real-time
+  useEffect(() => {
+    const uid = authUser?.uid;
+    if (!uid) { setCommunityNotifCount(0); return; }
+    const q = query(
+      collection(db, 'dmRequests'),
+      where('toUserId', '==', uid),
+      where('status', '==', 'pending'),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setCommunityNotifCount(snap.size);
+    }, () => setCommunityNotifCount(0));
+    return () => unsub();
+  }, [authUser?.uid]);
+
   const handleOnboardingComplete = (newProfile) => setProfile(newProfile);
 
   const handleLogout = async () => {
@@ -354,7 +371,7 @@ export default function App() {
         {activeTab === 'chat'      && <ChatScreen    profile={{ ...sharedProfile, displayName: `Mẹ ${momName}`, role: 'Mẹ' }} setActiveTab={setActiveTab} setGrowthPendingAction={setGrowthPendingAction} />}
         {activeTab === 'tracker'   && <TrackerScreen profile={sharedProfile} />}
         {activeTab === 'growth'    && <GrowthScreen  profile={sharedProfile} setActiveTab={setActiveTab} pendingAction={growthPendingAction} onConsumePendingAction={() => setGrowthPendingAction(null)} />}
-        {activeTab === 'community' && <CommunityScreen profile={sharedProfile} onNotificationCountChange={setCommunityNotifCount} />}
+        {activeTab === 'community' && <CommunityScreen profile={sharedProfile} />}
         {activeTab === 'baby'      && <BabyProfileScreen profile={sharedProfile} authUser={authUser} onLogout={handleLogout} />}
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}
         {activeTab === 'ingest'    && <IngestScreen />}
