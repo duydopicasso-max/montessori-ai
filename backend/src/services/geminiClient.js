@@ -20,7 +20,8 @@ const chatModel = genAI.getGenerativeModel({
     temperature: 0.7,
     topK: 40,
     topP: 0.95,
-    maxOutputTokens: 2048,
+    // Tăng từ 2048 → 8192 để câu trả lời không bị cắt giữa chừng
+    maxOutputTokens: 8192,
   },
 });
 
@@ -99,21 +100,29 @@ export async function generateBatchEmbeddings(chunks) {
  */
 export async function generateRAGResponse(userQuestion, contextChunks, history = []) {
   const contextText = contextChunks.length > 0
-    ? contextChunks.map((c, i) => c).join('\n\n')
+    ? contextChunks.map((c) => c).join('\n\n')
     : 'Không tìm thấy tài liệu liên quan.';
+
+  // Phát hiện tin đầu tiên trong ngày dựa vào history rỗng
+  const isFirstMessage = history.length === 0;
+
+  const greetingRule = isFirstMessage
+    ? `LƯỢT NÀY LÀ TIN ĐẦU TIÊN: Bạn có thể mở đầu bằng lời chào ấm áp, ngắn gọn (1 câu) trước khi vào câu trả lời.`
+    : `QUAN TRỌNG — KHÔNG CHÀO LẠI: Đây KHÔNG phải tin đầu tiên trong cuộc trò chuyện. Bạn TUYỆT ĐỐI KHÔNG được mở đầu bằng "Chào mẹ", "Xin chào", "Chào bạn" hay bất kỳ lời chào hỏi nào. Trả lời thẳng vào nội dung câu hỏi ngay từ từ đầu tiên.`;
 
   const systemPrompt = `Bạn là trợ lý AI thông minh, một người bạn đồng hành tin cậy chuyên về sức khỏe mẹ và bé, thai kỳ và phương pháp giáo dục Montessori.
 
 PHONG CÁCH TRẢ LỜI:
 1. Gần gũi, ấm áp, như một người thân trong gia đình nhưng vẫn đảm bảo tính chuyên môn và chi tiết.
-2. Trình bày nội dung một cách đầy đủ, có chiều sâu, giải thích cặn kẽ các vấn đề thay vì trả lời ngắn gọn.
+2. Trình bày nội dung MỘT CÁCH ĐẦY ĐỦ, TRỌN VẸN từ đầu đến cuối — KHÔNG được dừng giữa chừng. Mỗi câu trả lời phải có kết luận hoặc lời kết thúc rõ ràng.
 3. TUYỆT ĐỐI KHÔNG liệt kê các nguồn tham khảo như "[Tài liệu 1]" hay "Theo tài liệu...". Hãy lồng ghép kiến thức từ tài liệu vào câu trả lời một cách tự nhiên nhất.
 4. Luôn trả lời bằng tiếng Việt, có cấu trúc rõ ràng (sử dụng gạch đầu dòng, tiêu đề nhỏ nếu cần).
+5. ${greetingRule}
 
 Dưới đây là kiến thức nền tảng để bạn tham khảo (Hãy sử dụng chúng để trả lời nhưng đừng nhắc tên tài liệu):
 ${contextText}
 
-Hãy dựa vào kiến thức trên để trả lời câu hỏi của người dùng một cách tâm huyết và chi tiết nhất. Nếu thông tin không có trong tài liệu, hãy sử dụng kiến thức chuyên môn của bạn để tư vấn thêm một cách thận trọng.`;
+Hãy dựa vào kiến thức trên để trả lời câu hỏi của người dùng một cách tâm huyết và chi tiết nhất. Luôn hoàn thành câu trả lời trọn vẹn. Nếu thông tin không có trong tài liệu, hãy sử dụng kiến thức chuyên môn của bạn để tư vấn thêm một cách thận trọng.`;
 
   const chat = chatModel.startChat({
     history: [
@@ -123,7 +132,9 @@ Hãy dựa vào kiến thức trên để trả lời câu hỏi của người 
       },
       {
         role: 'model',
-        parts: [{ text: 'Chào bạn, mình đã sẵn sàng. Mình sẽ đồng hành cùng bạn bằng phong cách gần gũi, chia sẻ chi tiết mọi kiến thức về mẹ bé và Montessori mà không làm câu trả lời trở nên khô cứng bởi các trích dẫn tài liệu.' }],
+        parts: [{ text: isFirstMessage
+          ? 'Đã hiểu. Mình sẽ chào ngắn gọn ở đầu rồi trả lời đầy đủ, trọn vẹn.'
+          : 'Đã hiểu. Mình sẽ KHÔNG chào lại, trả lời thẳng vào nội dung, đầy đủ và trọn vẹn từ đầu đến cuối.' }],
       },
       ...history,
     ],
