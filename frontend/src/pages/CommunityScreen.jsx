@@ -407,7 +407,11 @@ export default function CommunityScreen({ profile }) {
             conversations={conversations}
             onClose={() => setSelectedProfile(null)}
             onSendDMRequest={(toUser) => { setSelectedProfile(null); setShowDMRequestSheet(toUser); }}
-            onOpenConversation={(chat) => { setActiveRoom(chat); setSelectedProfile(null); }}
+            onOpenConversation={(conv) => {
+              setSelectedProfile(null);
+              setActiveRoom(null);     // exit community room
+              setActiveConversation(conv); // open DM
+            }}
           />
         )}
 
@@ -642,7 +646,11 @@ export default function CommunityScreen({ profile }) {
           conversations={conversations}
           onClose={() => setSelectedProfile(null)}
           onSendDMRequest={(toUser) => { setSelectedProfile(null); setShowDMRequestSheet(toUser); }}
-          onOpenConversation={(chat) => { setActiveRoom(chat); setSelectedProfile(null); }}
+          onOpenConversation={(conv) => {
+            setSelectedProfile(null);
+            setActiveRoom(null);     // exit community room if open
+            setActiveConversation(conv); // open DM
+          }}
         />
       )}
 
