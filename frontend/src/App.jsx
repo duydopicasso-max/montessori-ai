@@ -50,6 +50,14 @@ const MomentsIcon = () => (
     <circle cx="12" cy="13" r="3" />
   </svg>
 );
+/* ── Logout SVG icon — line-art, sage tone ── */
+const LogoutIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
 
 const NAV_TABS = [
   { id: 'chat',      IconComponent: HomeIcon,      label: 'Trang chủ' },
@@ -282,8 +290,8 @@ export default function App() {
   return (
     <div className="app-shell" aria-label="Montessori AI App">
 
-      {/* ── TOP BAR (mobile only) ── */}
-      {activeTab !== 'chat' && (
+      {/* ── TOP BAR (mobile only) — hiện ở các tab ngoài chat, nhưng avatar/logout chỉ ở tab baby ── */}
+      {activeTab !== 'chat' && activeTab !== 'baby' && (
         <div className="top-bar">
           <div className="top-bar-brand">
             <img src={`${import.meta.env.BASE_URL}icon-192.png`} className="top-bar-logo-img" alt="logo" />
@@ -291,16 +299,6 @@ export default function App() {
               <div className="top-bar-name">Montessori AI</div>
               <div className="top-bar-sub">Trợ lý mẹ & bé</div>
             </div>
-          </div>
-          <div className="top-bar-profile">
-            <div className="profile-chip">
-              {authUser.photoURL
-                ? <img src={authUser.photoURL} alt="avatar" className="profile-avatar" />
-                : <div className="profile-avatar-emoji">{profile.status === 'pregnant' ? '🤰' : '👩‍🍼'}</div>
-              }
-              <div className="profile-name">Mẹ {momName}</div>
-            </div>
-            <button className="logout-icon-btn" onClick={handleLogout} title="Đăng xuất">🚪</button>
           </div>
         </div>
       )}
@@ -342,7 +340,10 @@ export default function App() {
         </nav>
 
         <div className="sidebar-footer-desk">
-          <button className="logout-desk-btn" onClick={handleLogout}>🚪 Đăng xuất</button>
+          <button className="logout-desk-btn" onClick={handleLogout}>
+            <LogoutIcon />
+            Đăng xuất
+          </button>
           <div className="footer-badge-desk">🤖 Gemini 2.0 + RAG</div>
         </div>
       </aside>
@@ -353,7 +354,7 @@ export default function App() {
         {activeTab === 'tracker'   && <TrackerScreen profile={sharedProfile} />}
         {activeTab === 'growth'    && <GrowthScreen  profile={sharedProfile} setActiveTab={setActiveTab} pendingAction={growthPendingAction} onConsumePendingAction={() => setGrowthPendingAction(null)} />}
         {activeTab === 'community' && <CommunityScreen profile={sharedProfile} />}
-        {activeTab === 'baby'      && <BabyProfileScreen profile={sharedProfile} />}
+        {activeTab === 'baby'      && <BabyProfileScreen profile={sharedProfile} authUser={authUser} onLogout={handleLogout} />}
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}
         {activeTab === 'ingest'    && <IngestScreen />}
       </main>

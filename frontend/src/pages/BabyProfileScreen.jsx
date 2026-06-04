@@ -92,6 +92,13 @@ const IconPencil = () => (
     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
   </svg>
 );
+const IconLogout = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
 
 const CLOUD_NAME   = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
@@ -743,7 +750,7 @@ function QuickPregnancySummary({ userId, week, profileStage, isTwin, fetuses, ba
 /* ════════════════════════════════════════
    MAIN COMPONENT
    ════════════════════════════════════════ */
-export default function BabyProfileScreen({ profile }) {
+export default function BabyProfileScreen({ profile, authUser, onLogout }) {
   const userId       = profile?.user?.uid;
   const statusContext = profile?.status || 'pregnant'; // 'pregnant' | 'parent'
   const isPregnant   = statusContext === 'pregnant';
@@ -879,6 +886,24 @@ export default function BabyProfileScreen({ profile }) {
           </h1>
           <p className="profile-subtitle">{headerSubtitle}</p>
         </div>
+        {/* Avatar + Logout — chỉ hiện ở tab Hồ sơ */}
+        {onLogout && (
+          <div className="profile-header-actions">
+            <div className="profile-user-chip">
+              {authUser?.photoURL
+                ? <img src={authUser.photoURL} alt="avatar" className="profile-chip-avatar" />
+                : <div className="profile-chip-avatar profile-chip-avatar--emoji">
+                    {profile?.status === 'pregnant' ? '🤰' : '👩‍🍼'}
+                  </div>
+              }
+              <span className="profile-chip-name">Mẹ {profile?.momName || ''}</span>
+            </div>
+            <button className="profile-logout-btn" onClick={onLogout} title="Đăng xuất">
+              <IconLogout />
+              <span>Đăng xuất</span>
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Selector bé/thai nhi removed per user request */}
