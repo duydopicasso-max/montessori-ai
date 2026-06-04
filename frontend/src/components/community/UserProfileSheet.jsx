@@ -359,7 +359,7 @@ export default function UserProfileSheet({
             ) : dmStatus === 'accepted' ? (
               <button className="ups-cta-btn" onClick={handleCTA}>
                 <MessageCircleIcon />
-                <span>Mở cuộc trò chuyện</span>
+                <span>Nhắn tin</span>
               </button>
             ) : (
               <button className="ups-cta-btn" onClick={handleCTA}>
