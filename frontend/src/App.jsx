@@ -257,20 +257,42 @@ export default function App() {
     };
   }, []);
 
-  // ── Subscribe dmRequests at App level ──
-  // Runs always, regardless of active tab, so badge updates in real-time
+  // ── Subscribe community notifications at App level ──
+  // Always runs regardless of active tab for real-time badge updates
   useEffect(() => {
     const uid = authUser?.uid;
     if (!uid) { setCommunityNotifCount(0); return; }
-    const q = query(
+
+    let dmCount   = 0;
+    let convCount = 0;
+    const update  = () => setCommunityNotifCount(dmCount + convCount);
+
+    // 1. Pending DM requests (new invitations from new people)
+    const qDm = query(
       collection(db, 'dmRequests'),
       where('toUserId', '==', uid),
       where('status', '==', 'pending'),
     );
-    const unsub = onSnapshot(q, (snap) => {
-      setCommunityNotifCount(snap.size);
-    }, () => setCommunityNotifCount(0));
-    return () => unsub();
+    const unsubDm = onSnapshot(qDm, (snap) => {
+      dmCount = snap.size;
+      update();
+    }, () => {});
+
+    // 2. Accepted conversations with unread messages
+    const qConv = query(
+      collection(db, 'conversations'),
+      where('participantIds', 'array-contains', uid),
+    );
+    const unsubConv = onSnapshot(qConv, (snap) => {
+      convCount = snap.docs.filter(d => {
+        const data = d.data();
+        if (data.hiddenFor?.includes(uid)) return false;
+        return (data.unreadCounts?.[uid] || 0) > 0;
+      }).length;
+      update();
+    }, () => {});
+
+    return () => { unsubDm(); unsubConv(); };
   }, [authUser?.uid]);
 
   const handleOnboardingComplete = (newProfile) => setProfile(newProfile);

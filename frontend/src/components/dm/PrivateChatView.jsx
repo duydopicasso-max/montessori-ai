@@ -184,7 +184,9 @@ export default function PrivateChatView({ conversation, currentUser, onBack }) {
     const text = input.trim();
     if (!text || sending || isAnyBlocked) return;
     setSending(true);
+    // Clear input state AND DOM value synchronously to prevent residual text
     setInput('');
+    if (inputRef.current) inputRef.current.value = '';
     setShowInfoWarn(false);
     try {
       const msgRef = collection(db, 'conversations', convId, 'messages');
