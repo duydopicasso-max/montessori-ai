@@ -2,7 +2,9 @@
   "name": "Montessori AI — Trợ Lý Mẹ & Bé",
   "short_name": "Montessori AI",
   "description": "Trợ lý AI thông minh tư vấn mẹ và bé, thai kỳ, phương pháp giáo dục Montessori.",
-  "start_url": "/",
+  "id": "/montessori-ai/",
+  "start_url": "/montessori-ai/",
+  "scope": "/montessori-ai/",
   "display": "standalone",
   "background_color": "#FAFAF8",
   "theme_color": "#2F6B4F",
@@ -10,13 +12,13 @@
   "lang": "vi",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
