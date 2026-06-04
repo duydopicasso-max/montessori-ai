@@ -4728,11 +4728,6 @@ ${logsDesc}`;
             </div>
           )}
         </div>
-        <div className="header-right-profile" onClick={() => setActiveTab('baby')} style={{ cursor: 'pointer', marginLeft: '12px' }}>
-          <div className="mother-avatar-circle" title="Xem hồ sơ">
-            {getHeaderAvatar()}
-          </div>
-        </div>
       </header>
 
       {/* 🌟 TWIN OVERVIEW SELECTOR - removed per user request */}
