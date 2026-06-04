@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  // GitHub Pages serves from /montessori-ai/ — local dev uses /
-  base: process.env.GITHUB_ACTIONS ? '/montessori-ai/' : '/', // Dynamic base path
+  // Firebase Hosting serves from root /
+  base: '/',
   server: {
     port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
     proxy: {
