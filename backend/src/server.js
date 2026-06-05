@@ -11,7 +11,10 @@ const PORT = process.env.PORT || 3001;
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  process.env.FRONTEND_URL, // URL của Vercel sau khi deploy
+  'https://montessori-d01e0.web.app',         // Firebase Hosting (production)
+  'https://montessori-d01e0.firebaseapp.com',  // Firebase Hosting (alternate)
+  'https://duydopicasso-max.github.io',        // GitHub Pages (legacy)
+  process.env.FRONTEND_URL,                    // Custom URL via env var
 ].filter(Boolean);
 
 app.use(cors({
