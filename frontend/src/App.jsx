@@ -84,6 +84,17 @@ export default function App() {
   // Community notification: only pending DM requests (not ongoing convs)
   const [communityNotifCount, setCommunityNotifCount] = useState(0);
 
+  // DEV-ONLY: expose tab switcher for console testing of hidden admin tabs.
+  // Usage: window.__devSetTab('admin-review') or window.__devSetTab('admin-import')
+  // Admin guard inside each screen still blocks non-admin users regardless.
+  useEffect(() => {
+    window.__devSetTab = (tab) => {
+      setActiveTab(tab);
+      console.info(`[DEV] Tab switched to: ${tab}`);
+    };
+    return () => { delete window.__devSetTab; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Initialize Global History Stack Overlay Coordinator (LIFO)
   useEffect(() => {
     if (!window._overlayStack) {
