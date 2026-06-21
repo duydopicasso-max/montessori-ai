@@ -194,11 +194,11 @@ service cloud.firestore {
       allow read: if isSignedIn();
 
       // 🔒 PROTECTED FIELDS — must never be set by the client SDK.
-      // These fields are reserved for Firebase Admin SDK (server-side) only.
+      // Reserved for Firebase Admin SDK only.
       // Covers: role, isAdmin, admin, claims, permissions, plan, subscription
-      // Any attempt to create or update these fields via client is denied.
 
       // Owner can create their own profile document
+      // Block if ANY protected field is present in the written document
       allow create: if isSignedIn() && request.auth.uid == userId
                     && !request.resource.data.keys().hasAny([
                          'role', 'isAdmin', 'admin',
@@ -206,9 +206,13 @@ service cloud.firestore {
                          'plan', 'subscription'
                        ]);
 
-      // Owner can update their own profile BUT cannot touch any admin-like field
+      // Owner can update their own profile
+      // Block if the incoming document contains ANY protected field
+      // (covers both changed fields AND newly added fields)
+      // 🔒 NOTE: we check request.resource.data.keys() — the full outgoing doc —
+      //          NOT just affectedKeys(), which only detects changed values.
       allow update: if isSignedIn() && request.auth.uid == userId
-                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                    && !request.resource.data.keys().hasAny([
                          'role', 'isAdmin', 'admin',
                          'claims', 'permissions',
                          'plan', 'subscription'

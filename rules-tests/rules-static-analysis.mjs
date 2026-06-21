@@ -77,9 +77,9 @@ check('A3: "role" blocked on create (.keys().hasAny)',
   usersSection.includes("keys().hasAny") && usersSection.includes("'role'"),
   'Protected fields blocklist (.keys().hasAny) not found on create');
 
-check('A4: "role" blocked on update (.affectedKeys().hasAny)',
-  usersSection.includes('affectedKeys().hasAny') && usersSection.includes("'role'"),
-  '"role" not in affectedKeys().hasAny blocklist');
+check('A4: "role" blocked on update (keys().hasAny or affectedKeys().hasAny)',
+  (usersSection.includes('keys().hasAny') || usersSection.includes('affectedKeys().hasAny')) && usersSection.includes("'role'"),
+  '"role" not in keys().hasAny or affectedKeys().hasAny blocklist');
 
 const adminFields = ['isAdmin', 'admin', 'claims', 'permissions', 'plan', 'subscription'];
 const missingFields = adminFields.filter(f => !usersSection.includes(`'${f}'`));
