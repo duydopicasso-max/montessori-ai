@@ -74,6 +74,9 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
   const [status,        setStatus]       = useState(item.reviewStatus  || 'pending_review');
   const [publishStatus, setPublishStatus] = useState(item.publishStatus || '');
   const [publishedPostId, setPublishedPostId] = useState(item.publishedPostId || '');
+  // Room admin can override AI suggestion before publishing
+  const suggestedRoom = item.communityPostSuggestion?.room || '';
+  const [selectedRoom,  setSelectedRoom] = useState(suggestedRoom);
   const [notes,         setNotes]        = useState(item.reviewNotes || '');
   const [confirm,       setConfirm]      = useState(null); // { type, nextStatus?, message }
   const [saving,        setSaving]       = useState(false);
@@ -113,7 +116,9 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     setConfirm(null);
     try {
       const currentItem = { ...item, reviewStatus: status, publishStatus };
-      const res = await publishApprovedAiContent({ db, item: currentItem, adminUid: authUid });
+      // Pass selectedRoom as overrideRoom when admin changed it
+      const overrideRoom = selectedRoom !== suggestedRoom ? selectedRoom : undefined;
+      const res = await publishApprovedAiContent({ db, item: currentItem, adminUid: authUid, overrideRoom });
       if (res.result === PUBLISH_RESULT.SUCCESS) {
         setPublishStatus('published');
         setPublishedPostId(res.publishedPostId || '');
@@ -149,10 +154,14 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
   };
 
   const requestPublish = () => {
-    const roomName = item.communityPostSuggestion?.room || '(chưa rõ nhóm)';
+    const displayRoom = selectedRoom || suggestedRoom || '(chưa rõ nhóm)';
+    const isOverridden = selectedRoom !== suggestedRoom;
+    const overrideNote = isOverridden
+      ? ` (bạn đã đổi từ "${suggestedRoom}")`
+      : ' (theo đề xuất AI)';
     setConfirm({
       type: 'publish',
-      message: `Bài này sẽ được đăng vào nhóm "${roomName}" với tên Trợ lý Montessori. Hành động này sẽ tạo bài công khai trong cộng đồng. Bạn có chắc muốn tiếp tục không?`,
+      message: `Bài này sẽ được đăng vào nhóm “${displayRoom}”${overrideNote} với tên Trợ lý Montessori. Hành động này sẽ tạo bài công khai trong cộng đồng. Bạn có chắc muốn tiếp tục không?`,
     });
   };
 
@@ -230,11 +239,44 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
           {sugg && (
             <section className="arq-modal-section arq-community-box">
               <h3>📌 Đề xuất đăng vào hội nhóm</h3>
-              {sugg.room      && <p><b>Nhóm:</b> {sugg.room} {ROOM_NAME_TO_ID[sugg.room] ? `(ID: ${ROOM_NAME_TO_ID[sugg.room]})` : '⚠️ không hợp lệ'}</p>}
-              {sugg.postTitle && <p><b>Tiêu đề:</b> {sugg.postTitle}</p>}
-              {sugg.postBody  && <p><b>Nội dung:</b> {sugg.postBody}</p>}
-              {sugg.engagementQuestion && <p><b>Câu hỏi gợi mở:</b> {sugg.engagementQuestion}</p>}
-              {/* Publish status & action */}
+
+              {/* Room selector — admin can override AI suggestion */}
+              <div className="arq-room-selector-wrap">
+                <label htmlFor="room-select" className="arq-room-label">
+                  Nhóm đăng
+                  {selectedRoom !== suggestedRoom && (
+                    <span className="arq-room-changed-badge">(đã đổi)</span>
+                  )}
+                </label>
+                <select
+                  id="room-select"
+                  className="arq-room-select"
+                  value={selectedRoom}
+                  onChange={(e) => setSelectedRoom(e.target.value)}
+                  disabled={publishStatus === 'published' || publishing}
+                >
+                  {Object.keys(ROOM_NAME_TO_ID).map((name) => (
+                    <option key={name} value={name}>
+                      {name}{name === suggestedRoom ? ' — đề xuất AI' : ''}
+                    </option>
+                  ))}
+                </select>
+                {selectedRoom !== suggestedRoom && suggestedRoom && (
+                  <p className="arq-hint arq-room-ai-note">
+                    AI đề xuất: “{suggestedRoom}” —
+                    <button
+                      className="arq-room-reset"
+                      onClick={() => setSelectedRoom(suggestedRoom)}
+                    >khôi phục</button>
+                  </p>
+                )}
+              </div>
+
+              {sugg.postTitle && <p className="arq-sugg-field"><b>Tiêu đề:</b> {sugg.postTitle}</p>}
+              {sugg.postBody  && <p className="arq-sugg-field"><b>Nội dung:</b> {sugg.postBody}</p>}
+              {sugg.engagementQuestion && <p className="arq-sugg-field"><b>Câu hỏi gợi mở:</b> {sugg.engagementQuestion}</p>}
+
+              {/* Publish status */}
               {publishStatus === 'published' ? (
                 <div className="arq-publish-done">
                   <span className="arq-publish-check">✓</span>

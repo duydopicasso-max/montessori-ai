@@ -74,18 +74,31 @@ export const PUBLISH_RESULT = {
 /**
  * Publish an approved AI content item to its target community chatRoom.
  *
- * @param {{ db: Firestore, item: object, adminUid: string }} params
+ * @param {{ db: Firestore, item: object, adminUid: string, overrideRoom?: string }} params
+ *   overrideRoom: optional room name from ROOM_NAME_TO_ID keys.
+ *                 If provided, overrides item.communityPostSuggestion.room.
+ *                 Useful when admin wants to correct AI room suggestion.
  * @returns {Promise<{ result: string, publishedPostId?: string, error?: string }>}
  */
-export async function publishApprovedAiContent({ db, item, adminUid }) {
+export async function publishApprovedAiContent({ db, item, adminUid, overrideRoom }) {
   // ── Step 1: Pre-flight validation ─────────────────────────────────────────
-  const validationError = validateItem(item, adminUid);
+  const validationError = validateItem(item, adminUid, overrideRoom);
   if (validationError) {
     return { result: PUBLISH_RESULT.ERROR, error: validationError };
   }
 
-  const sugg    = item.communityPostSuggestion;
-  const roomId  = ROOM_NAME_TO_ID[sugg.room];
+  const sugg = item.communityPostSuggestion;
+
+  // Resolve room: admin override takes priority over AI suggestion
+  const resolvedRoomName = overrideRoom || sugg.room;
+  const roomId = ROOM_NAME_TO_ID[resolvedRoomName];
+  if (!roomId) {
+    return {
+      result: PUBLISH_RESULT.ERROR,
+      error:  `Tên nhóm "${resolvedRoomName}" không hợp lệ. Các nhóm hợp lệ: ${Object.keys(ROOM_NAME_TO_ID).join(', ')}.`,
+    };
+  }
+
   const msgText = buildPostText({
     postTitle:         sugg.postTitle,
     postBody:          sugg.postBody,
@@ -192,7 +205,7 @@ export async function publishApprovedAiContent({ db, item, adminUid }) {
 
 // ── Validation ───────────────────────────────────────────────────────────────
 
-function validateItem(item, adminUid) {
+function validateItem(item, adminUid, overrideRoom = null) {
   if (!item || typeof item !== 'object') {
     return 'Dữ liệu bài không hợp lệ.';
   }
@@ -215,8 +228,11 @@ function validateItem(item, adminUid) {
   if (!sugg || typeof sugg !== 'object') {
     return 'Bài không có thông tin đề xuất hội nhóm (communityPostSuggestion).';
   }
-  if (!ROOM_NAME_TO_ID[sugg.room]) {
+  if (!ROOM_NAME_TO_ID[sugg.room] && !overrideRoom) {
     return `Tên nhóm "${sugg.room}" không hợp lệ. Các nhóm hợp lệ: ${Object.keys(ROOM_NAME_TO_ID).join(', ')}.`;
+  }
+  if (overrideRoom && !ROOM_NAME_TO_ID[overrideRoom]) {
+    return `Nhóm được chọn "${overrideRoom}" không hợp lệ. Các nhóm hợp lệ: ${Object.keys(ROOM_NAME_TO_ID).join(', ')}.`;
   }
   if (!sugg.postTitle?.trim()) {
     return 'Thiếu tiêu đề bài (postTitle).';
