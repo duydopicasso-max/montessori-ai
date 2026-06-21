@@ -1,12 +1,15 @@
 /**
  * AdminReviewQueueScreen.jsx
- * Phase 2C.1 — Admin-only review queue for aiContentReviewQueue.
+ * Phase 2C.2 — Admin-only review queue with publish action.
  *
  * SAFETY CONTRACT:
- * - NEVER writes to chatRooms, customRooms, communityPosts or any public collection.
  * - Only users where users/{uid}.role === 'admin' can access this screen.
- * - 'approved_for_publish' status does NOT publish posts publicly in Phase 2C.1.
- * - Only updates: reviewStatus, reviewedAt, reviewedByUid, reviewNotes, updatedAt.
+ * - Publish only writes to chatRooms/{roomId}/messages (no other public collections).
+ * - Only items with reviewStatus = 'approved_for_publish' and
+ *   contentType = 'Bài đăng hội nhóm' can be published.
+ * - Uses runTransaction for atomic duplicate protection.
+ * - Review updates only touch: reviewStatus, reviewedAt, reviewedByUid, reviewNotes, updatedAt.
+ * - Publish updates only touch: publishStatus, publishedAt, publishedByUid, publishedPostId, updatedAt.
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -14,6 +17,9 @@ import {
   serverTimestamp, query, orderBy,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
+import {
+  publishApprovedAiContent, PUBLISH_RESULT, ROOM_NAME_TO_ID,
+} from '../utils/publishToRoom.js';
 import './AdminReviewQueueScreen.css';
 
 // ── Admin guard (same pattern as AdminImportScreen) ─────────────────────────
@@ -65,12 +71,16 @@ function StatusBadge({ status }) {
 
 // ── Detail Modal ─────────────────────────────────────────────────────────────
 function DetailModal({ item, authUid, onClose, onUpdate }) {
-  const [status,  setStatus]  = useState(item.reviewStatus || 'pending_review');
-  const [notes,   setNotes]   = useState(item.reviewNotes || '');
-  const [confirm, setConfirm] = useState(null); // { nextStatus, message }
-  const [saving,  setSaving]  = useState(false);
-  const [saved,   setSaved]   = useState(false);
-  const [err,     setErr]     = useState('');
+  const [status,        setStatus]       = useState(item.reviewStatus  || 'pending_review');
+  const [publishStatus, setPublishStatus] = useState(item.publishStatus || '');
+  const [publishedPostId, setPublishedPostId] = useState(item.publishedPostId || '');
+  const [notes,         setNotes]        = useState(item.reviewNotes || '');
+  const [confirm,       setConfirm]      = useState(null); // { type, nextStatus?, message }
+  const [saving,        setSaving]       = useState(false);
+  const [publishing,    setPublishing]   = useState(false);
+  const [saved,         setSaved]        = useState(false);
+  const [publishMsg,    setPublishMsg]   = useState('');
+  const [err,           setErr]          = useState('');
 
   const doUpdate = useCallback(async (nextStatus) => {
     setErr('');
@@ -86,7 +96,7 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
       });
       setSaved(true);
       setStatus(nextStatus);
-      onUpdate(item.id, nextStatus, notes.trim().slice(0, NOTE_MAX));
+      onUpdate(item.id, { reviewStatus: nextStatus, reviewNotes: notes.trim().slice(0, NOTE_MAX) });
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
       setErr('Lỗi khi cập nhật: ' + (e.message || 'Unknown error'));
@@ -96,17 +106,54 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     }
   }, [authUid, item.id, notes, onUpdate]);
 
+  const doPublish = useCallback(async () => {
+    setErr('');
+    setPublishMsg('');
+    setPublishing(true);
+    setConfirm(null);
+    try {
+      const currentItem = { ...item, reviewStatus: status, publishStatus };
+      const res = await publishApprovedAiContent({ db, item: currentItem, adminUid: authUid });
+      if (res.result === PUBLISH_RESULT.SUCCESS) {
+        setPublishStatus('published');
+        setPublishedPostId(res.publishedPostId || '');
+        setPublishMsg('Đã xuất bản bài vào cộng đồng.');
+        onUpdate(item.id, { publishStatus: 'published', publishedPostId: res.publishedPostId });
+      } else if (res.result === PUBLISH_RESULT.ALREADY_PUBLISHED) {
+        setPublishStatus('published');
+        setPublishedPostId(res.publishedPostId || item.publishedPostId || '');
+        setPublishMsg('Bài này đã được xuất bản trước đó.');
+        onUpdate(item.id, { publishStatus: 'published', publishedPostId: res.publishedPostId });
+      } else {
+        setErr(res.error || 'Lỗi không xác định khi xuất bản.');
+      }
+    } catch (e) {
+      setErr('Lỗi khi xuất bản: ' + (e?.message || 'Lỗi không xác định'));
+    } finally {
+      setPublishing(false);
+    }
+  }, [authUid, item, status, publishStatus, onUpdate]);
+
   const requestUpdate = (nextStatus) => {
     if (nextStatus === 'approved_for_publish') {
       setConfirm({
+        type: 'review',
         nextStatus,
-        message: 'Bài này sẽ được đánh dấu là đã duyệt để chờ xuất bản. Phase hiện tại chưa đăng công khai. Bạn có muốn tiếp tục không?',
+        message: 'Bài này sẽ được đánh dấu là đã duyệt để chờ xuất bản. Bạn có muốn tiếp tục không?',
       });
     } else if (nextStatus === 'rejected') {
-      setConfirm({ nextStatus, message: 'Bạn có chắc muốn từ chối bài này không?' });
+      setConfirm({ type: 'review', nextStatus, message: 'Bạn có chắc muốn từ chối bài này không?' });
     } else {
       doUpdate(nextStatus);
     }
+  };
+
+  const requestPublish = () => {
+    const roomName = item.communityPostSuggestion?.room || '(chưa rõ nhóm)';
+    setConfirm({
+      type: 'publish',
+      message: `Bài này sẽ được đăng vào nhóm "${roomName}" với tên Trợ lý Montessori. Hành động này sẽ tạo bài công khai trong cộng đồng. Bạn có chắc muốn tiếp tục không?`,
+    });
   };
 
   const sugg = item.communityPostSuggestion;
@@ -183,11 +230,24 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
           {sugg && (
             <section className="arq-modal-section arq-community-box">
               <h3>📌 Đề xuất đăng vào hội nhóm</h3>
-              {sugg.roomId     && <p><b>Room:</b> {sugg.roomId}</p>}
-              {sugg.roomName   && <p><b>Nhóm:</b> {sugg.roomName}</p>}
-              {sugg.postTitle  && <p><b>Tiêu đề:</b> {sugg.postTitle}</p>}
-              {sugg.postBody   && <p><b>Nội dung:</b> {sugg.postBody}</p>}
-              <p className="arq-hint">⚠️ Phase 2C.1 chưa publish vào hội nhóm</p>
+              {sugg.room      && <p><b>Nhóm:</b> {sugg.room} {ROOM_NAME_TO_ID[sugg.room] ? `(ID: ${ROOM_NAME_TO_ID[sugg.room]})` : '⚠️ không hợp lệ'}</p>}
+              {sugg.postTitle && <p><b>Tiêu đề:</b> {sugg.postTitle}</p>}
+              {sugg.postBody  && <p><b>Nội dung:</b> {sugg.postBody}</p>}
+              {sugg.engagementQuestion && <p><b>Câu hỏi gợi mở:</b> {sugg.engagementQuestion}</p>}
+              {/* Publish status & action */}
+              {publishStatus === 'published' ? (
+                <div className="arq-publish-done">
+                  <span className="arq-publish-check">✓</span>
+                  <span>Đã xuất bản vào cộng đồng</span>
+                  {publishedPostId && (
+                    <p className="arq-hint arq-publish-path">{publishedPostId}</p>
+                  )}
+                </div>
+              ) : (
+                status === 'approved_for_publish' && item.contentType === 'Bài đăng hội nhóm' && (
+                  <p className="arq-hint arq-publish-ready">Bài đã duyệt — sẵn sàng xuất bản</p>
+                )
+              )}
             </section>
           )}
 
@@ -219,31 +279,56 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
             <span className="arq-count">{notes.length}/{NOTE_MAX}</span>
           </div>
 
-          {err && <p className="arq-error">{err}</p>}
-          {saved && <p className="arq-success">✓ Đã lưu trạng thái</p>}
+          {err        && <p className="arq-error">{err}</p>}
+          {saved      && <p className="arq-success">✓ Đã lưu trạng thái</p>}
+          {publishMsg && <p className="arq-success">{publishMsg}</p>}
 
+          {/* ── Review status actions ── */}
           <div className="arq-action-row">
             <button
               className="arq-btn arq-btn-neutral"
-              disabled={saving || status === 'pending_review'}
+              disabled={saving || publishing || status === 'pending_review'}
               onClick={() => requestUpdate('pending_review')}
             >Giữ chờ duyệt</button>
             <button
               className="arq-btn arq-btn-warn"
-              disabled={saving || status === 'needs_edit'}
+              disabled={saving || publishing || status === 'needs_edit'}
               onClick={() => requestUpdate('needs_edit')}
             >Cần chỉnh sửa</button>
             <button
               className="arq-btn arq-btn-approve"
-              disabled={saving || status === 'approved_for_publish'}
+              disabled={saving || publishing || status === 'approved_for_publish'}
               onClick={() => requestUpdate('approved_for_publish')}
             >✓ Duyệt</button>
             <button
               className="arq-btn arq-btn-reject"
-              disabled={saving || status === 'rejected'}
+              disabled={saving || publishing || status === 'rejected'}
               onClick={() => requestUpdate('rejected')}
             >✕ Từ chối</button>
           </div>
+
+          {/* ── Publish action (only for approved community posts) ── */}
+          {item.contentType === 'Bài đăng hội nhóm' && (
+            <div className="arq-publish-row">
+              {publishStatus === 'published' ? (
+                <button className="arq-btn arq-btn-published" disabled>
+                  ✓ Đã xuất bản
+                </button>
+              ) : (
+                <button
+                  className="arq-btn arq-btn-publish"
+                  disabled={publishing || saving || status !== 'approved_for_publish'}
+                  onClick={requestPublish}
+                  title={status !== 'approved_for_publish' ? 'Bài cần được duyệt trước khi xuất bản' : ''}
+                >
+                  {publishing ? 'Đang xuất bản…' : 'Xuất bản'}
+                </button>
+              )}
+              {status !== 'approved_for_publish' && publishStatus !== 'published' && (
+                <p className="arq-hint arq-publish-hint">Duyệt bài trước để kích hoạt xuất bản</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Confirm Dialog ── */}
@@ -253,11 +338,19 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
               <p>{confirm.message}</p>
               <div className="arq-confirm-actions">
                 <button className="arq-btn arq-btn-ghost" onClick={() => setConfirm(null)}>Huỷ</button>
-                <button
-                  className="arq-btn arq-btn-primary"
-                  disabled={saving}
-                  onClick={() => doUpdate(confirm.nextStatus)}
-                >{saving ? 'Đang lưu…' : 'Xác nhận'}</button>
+                {confirm.type === 'publish' ? (
+                  <button
+                    className="arq-btn arq-btn-publish"
+                    disabled={publishing}
+                    onClick={doPublish}
+                  >{publishing ? 'Đang xuất bản…' : 'Xác nhận xuất bản'}</button>
+                ) : (
+                  <button
+                    className="arq-btn arq-btn-primary"
+                    disabled={saving}
+                    onClick={() => doUpdate(confirm.nextStatus)}
+                  >{saving ? 'Đang lưu…' : 'Xác nhận'}</button>
+                )}
               </div>
             </div>
           </div>
@@ -318,12 +411,10 @@ export default function AdminReviewQueueScreen({ authUser }) {
     return () => { cancelled = true; };
   }, [adminChecked, isAdmin]);
 
-  // ── Local update after review action (optimistic) ─────────────────────────
-  const handleUpdate = useCallback((id, newStatus, newNotes) => {
-    setItems(prev => prev.map(it =>
-      it.id === id ? { ...it, reviewStatus: newStatus, reviewNotes: newNotes } : it
-    ));
-    setSelected(prev => prev?.id === id ? { ...prev, reviewStatus: newStatus, reviewNotes: newNotes } : prev);
+  // ── Local update after review or publish action (optimistic) ───────────────
+  const handleUpdate = useCallback((id, patch) => {
+    setItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+    setSelected(prev => prev?.id === id ? { ...prev, ...patch } : prev);
   }, []);
 
   // ── Derived filter options ─────────────────────────────────────────────────

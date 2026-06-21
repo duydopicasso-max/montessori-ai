@@ -1,7 +1,7 @@
 /**
- * rules-static-analysis.mjs  (v3 — Phase 2B + 2C.1)
+ * rules-static-analysis.mjs  (v4 — Phase 2B + 2C.1 + 2C.2)
  * ─────────────────────────────────────────────────────────────────────────────
- * Static analysis of Firestore Rules — Phase 2B + 2C.1 security checks.
+ * Static analysis of Firestore Rules — Phase 2B + 2C.1 + 2C.2 security checks.
  * Runs WITHOUT Firebase Emulator or Java.
  *
  * Run:  node rules-static-analysis.mjs
@@ -44,9 +44,10 @@ const has = (s) => raw.includes(s);
 const usersSection = slice('match /users/{userId}',               'match /blockedUsers');
 const queueSection = slice('match /aiContentReviewQueue/{itemId}', 'CATCH-ALL');
 const chatSection  = slice('match /chatRooms/{roomId}',            '// CUSTOM ROOMS');
+const publishSection = slice('// PUBLISH LOGIC',                   '// AI POST LOGIC');
 const updateBlock  = slice('Admins can update review metadata',    'Hard deletes allowed');
 
-console.log(`\n${BOLD}Montessori AI — Firestore Rules Static Analysis v3 (Phase 2B + 2C.1)${RESET}`);
+console.log(`\n${BOLD}Montessori AI — Firestore Rules Static Analysis v4 (Phase 2B + 2C.1 + 2C.2)${RESET}`);
 console.log(`${DIM}File: ${RULES_PATH}${RESET}`);
 console.log(`${Y}ℹ  Static mode — no Java/emulator required.${RESET}`);
 console.log(`${DIM}   Full integration tests: install Java then run: npm test${RESET}\n`);
@@ -90,13 +91,17 @@ check('B10: Admin can create queue item',
   /allow\s+create\s*:\s*if\s+isAdmin\(\)/.test(queueSection));
 
 check('B11: reviewStatus == "pending_review" enforced on create',
-  queueSection.includes("reviewStatus == 'pending_review'"));
+  queueSection.includes("reviewStatus  == 'pending_review'") ||
+  queueSection.includes("reviewStatus == 'pending_review'"),
+  'reviewStatus = pending_review create constraint missing');
 
 check('B12: importedByUid == request.auth.uid enforced',
   queueSection.includes('importedByUid == request.auth.uid'));
 
 check('B13: authorType == "ai_assistant" enforced',
-  queueSection.includes("authorType == 'ai_assistant'"));
+  queueSection.includes("authorType    == 'ai_assistant'") ||
+  queueSection.includes("authorType == 'ai_assistant'"),
+  'authorType = ai_assistant create constraint missing');
 
 check("B14: isAdmin() reads users/{uid}.role from Firestore",
   raw.includes("data.role == 'admin'") && raw.includes('function isAdmin()'));
@@ -116,17 +121,23 @@ check('C14c: Catch-all deny rule present',
 check('C14d: No cross-reference: aiContentReviewQueue in chatRooms',
   !chatSection.includes('aiContentReviewQueue'));
 
-// ── D: aiContentReviewQueue Update Rule (Phase 2C.1) ──────────────────────
-console.log(`\n${BOLD}Section D: aiContentReviewQueue — Update Rule (Phase 2C.1)${RESET}`);
+// ── D: aiContentReviewQueue Update Rule (Phase 2C.1 + 2C.2) ─────────────────
+console.log(`\n${BOLD}Section D: aiContentReviewQueue — Update Rule (Phase 2C.1 + 2C.2)${RESET}`);
 
 check('D1: Update rule gated by isAdmin()',
   /allow\s+update\s*:\s*if\s+isAdmin\(\)/.test(queueSection));
 
-const allowedUpdateFields = ['reviewStatus', 'reviewedAt', 'reviewedByUid', 'reviewNotes', 'updatedAt'];
-const missingUpdateFields = allowedUpdateFields.filter(f => !queueSection.includes(`'${f}'`));
-check(`D2: Update allowlist has required metadata fields`,
-  missingUpdateFields.length === 0,
-  `Missing: ${missingUpdateFields.join(', ')}`);
+const allowedReviewFields = ['reviewStatus', 'reviewedAt', 'reviewedByUid', 'reviewNotes', 'updatedAt'];
+const missingReviewFields = allowedReviewFields.filter(f => !queueSection.includes(`'${f}'`));
+check(`D2: Update allowlist has required review metadata fields`,
+  missingReviewFields.length === 0,
+  `Missing: ${missingReviewFields.join(', ')}`);
+
+const allowedPublishFields = ['publishStatus', 'publishedAt', 'publishedByUid', 'publishedPostId'];
+const missingPublishFields = allowedPublishFields.filter(f => !queueSection.includes(`'${f}'`));
+check(`D2b: Update allowlist has required publish fields (Phase 2C.2)`,
+  missingPublishFields.length === 0,
+  `Missing: ${missingPublishFields.join(', ')}`);
 
 check("D3: reviewStatus enum includes 'approved_for_publish'",
   queueSection.includes("'approved_for_publish'"));
@@ -151,6 +162,51 @@ check('D9: Immutable "authorType" NOT in update allowlist',
 
 check('D10: reviewedByUid ownership enforced (== request.auth.uid)',
   queueSection.includes('reviewedByUid == request.auth.uid'));
+
+check('D11: publishStatus enum validated (published|unpublished)',
+  queueSection.includes("publishStatus in ['published', 'unpublished']"));
+
+check('D12: publishedByUid ownership enforced (== request.auth.uid)',
+  queueSection.includes('publishedByUid == request.auth.uid'));
+
+check('D13: publishedPostId is string when set',
+  queueSection.includes('publishedPostId is string'));
+
+// ── E: Publish Action — chatRooms AI Post Rule (Phase 2C.2) ──────────────
+console.log(`\n${BOLD}Section E: chatRooms — AI Post Publish Rule (Phase 2C.2)${RESET}`);
+
+check('E1: Admin AI post rule exists in chatRooms (isAdmin() + authorType)',
+  chatSection.includes('isAdmin()') && chatSection.includes("authorType     == 'ai_assistant'"));
+
+check('E2: Room whitelist enforced for AI posts (roomId in [...])',
+  chatSection.includes("roomId in ['pregnancy', 'weaning', 'sleep', 'health', 'family']"));
+
+check('E3: AI post senderId must == request.auth.uid',
+  chatSection.includes('request.resource.data.senderId       == request.auth.uid'));
+
+check('E4: AI post text.size() <= 5000 (higher limit than user posts)',
+  chatSection.includes('text.size()    <= 5000'));
+
+check('E5: AI post text.size() > 0 (non-empty)',
+  chatSection.includes('text.size()    >  0'));
+
+check('E6: AI post requires sourceQueueId is string (traceability)',
+  chatSection.includes('sourceQueueId  is string'));
+
+check('E7: AI post requires transparencyLabel is string',
+  chatSection.includes('transparencyLabel is string'));
+
+check('E8: AI post requires likes == 0 (no initial faking)',
+  chatSection.includes('likes          == 0'));
+
+check('E9: AI post requires replies == 0',
+  chatSection.includes('replies        == 0'));
+
+check('E10: Regular user post blocked if authorType present (! in check)',
+  chatSection.includes("!('authorType' in request.resource.data)"));
+
+check('E10b: Regular user post text still limited to 2000',
+  chatSection.includes('text.size() <= 2000'));
 
 // ── S: Structural Integrity ────────────────────────────────────────────────
 console.log(`\n${BOLD}Bonus: Structural Integrity${RESET}`);
