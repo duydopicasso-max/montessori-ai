@@ -1,11 +1,8 @@
 /**
- * rules-static-analysis.mjs  (v2 — line-range based)
+ * rules-static-analysis.mjs  (v3 — Phase 2B + 2C.1)
  * ─────────────────────────────────────────────────────────────────────────────
- * Static analysis of Firestore Rules — Phase 2B security checks.
+ * Static analysis of Firestore Rules — Phase 2B + 2C.1 security checks.
  * Runs WITHOUT Firebase Emulator or Java.
- *
- * Strategy: instead of block-extraction (fragile), search within line ranges
- * anchored by known markers in the file.
  *
  * Run:  node rules-static-analysis.mjs
  * ─────────────────────────────────────────────────────────────────────────────
@@ -32,37 +29,29 @@ function check(name, ok, detail = '') {
   }
 }
 
-// ── Load rules as both full text and line array ───────────────────────────
 const raw   = readFileSync(RULES_PATH, 'utf8');
 const lines = raw.split('\n');
 
-/** Lines [startMarker … endMarker) as a single string */
 function slice(startMarker, endMarker) {
   const s = lines.findIndex(l => l.includes(startMarker));
   if (s === -1) return '';
-  // Find the NEXT occurrence of endMarker after s
   const e = lines.findIndex((l, i) => i > s && l.includes(endMarker));
   return lines.slice(s, e === -1 ? lines.length : e + 1).join('\n');
 }
 
-/** Does the full rules text contain s? */
 const has = (s) => raw.includes(s);
 
-// ── Build scoped sections by line ranges ─────────────────────────────────
-const usersSection  = slice('match /users/{userId}',              'match /blockedUsers');
-const queueSection  = slice('match /aiContentReviewQueue/{itemId}', 'CATCH-ALL');
-const chatSection   = slice('match /chatRooms/{roomId}',           '// CUSTOM ROOMS');
-const isAdminFn     = slice('function isAdmin()',                   'function isOwner') ||
-                      slice('function isAdmin()',                   '// PUBLIC');
+const usersSection = slice('match /users/{userId}',               'match /blockedUsers');
+const queueSection = slice('match /aiContentReviewQueue/{itemId}', 'CATCH-ALL');
+const chatSection  = slice('match /chatRooms/{roomId}',            '// CUSTOM ROOMS');
+const updateBlock  = slice('Admins can update review metadata',    'Hard deletes allowed');
 
-console.log(`\n${BOLD}Montessori AI — Firestore Rules Static Analysis v2 (Phase 2B)${RESET}`);
+console.log(`\n${BOLD}Montessori AI — Firestore Rules Static Analysis v3 (Phase 2B + 2C.1)${RESET}`);
 console.log(`${DIM}File: ${RULES_PATH}${RESET}`);
 console.log(`${Y}ℹ  Static mode — no Java/emulator required.${RESET}`);
 console.log(`${DIM}   Full integration tests: install Java then run: npm test${RESET}\n`);
 
-// ═════════════════════════════════════════════════════════════════════════════
-// A — users/{uid} Role Escalation Prevention
-// ═════════════════════════════════════════════════════════════════════════════
+// ── A: users/{uid} Role Escalation ────────────────────────────────────────
 console.log(`${BOLD}Section A: users/{uid} — Role Escalation Prevention${RESET}`);
 
 check('A1: No bare "allow write" in users/{uid} block',
@@ -70,95 +59,109 @@ check('A1: No bare "allow write" in users/{uid} block',
   '"allow write:" found — must be split into create/update/delete');
 
 check('A2: users block has "allow create" rule',
-  usersSection.includes('allow create'),
-  '"allow create" not found in users block');
+  usersSection.includes('allow create'));
 
 check('A3: "role" blocked on create (.keys().hasAny)',
-  usersSection.includes("keys().hasAny") && usersSection.includes("'role'"),
-  'Protected fields blocklist (.keys().hasAny) not found on create');
+  usersSection.includes("keys().hasAny") && usersSection.includes("'role'"));
 
 check('A4: "role" blocked on update (keys().hasAny or affectedKeys().hasAny)',
-  (usersSection.includes('keys().hasAny') || usersSection.includes('affectedKeys().hasAny')) && usersSection.includes("'role'"),
-  '"role" not in keys().hasAny or affectedKeys().hasAny blocklist');
+  (usersSection.includes('keys().hasAny') || usersSection.includes('affectedKeys().hasAny'))
+  && usersSection.includes("'role'"));
 
 const adminFields = ['isAdmin', 'admin', 'claims', 'permissions', 'plan', 'subscription'];
 const missingFields = adminFields.filter(f => !usersSection.includes(`'${f}'`));
-check(`A5: All admin-like fields blocked in users (${adminFields.join(', ')})`,
+check(`A5: All admin-like fields blocked (${adminFields.join(', ')})`,
   missingFields.length === 0,
   `Missing: ${missingFields.join(', ')}`);
 
-// ═════════════════════════════════════════════════════════════════════════════
-// B — aiContentReviewQueue
-// ═════════════════════════════════════════════════════════════════════════════
-console.log(`\n${BOLD}Section B: aiContentReviewQueue — Access Control${RESET}`);
+// ── B: aiContentReviewQueue Access Control (Phase 2B) ─────────────────────
+console.log(`\n${BOLD}Section B: aiContentReviewQueue — Access Control (Phase 2B)${RESET}`);
 
 check('B6/B7: queue read gated by isAdmin()',
-  queueSection.includes('allow read') && queueSection.includes('isAdmin()'),
-  '"allow read … isAdmin()" not found in queue block');
+  queueSection.includes('allow read') && queueSection.includes('isAdmin()'));
 
 check('B8: queue write NOT accessible without isAdmin()',
-  !queueSection.match(/allow\s+(write|create|update|delete)\s*:(?!\s*if\s+isAdmin)/),
-  'Found write rule without isAdmin() gate');
+  !queueSection.match(/allow\s+(write|create|update|delete)\s*:(?!\s*if\s+isAdmin)/));
 
-check('B9: Admin can read queue (allow read: if isAdmin())',
-  /allow\s+read\s*:\s*if\s+isAdmin\(\)/.test(queueSection),
-  '"allow read: if isAdmin()" not found');
+check('B9: Admin can read queue',
+  /allow\s+read\s*:\s*if\s+isAdmin\(\)/.test(queueSection));
 
-check('B10: Admin can create queue item (allow create: if isAdmin())',
-  /allow\s+create\s*:\s*if\s+isAdmin\(\)/.test(queueSection),
-  '"allow create: if isAdmin()" not found');
+check('B10: Admin can create queue item',
+  /allow\s+create\s*:\s*if\s+isAdmin\(\)/.test(queueSection));
 
 check('B11: reviewStatus == "pending_review" enforced on create',
-  queueSection.includes("reviewStatus == 'pending_review'"),
-  'reviewStatus constraint missing');
+  queueSection.includes("reviewStatus == 'pending_review'"));
 
 check('B12: importedByUid == request.auth.uid enforced',
-  queueSection.includes('importedByUid == request.auth.uid'),
-  'importedByUid ownership check missing');
+  queueSection.includes('importedByUid == request.auth.uid'));
 
 check('B13: authorType == "ai_assistant" enforced',
-  queueSection.includes("authorType == 'ai_assistant'"),
-  'authorType constraint missing');
+  queueSection.includes("authorType == 'ai_assistant'"));
 
-check('B14: isAdmin() reads users/{uid}.role from Firestore',
-  raw.includes("data.role == 'admin'") && raw.includes('function isAdmin()'),
-  'isAdmin() function malformed');
+check("B14: isAdmin() reads users/{uid}.role from Firestore",
+  raw.includes("data.role == 'admin'") && raw.includes('function isAdmin()'));
 
-// ═════════════════════════════════════════════════════════════════════════════
-// C — Import does NOT touch public community collections
-// ═════════════════════════════════════════════════════════════════════════════
+// ── C: Import Isolation ────────────────────────────────────────────────────
 console.log(`\n${BOLD}Section C: Import Isolation from Public Collections${RESET}`);
 
-check('C14a: chatRooms write requires .text field (blocks import schema)',
-  raw.includes('request.resource.data.text is string'),
-  'chatRooms text constraint not found');
+check('C14a: chatRooms write requires .text field',
+  raw.includes('request.resource.data.text is string'));
 
 check('C14b: chatRooms write requires senderId == auth.uid',
-  raw.includes('request.resource.data.senderId == request.auth.uid'),
-  'chatRooms senderId constraint not found');
+  raw.includes('request.resource.data.senderId == request.auth.uid'));
 
 check('C14c: Catch-all deny rule present',
-  raw.includes('allow read, write: if false'),
-  'Missing catch-all deny rule');
+  raw.includes('allow read, write: if false'));
 
-check('C14d: No cross-reference: aiContentReviewQueue in chatRooms/customRooms',
-  !chatSection.includes('aiContentReviewQueue'),
-  'Unexpected aiContentReviewQueue reference in public chat section');
+check('C14d: No cross-reference: aiContentReviewQueue in chatRooms',
+  !chatSection.includes('aiContentReviewQueue'));
 
-// ═════════════════════════════════════════════════════════════════════════════
-// S — Structural Integrity
-// ═════════════════════════════════════════════════════════════════════════════
+// ── D: aiContentReviewQueue Update Rule (Phase 2C.1) ──────────────────────
+console.log(`\n${BOLD}Section D: aiContentReviewQueue — Update Rule (Phase 2C.1)${RESET}`);
+
+check('D1: Update rule gated by isAdmin()',
+  /allow\s+update\s*:\s*if\s+isAdmin\(\)/.test(queueSection));
+
+const allowedUpdateFields = ['reviewStatus', 'reviewedAt', 'reviewedByUid', 'reviewNotes', 'updatedAt'];
+const missingUpdateFields = allowedUpdateFields.filter(f => !queueSection.includes(`'${f}'`));
+check(`D2: Update allowlist has required metadata fields`,
+  missingUpdateFields.length === 0,
+  `Missing: ${missingUpdateFields.join(', ')}`);
+
+check("D3: reviewStatus enum includes 'approved_for_publish'",
+  queueSection.includes("'approved_for_publish'"));
+
+check("D4: reviewStatus enum includes 'needs_edit'",
+  queueSection.includes("'needs_edit'"));
+
+check("D5: reviewStatus enum includes 'rejected'",
+  queueSection.includes("'rejected'"));
+
+check('D6: reviewStatus uses "in [...]" enum validation',
+  queueSection.includes('reviewStatus in ['));
+
+check('D7: Immutable "importedByUid" NOT in update allowlist',
+  !updateBlock.includes("'importedByUid'"));
+
+check('D8: Immutable "importedAt" NOT in update allowlist',
+  !updateBlock.includes("'importedAt'"));
+
+check('D9: Immutable "authorType" NOT in update allowlist',
+  !updateBlock.includes("'authorType'"));
+
+check('D10: reviewedByUid ownership enforced (== request.auth.uid)',
+  queueSection.includes('reviewedByUid == request.auth.uid'));
+
+// ── S: Structural Integrity ────────────────────────────────────────────────
 console.log(`\n${BOLD}Bonus: Structural Integrity${RESET}`);
 
 check("S1: rules_version = '2'", has("rules_version = '2'"));
-check('S2: isAdmin() defined', has('function isAdmin()'));
+check('S2: isAdmin() defined',    has('function isAdmin()'));
 check('S3: isSignedIn() defined', has('function isSignedIn()'));
 check('S4: No open rules (if true)', !raw.includes('if true'));
-check('S5: aiContentReviewQueue collection exists in rules', has('aiContentReviewQueue'));
+check('S5: aiContentReviewQueue collection exists', has('aiContentReviewQueue'));
 
-// ═════════════════════════════════════════════════════════════════════════════
-// Summary
-// ═════════════════════════════════════════════════════════════════════════════
+// ── Summary ────────────────────────────────────────────────────────────────
 const total = passed + failed;
 console.log('\n' + '─'.repeat(62));
 console.log(`${BOLD}Results: ${G}${passed}/${total} passed${RESET}${failed > 0 ? `  ${R}${failed} failed${RESET}` : ''}`);

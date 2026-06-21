@@ -11,6 +11,7 @@ import BabyProfileScreen from './pages/BabyProfileScreen.jsx';
 import MomentsScreen   from './pages/MomentsScreen.jsx';
 import CommunityScreen from './pages/CommunityScreen.jsx';
 import AdminImportScreen from './pages/AdminImportScreen.jsx';
+import AdminReviewQueueScreen from './pages/AdminReviewQueueScreen.jsx';
 import './App.css';
 
 /* ══ SVG Outline Navigation Icons ══ */
@@ -399,7 +400,8 @@ export default function App() {
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}
         {activeTab === 'ingest'       && <IngestScreen />}
         {/* Admin-only: not in NAV_TABS, not visible to regular users */}
-        {activeTab === 'admin-import' && <AdminImportScreen authUser={authUser} />}
+        {activeTab === 'admin-import'  && <AdminImportScreen authUser={authUser} />}
+        {activeTab === 'admin-review'  && <AdminReviewQueueScreen authUser={authUser} />}
       </main>
 
       {/* ── BOTTOM NAVIGATION (mobile only) ── */}
