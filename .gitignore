@@ -42,3 +42,4 @@ firebase-key.json
 # Browser screenshot captures (local only)
 frontend/public/**/FireShot/
 **FireShot**
+.firebase/
