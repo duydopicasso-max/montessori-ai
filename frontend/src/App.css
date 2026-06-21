@@ -362,3 +362,24 @@ body.overlay-open .bottom-nav {
   from { transform: scale(0.5); opacity: 0; }
   to   { transform: scale(1);   opacity: 1; }
 }
+
+/* ── Admin-only nav tabs ─────────────────────────────────────────────────── */
+/* Subtle amber/olive tint — visually distinct but not jarring                */
+.nav-tab--admin {
+  opacity: 0.75;
+}
+.nav-tab--admin .nav-tab-icon svg {
+  stroke: #8a7040;
+}
+.nav-tab--admin .nav-tab-label {
+  color: #8a7040;
+  font-size: 9px;
+  letter-spacing: 0.2px;
+}
+.nav-tab--admin.active {
+  background: #fdf8ec;
+  border-color: #e8d89a;
+  opacity: 1;
+}
+.nav-tab--admin.active .nav-tab-icon svg { stroke: #6b5500; }
+.nav-tab--admin.active .nav-tab-label   { color: #6b5500; }
