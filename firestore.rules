@@ -23,6 +23,14 @@ service cloud.firestore {
       return !(request.auth.uid in conv.data.blockedBy);
     }
 
+    // isAdmin: reads users/{uid}.role from Firestore
+    // NOTE: This is a document-read based check (not custom claims).
+    // Upgrade to custom claims via Firebase Admin SDK for higher security if needed.
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // ════════════════════════════════════════════════════════
     // PUBLIC COMMUNITY ROOMS
     // ════════════════════════════════════════════════════════
@@ -198,6 +206,36 @@ service cloud.firestore {
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
+    }
+
+    // ════════════════════════════════════════════════════════
+    // AI CONTENT REVIEW QUEUE (admin-only, never public)
+    // ════════════════════════════════════════════════════════
+    // Items imported here have reviewStatus: 'pending_review'.
+    // They are NEVER automatically promoted to community posts.
+    // Regular users have NO read or write access to this collection.
+
+    match /aiContentReviewQueue/{itemId} {
+      // Only admins can read items in the review queue
+      allow read:   if isAdmin();
+
+      // Only admins can create items; enforce safety invariants
+      allow create: if isAdmin()
+                    && request.resource.data.reviewStatus == 'pending_review'
+                    && request.resource.data.importedByUid == request.auth.uid
+                    && request.resource.data.authorType == 'ai_assistant';
+
+      // Admins can update (e.g. change reviewStatus to approved/rejected)
+      // but cannot change importedByUid or source
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly([
+                         'reviewStatus', 'reviewedAt', 'reviewedByUid',
+                         'reviewNotes', 'publishedPostId'
+                       ]);
+
+      // Hard deletes allowed only by admin (e.g. discard rejected items)
+      allow delete: if isAdmin();
     }
 
     // ════════════════════════════════════════════════════════

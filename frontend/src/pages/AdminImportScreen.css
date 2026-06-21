@@ -1,0 +1,314 @@
+/* AdminImportScreen.css
+ * Scoped with ais- prefix — no interference with main app styles
+ */
+
+.ais-root {
+  min-height: 100vh;
+  padding: 24px 20px 40px;
+  background: #f6f7f3;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+.ais-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+.ais-header-icon {
+  font-size: 2.2rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.ais-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1a3a28;
+  margin: 0 0 4px;
+}
+.ais-subtitle {
+  font-size: 0.85rem;
+  color: #556;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Upload / Dropzone ── */
+.ais-dropzone {
+  border: 2px dashed #aac9b4;
+  border-radius: 14px;
+  background: #fff;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  margin-bottom: 20px;
+  outline: none;
+}
+.ais-dropzone:hover,
+.ais-dropzone:focus {
+  border-color: #2f6b4f;
+  background: #f0f7f3;
+}
+.ais-dropzone--over {
+  border-color: #2f6b4f;
+  background: #e8f5ee;
+}
+.ais-dropzone-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+.ais-dropzone-text {
+  color: #445;
+  font-size: 0.9rem;
+  margin: 0;
+}
+.ais-file-hidden {
+  display: none;
+}
+
+/* ── Validation errors ── */
+.ais-errors {
+  background: #fff5f5;
+  border: 1.5px solid #f0a0a0;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+.ais-errors-title {
+  font-weight: 700;
+  color: #c0392b;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+.ais-errors-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #b03030;
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
+
+/* ── Preview ── */
+.ais-preview {
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px;
+  border: 1.5px solid #d8e8de;
+  margin-bottom: 20px;
+}
+.ais-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2ee;
+}
+.ais-preview-count {
+  font-weight: 700;
+  color: #1a3a28;
+  font-size: 0.95rem;
+}
+.ais-preview-meta {
+  font-size: 0.78rem;
+  color: #778;
+}
+.ais-preview-meta code {
+  background: #f0f0f0;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* ── Item list ── */
+.ais-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.ais-item-card {
+  background: #f9fbf9;
+  border: 1px solid #e0ece6;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.ais-item-title {
+  font-weight: 600;
+  color: #1a3a28;
+  font-size: 0.92rem;
+  margin-bottom: 6px;
+}
+.ais-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.ais-item-type,
+.ais-item-cat,
+.ais-item-room {
+  font-size: 0.75rem;
+  background: #eef2ee;
+  color: #445;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.ais-badge {
+  font-size: 0.72rem;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+}
+.ais-item-summary {
+  font-size: 0.82rem;
+  color: #667;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── Import button ── */
+.ais-import-btn {
+  width: 100%;
+  padding: 14px;
+  background: #2f6b4f;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+.ais-import-btn:hover:not(:disabled) {
+  background: #245a3f;
+}
+.ais-import-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Confirm box ── */
+.ais-confirm-box {
+  background: #fffbec;
+  border: 1.5px solid #e8c84a;
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 14px;
+}
+.ais-confirm-text {
+  font-size: 0.88rem;
+  color: #4a3a00;
+  margin: 0 0 14px;
+  line-height: 1.6;
+}
+.ais-confirm-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+.ais-btn-cancel {
+  padding: 9px 20px;
+  background: #e8e8e8;
+  color: #334;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.ais-btn-confirm {
+  padding: 9px 20px;
+  background: #2f6b4f;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+.ais-btn-confirm:hover { background: #245a3f; }
+
+/* ── Importing spinner ── */
+.ais-importing {
+  text-align: center;
+  padding: 20px;
+  color: #2f6b4f;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* ── Result ── */
+.ais-result {
+  background: #fff;
+  border-radius: 14px;
+  padding: 22px;
+  border: 1.5px solid #d8e8de;
+}
+.ais-result-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a3a28;
+  margin-bottom: 18px;
+}
+.ais-result-section {
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.ais-result--success {
+  background: #f0faf4;
+  border: 1px solid #b0dcc0;
+  color: #1a4a2e;
+}
+.ais-result--warn {
+  background: #fffbec;
+  border: 1px solid #e0c84a;
+  color: #4a3a00;
+}
+.ais-result--error {
+  background: #fff5f5;
+  border: 1px solid #f0a0a0;
+  color: #b03030;
+}
+.ais-result-section ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.ais-btn-reset {
+  margin-top: 14px;
+  padding: 10px 22px;
+  background: #f0f4f0;
+  border: 1.5px solid #c0d8c8;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  color: #2f6b4f;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ais-btn-reset:hover { background: #e4efe8; }
+
+/* ── Guard states ── */
+.ais-checking,
+.ais-forbidden {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  color: #556;
+  font-size: 0.95rem;
+}
+.ais-forbidden-icon { font-size: 3rem; margin-bottom: 16px; }
+.ais-forbidden h2 { color: #1a3a28; margin: 0 0 8px; }
+.ais-forbidden p { margin: 0; }
