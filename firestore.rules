@@ -193,15 +193,26 @@ service cloud.firestore {
       // Authenticated users can read basic profile details for community views
       allow read: if isSignedIn();
 
+      // 🔒 PROTECTED FIELDS — must never be set by the client SDK.
+      // These fields are reserved for Firebase Admin SDK (server-side) only.
+      // Covers: role, isAdmin, admin, claims, permissions, plan, subscription
+      // Any attempt to create or update these fields via client is denied.
+
       // Owner can create their own profile document
       allow create: if isSignedIn() && request.auth.uid == userId
-                    // 🔒 SECURITY: role must not be set on create (only via Admin SDK)
-                    && !('role' in request.resource.data);
+                    && !request.resource.data.keys().hasAny([
+                         'role', 'isAdmin', 'admin',
+                         'claims', 'permissions',
+                         'plan', 'subscription'
+                       ]);
 
-      // Owner can update their own profile BUT cannot touch the 'role' field
-      // 🔒 SECURITY: prevents self-escalation to admin via client SDK
+      // Owner can update their own profile BUT cannot touch any admin-like field
       allow update: if isSignedIn() && request.auth.uid == userId
-                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'role', 'isAdmin', 'admin',
+                         'claims', 'permissions',
+                         'plan', 'subscription'
+                       ]);
 
       // Owner can delete their own profile document
       allow delete: if isSignedIn() && request.auth.uid == userId;

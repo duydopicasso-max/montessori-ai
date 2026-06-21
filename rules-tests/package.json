@@ -1,0 +1,16 @@
+{
+  "name": "montessori-rules-tests",
+  "version": "1.0.0",
+  "description": "Firestore Security Rules unit tests for Montessori AI",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node firestore.rules.test.mjs",
+    "test:static": "node rules-static-analysis.mjs",
+    "test:watch": "node --watch firestore.rules.test.mjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "^11.0.0"
+  }
+}
