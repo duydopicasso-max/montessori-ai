@@ -9,7 +9,7 @@
  * - All writes go to aiContentReviewQueue/{importId} with reviewStatus: 'pending_review'.
  * - Duplicate detection via deterministic importId (sourceDraftId + exportedAt).
  */
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   collection, doc, getDoc, setDoc, serverTimestamp,
 } from 'firebase/firestore';
@@ -59,14 +59,20 @@ export default function AdminImportScreen({ authUser }) {
   const fileRef = useRef(null);
 
   // ── Check admin on mount ──────────────────────────────────────────────────
-  useState(() => {
+  // useEffect with [] ensures this runs exactly once after component mounts.
+  // useState initializer would be wrong here because async ops are not supported.
+  useEffect(() => {
+    let cancelled = false;
     (async () => {
       const ok = await checkIsAdmin(authUser?.uid);
-      setIsAdmin(ok);
-      setAdminChecked(true);
-      setChecking(false);
+      if (!cancelled) {
+        setIsAdmin(ok);
+        setAdminChecked(true);
+        setChecking(false);
+      }
     })();
-  });
+    return () => { cancelled = true; };
+  }, [authUser?.uid]);  // re-check if user changes (e.g. logout → login)
 
   // ── Parse & validate JSON file ────────────────────────────────────────────
   const processFile = useCallback((file) => {
@@ -112,6 +118,11 @@ export default function AdminImportScreen({ authUser }) {
 
   // ── Import ────────────────────────────────────────────────────────────────
   const handleImportConfirm = async () => {
+    // Double-guard: client check (Firestore rules enforce server-side)
+    if (!isAdmin) {
+      alert('Bạn không có quyền thực hiện thao tác này.');
+      return;
+    }
     if (!pkg || !authUser?.uid) return;
     setImportState('importing');
 
