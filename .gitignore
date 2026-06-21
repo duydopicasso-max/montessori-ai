@@ -38,3 +38,7 @@ Thumbs.db
 *adminsdk*.json
 *service-account*.json
 firebase-key.json
+
+# Browser screenshot captures (local only)
+frontend/public/**/FireShot/
+**FireShot**

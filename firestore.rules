@@ -23,6 +23,14 @@ service cloud.firestore {
       return !(request.auth.uid in conv.data.blockedBy);
     }
 
+    // isAdmin: reads users/{uid}.role from Firestore
+    // NOTE: This is a document-read based check (not custom claims).
+    // Upgrade to custom claims via Firebase Admin SDK for higher security if needed.
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // ════════════════════════════════════════════════════════
     // PUBLIC COMMUNITY ROOMS
     // ════════════════════════════════════════════════════════
@@ -184,8 +192,34 @@ service cloud.firestore {
     match /users/{userId} {
       // Authenticated users can read basic profile details for community views
       allow read: if isSignedIn();
-      // Only the owner can modify their profile details
-      allow write: if isSignedIn() && request.auth.uid == userId;
+
+      // 🔒 PROTECTED FIELDS — must never be set by the client SDK.
+      // Reserved for Firebase Admin SDK only.
+      // Covers: role, isAdmin, admin, claims, permissions, plan, subscription
+
+      // Owner can create their own profile document
+      // Block if ANY protected field is present in the written document
+      allow create: if isSignedIn() && request.auth.uid == userId
+                    && !request.resource.data.keys().hasAny([
+                         'role', 'isAdmin', 'admin',
+                         'claims', 'permissions',
+                         'plan', 'subscription'
+                       ]);
+
+      // Owner can update their own profile
+      // Block if the incoming document contains ANY protected field
+      // (covers both changed fields AND newly added fields)
+      // 🔒 NOTE: we check request.resource.data.keys() — the full outgoing doc —
+      //          NOT just affectedKeys(), which only detects changed values.
+      allow update: if isSignedIn() && request.auth.uid == userId
+                    && !request.resource.data.keys().hasAny([
+                         'role', 'isAdmin', 'admin',
+                         'claims', 'permissions',
+                         'plan', 'subscription'
+                       ]);
+
+      // Owner can delete their own profile document
+      allow delete: if isSignedIn() && request.auth.uid == userId;
 
       // Owner private subcollections (babies, pregnancyVisits, moments, reminders, etc.)
       match /{privateData=**} {
@@ -198,6 +232,36 @@ service cloud.firestore {
       match /{allSubcollections=**} {
         allow read, write: if isSignedIn() && request.auth.uid == userId;
       }
+    }
+
+    // ════════════════════════════════════════════════════════
+    // AI CONTENT REVIEW QUEUE (admin-only, never public)
+    // ════════════════════════════════════════════════════════
+    // Items imported here have reviewStatus: 'pending_review'.
+    // They are NEVER automatically promoted to community posts.
+    // Regular users have NO read or write access to this collection.
+
+    match /aiContentReviewQueue/{itemId} {
+      // Only admins can read items in the review queue
+      allow read:   if isAdmin();
+
+      // Only admins can create items; enforce safety invariants
+      allow create: if isAdmin()
+                    && request.resource.data.reviewStatus == 'pending_review'
+                    && request.resource.data.importedByUid == request.auth.uid
+                    && request.resource.data.authorType == 'ai_assistant';
+
+      // Admins can update (e.g. change reviewStatus to approved/rejected)
+      // but cannot change importedByUid or source
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly([
+                         'reviewStatus', 'reviewedAt', 'reviewedByUid',
+                         'reviewNotes', 'publishedPostId'
+                       ]);
+
+      // Hard deletes allowed only by admin (e.g. discard rejected items)
+      allow delete: if isAdmin();
     }
 
     // ════════════════════════════════════════════════════════
