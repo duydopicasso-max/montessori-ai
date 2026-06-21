@@ -11,6 +11,7 @@ import BabyProfileScreen from './pages/BabyProfileScreen.jsx';
 import MomentsScreen   from './pages/MomentsScreen.jsx';
 import CommunityScreen from './pages/CommunityScreen.jsx';
 import AdminImportScreen from './pages/AdminImportScreen.jsx';
+import AdminReviewQueueScreen from './pages/AdminReviewQueueScreen.jsx';
 import './App.css';
 
 /* ══ SVG Outline Navigation Icons ══ */
@@ -82,6 +83,17 @@ export default function App() {
   const [growthPendingAction, setGrowthPendingAction] = useState(null);
   // Community notification: only pending DM requests (not ongoing convs)
   const [communityNotifCount, setCommunityNotifCount] = useState(0);
+
+  // DEV-ONLY: expose tab switcher for console testing of hidden admin tabs.
+  // Usage: window.__devSetTab('admin-review') or window.__devSetTab('admin-import')
+  // Admin guard inside each screen still blocks non-admin users regardless.
+  useEffect(() => {
+    window.__devSetTab = (tab) => {
+      setActiveTab(tab);
+      console.info(`[DEV] Tab switched to: ${tab}`);
+    };
+    return () => { delete window.__devSetTab; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize Global History Stack Overlay Coordinator (LIFO)
   useEffect(() => {
@@ -399,7 +411,8 @@ export default function App() {
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}
         {activeTab === 'ingest'       && <IngestScreen />}
         {/* Admin-only: not in NAV_TABS, not visible to regular users */}
-        {activeTab === 'admin-import' && <AdminImportScreen authUser={authUser} />}
+        {activeTab === 'admin-import'  && <AdminImportScreen authUser={authUser} />}
+        {activeTab === 'admin-review'  && <AdminReviewQueueScreen authUser={authUser} />}
       </main>
 
       {/* ── BOTTOM NAVIGATION (mobile only) ── */}
@@ -422,6 +435,41 @@ export default function App() {
               <span className="nav-tab-label">{tab.label}</span>
             </button>
           ))}
+
+          {/* Admin-only nav tabs — hidden from regular users */}
+          {profile?.role === 'admin' && (
+            <>
+              <button
+                key="admin-import"
+                className={`nav-tab nav-tab--admin ${activeTab === 'admin-import' ? 'active' : ''}`}
+                onClick={() => setActiveTab('admin-import')}
+                title="Admin: Import"
+              >
+                <span className="nav-tab-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </span>
+                <span className="nav-tab-label">Import</span>
+              </button>
+              <button
+                key="admin-review"
+                className={`nav-tab nav-tab--admin ${activeTab === 'admin-review' ? 'active' : ''}`}
+                onClick={() => setActiveTab('admin-review')}
+                title="Admin: Review Queue"
+              >
+                <span className="nav-tab-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                </span>
+                <span className="nav-tab-label">Review</span>
+              </button>
+            </>
+          )}
         </div>
       </nav>
 

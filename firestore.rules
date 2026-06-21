@@ -251,18 +251,26 @@ service cloud.firestore {
                     && request.resource.data.importedByUid == request.auth.uid
                     && request.resource.data.authorType == 'ai_assistant';
 
-      // Admins can update (e.g. change reviewStatus to approved/rejected)
-      // but cannot change importedByUid or source
+      // Admins can update review metadata only.
+      // Immutable fields (body, title, source, etc.) cannot be touched.
+      // Phase 2C.1: approved_for_publish does NOT publish to community.
       allow update: if isAdmin()
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly([
                          'reviewStatus', 'reviewedAt', 'reviewedByUid',
-                         'reviewNotes', 'publishedPostId'
-                       ]);
+                         'reviewNotes', 'updatedAt'
+                       ])
+                    && request.resource.data.reviewStatus in [
+                         'pending_review', 'needs_edit',
+                         'approved_for_publish', 'rejected'
+                       ]
+                    && (!('reviewedByUid' in request.resource.data.diff(resource.data).affectedKeys())
+                        || request.resource.data.reviewedByUid == request.auth.uid);
 
       // Hard deletes allowed only by admin (e.g. discard rejected items)
       allow delete: if isAdmin();
     }
+
 
     // ════════════════════════════════════════════════════════
     // CATCH-ALL: Deny everything else
