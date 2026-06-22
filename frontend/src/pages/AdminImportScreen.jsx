@@ -16,11 +16,12 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import { validateImportPackage, generateImportId } from '../utils/validateImportPackage.js';
+import { isLocalDevMode } from '../utils/devMode.js';
 import './AdminImportScreen.css';
 
 // ── Admin guard: read users/{uid}.role from Firestore ─────────────────────
 async function checkIsAdmin(uid) {
-  if (import.meta.env.DEV) return true;
+  if (isLocalDevMode) return true;
   if (!uid) return false;
   try {
     const snap = await getDoc(doc(db, 'users', uid));
@@ -266,7 +267,7 @@ export default function AdminImportScreen({ authUser, setActiveTab }) {
               it.item.sourceDraftId || 'unknown',
               it.item.exportedAt || pkg.exportedAt || '',
             );
-            if (import.meta.env.DEV && !authUser?.uid) {
+            if (isLocalDevMode && !authUser?.uid) {
               const mockImported = JSON.parse(sessionStorage.getItem('mock_imported_drafts') || '[]');
               dupMap[it.item.sourceDraftId] = mockImported.includes(importId);
             } else {
@@ -370,7 +371,7 @@ export default function AdminImportScreen({ authUser, setActiveTab }) {
       alert('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
-    if (!pkg || (!import.meta.env.DEV && !authUser?.uid)) return;
+    if (!pkg || (!isLocalDevMode && !authUser?.uid)) return;
     setImportState('importing');
 
     const packageId  = `pkg_${Date.now()}`;
@@ -401,7 +402,7 @@ export default function AdminImportScreen({ authUser, setActiveTab }) {
       }
 
       try {
-        if (import.meta.env.DEV && !authUser?.uid) {
+        if (isLocalDevMode && !authUser?.uid) {
           console.log('[MOCK DEV IMPORT]', importId, item.title);
           const mockImported = JSON.parse(sessionStorage.getItem('mock_imported_drafts') || '[]');
           if (!mockImported.includes(importId)) {
