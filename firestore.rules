@@ -36,11 +36,33 @@ service cloud.firestore {
     // ════════════════════════════════════════════════════════
 
     match /chatRooms/{roomId}/messages/{msgId} {
-      allow read:   if isSignedIn();
+      allow read: if isSignedIn();
+
+      // Regular user post: sender must be self, text capped at 2000 chars
       allow create: if isSignedIn()
+                    && !('authorType' in request.resource.data)
                     && request.resource.data.senderId == request.auth.uid
                     && request.resource.data.text is string
                     && request.resource.data.text.size() <= 2000;
+
+      // Admin AI post: strictly validated, only to whitelisted rooms
+      allow create: if isAdmin()
+                    && roomId in ['pregnancy', 'weaning', 'sleep', 'health', 'family']
+                    && request.resource.data.senderId       == request.auth.uid
+                    && request.resource.data.authorType     == 'ai_assistant'
+                    && request.resource.data.senderName     is string
+                    && request.resource.data.senderName.size() > 0
+                    && request.resource.data.isAnon         == false
+                    && request.resource.data.text           is string
+                    && request.resource.data.text.size()    >  0
+                    && request.resource.data.text.size()    <= 5000
+                    && request.resource.data.title          is string
+                    && request.resource.data.sourceQueueId  is string
+                    && request.resource.data.transparencyLabel is string
+                    && request.resource.data.likes          == 0
+                    && request.resource.data.replies        == 0
+                    && request.resource.data.images         is list;
+
       allow update: if isSignedIn()
                     && resource.data.senderId == request.auth.uid;
       allow delete: if false; // No hard deletes by clients
@@ -243,29 +265,39 @@ service cloud.firestore {
 
     match /aiContentReviewQueue/{itemId} {
       // Only admins can read items in the review queue
-      allow read:   if isAdmin();
+      allow read: if isAdmin();
 
       // Only admins can create items; enforce safety invariants
       allow create: if isAdmin()
-                    && request.resource.data.reviewStatus == 'pending_review'
+                    && request.resource.data.reviewStatus  == 'pending_review'
                     && request.resource.data.importedByUid == request.auth.uid
-                    && request.resource.data.authorType == 'ai_assistant';
+                    && request.resource.data.authorType    == 'ai_assistant';
 
-      // Admins can update review metadata only.
-      // Immutable fields (body, title, source, etc.) cannot be touched.
-      // Phase 2C.1: approved_for_publish does NOT publish to community.
+      // Admins can update review metadata OR publish fields.
+      // Content fields (body, title, source, etc.) remain immutable.
       allow update: if isAdmin()
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly([
+                         // Review fields
                          'reviewStatus', 'reviewedAt', 'reviewedByUid',
-                         'reviewNotes', 'updatedAt'
+                         'reviewNotes', 'updatedAt',
+                         // Publish fields (Phase 2C.2)
+                         'publishStatus', 'publishedAt', 'publishedByUid',
+                         'publishedPostId'
                        ])
-                    && request.resource.data.reviewStatus in [
-                         'pending_review', 'needs_edit',
-                         'approved_for_publish', 'rejected'
-                       ]
+                    && (!('reviewStatus' in request.resource.data.diff(resource.data).affectedKeys())
+                        || request.resource.data.reviewStatus in [
+                             'pending_review', 'needs_edit',
+                             'approved_for_publish', 'rejected'
+                           ])
                     && (!('reviewedByUid' in request.resource.data.diff(resource.data).affectedKeys())
-                        || request.resource.data.reviewedByUid == request.auth.uid);
+                        || request.resource.data.reviewedByUid == request.auth.uid)
+                    && (!('publishStatus' in request.resource.data.diff(resource.data).affectedKeys())
+                        || request.resource.data.publishStatus in ['published', 'unpublished'])
+                    && (!('publishedByUid' in request.resource.data.diff(resource.data).affectedKeys())
+                        || request.resource.data.publishedByUid == request.auth.uid)
+                    && (!('publishedPostId' in request.resource.data.diff(resource.data).affectedKeys())
+                        || request.resource.data.publishedPostId is string);
 
       // Hard deletes allowed only by admin (e.g. discard rejected items)
       allow delete: if isAdmin();
