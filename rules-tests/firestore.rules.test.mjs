@@ -81,8 +81,13 @@ function toFields(obj) {
   return out;
 }
 
-async function restWrite(path, data, uid) {
-  const res = await fetch(`${FS_BASE}/${path}`, {
+async function restWrite(path, data, uid, updateFields = null) {
+  let url = `${FS_BASE}/${path}`;
+  if (updateFields && updateFields.length > 0) {
+    const params = updateFields.map(f => `updateMask.fieldPaths=${f}`).join('&');
+    url += `?${params}`;
+  }
+  const res = await fetch(url, {
     method:  'PATCH',
     headers: { 'Content-Type': 'application/json', ...authHdr(uid) },
     body:    JSON.stringify({ fields: toFields(data) }),
@@ -256,6 +261,94 @@ async function main() {
     expectDeny(await restWrite('chatRooms/goc-me-bau/messages/import-001', {
       title: 'Bài import', body: 'Nội dung', importedByUid: ADMIN_UID,
     }, ADMIN_UID));
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // SECTION D — aiContentReviewQueue: Updates (Phase 2C.3B)
+  // ════════════════════════════════════════════════════════════════════════
+  console.log(`\n${BOLD}Section D: aiContentReviewQueue — Updates (Phase 2C.3B)${RESET}`);
+
+  await it('D1: Admin can update imageUrl and updatedAt separately', async () => {
+    await restWrite('aiContentReviewQueue/update-test-1', queueItem(ADMIN_UID), 'owner');
+    expectAllow(await restWrite('aiContentReviewQueue/update-test-1', {
+      imageUrl: 'https://example.com/photo.jpg',
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, ADMIN_UID, ['imageUrl', 'updatedAt']));
+  });
+
+  await it('D2: Admin can update imageUrl to "" (empty string)', async () => {
+    await restWrite('aiContentReviewQueue/update-test-2', queueItem(ADMIN_UID, { imageUrl: 'https://example.com/photo.jpg' }), 'owner');
+    expectAllow(await restWrite('aiContentReviewQueue/update-test-2', {
+      imageUrl: '',
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, ADMIN_UID, ['imageUrl', 'updatedAt']));
+  });
+
+  await it('D3: Admin CANNOT update imageUrl to HTTP url', async () => {
+    await restWrite('aiContentReviewQueue/update-test-3', queueItem(ADMIN_UID), 'owner');
+    expectDeny(await restWrite('aiContentReviewQueue/update-test-3', {
+      imageUrl: 'http://example.com/photo.jpg',
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, ADMIN_UID, ['imageUrl', 'updatedAt']));
+  });
+
+  await it('D4: Admin CANNOT update imageUrl to dangerous scheme (javascript)', async () => {
+    await restWrite('aiContentReviewQueue/update-test-4', queueItem(ADMIN_UID), 'owner');
+    expectDeny(await restWrite('aiContentReviewQueue/update-test-4', {
+      imageUrl: 'javascript:alert(1)',
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, ADMIN_UID, ['imageUrl', 'updatedAt']));
+  });
+
+  await it('D5: Admin CANNOT update imageUrl to > 2048 characters', async () => {
+    await restWrite('aiContentReviewQueue/update-test-5', queueItem(ADMIN_UID), 'owner');
+    const longUrl = 'https://example.com/' + 'a'.repeat(2040) + '.jpg';
+    expectDeny(await restWrite('aiContentReviewQueue/update-test-5', {
+      imageUrl: longUrl,
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, ADMIN_UID, ['imageUrl', 'updatedAt']));
+  });
+
+  await it('D6: Normal user CANNOT update imageUrl in queue', async () => {
+    await restWrite('aiContentReviewQueue/update-test-6', queueItem(ADMIN_UID), 'owner');
+    expectDeny(await restWrite('aiContentReviewQueue/update-test-6', {
+      imageUrl: 'https://example.com/photo.jpg',
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, NORMAL_UID, ['imageUrl', 'updatedAt']));
+  });
+
+  // ════════════════════════════════════════════════════════════════════════
+  // SECTION E — chatRooms AI Post: Image Array constraints (Phase 2C.3B)
+  // ════════════════════════════════════════════════════════════════════════
+  console.log(`\n${BOLD}Section E: chatRooms — AI Post Image constraints (Phase 2C.3B)${RESET}`);
+
+  function aiMessage(ov = {}) {
+    return {
+      title: 'AI Post', text: 'Nội dung', senderId: ADMIN_UID, senderName: 'Trợ lý',
+      isAnon: false, authorType: 'ai_assistant', sourceQueueId: 'queue-001',
+      transparencyLabel: 'AI', likes: 0, replies: 0, images: [],
+      ...ov,
+    };
+  }
+
+  await it('E1: Admin can create AI message with images: []', async () => {
+    expectAllow(await restWrite('chatRooms/pregnancy/messages/msg-1', aiMessage({ images: [] }), ADMIN_UID));
+  });
+
+  await it('E2: Admin can create AI message with 1 HTTPS image URL', async () => {
+    expectAllow(await restWrite('chatRooms/pregnancy/messages/msg-2', aiMessage({ images: ['https://example.com/photo.jpg'] }), ADMIN_UID));
+  });
+
+  await it('E3: Admin CANNOT create AI message with 2 image URLs', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-3', aiMessage({ images: ['https://example.com/1.jpg', 'https://example.com/2.jpg'] }), ADMIN_UID));
+  });
+
+  await it('E4: Admin CANNOT create AI message with HTTP image URL', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-4', aiMessage({ images: ['http://example.com/photo.jpg'] }), ADMIN_UID));
+  });
+
+  await it('E5: Admin CANNOT create AI message with javascript image URL', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-5', aiMessage({ images: ['javascript:alert(1)'] }), ADMIN_UID));
   });
 
   // ── Summary ────────────────────────────────────────────────────────────────

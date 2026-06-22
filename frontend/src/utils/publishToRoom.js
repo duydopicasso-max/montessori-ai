@@ -152,11 +152,20 @@ export async function publishApprovedAiContent({ db, item, adminUid, overrideRoo
         return { alreadyPublished: true, publishedPostId: publishedPostPath };
       }
 
+      // Resolve images array from latest queue data
+      const normImageUrl = normalizeImageUrl(latestData.imageUrl || item.imageUrl);
+      if (normImageUrl !== '') {
+        if (!isValidHttpsImageUrl(normImageUrl)) {
+          throw new Error('Link ảnh không hợp lệ. Vui lòng dùng URL HTTPS hợp lệ hoặc xoá ảnh để đăng bài không kèm ảnh.');
+        }
+      }
+      const images = normImageUrl !== '' ? [normImageUrl] : [];
+
       // 3c. Create public message
       tx.set(messageRef, {
         title:            sugg.postTitle.trim(),
         text:             msgText,
-        images:           [],
+        images:           images,
         label:            null,
         createdAt:        serverTimestamp(),
         senderId:         adminUid,
@@ -205,6 +214,35 @@ export async function publishApprovedAiContent({ db, item, adminUid, overrideRoo
 
 // ── Validation ───────────────────────────────────────────────────────────────
 
+export function normalizeImageUrl(value) {
+  if (value === null || value === undefined) return '';
+  if (typeof value !== 'string') return '';
+  return value.trim();
+}
+
+export function isValidHttpsImageUrl(value) {
+  const norm = normalizeImageUrl(value);
+  if (norm === '') return true; // allowed empty
+
+  if (norm.length > 2048) return false;
+  if (!norm.startsWith('https://')) return false;
+
+  // Block dangerous schemes
+  const lower = norm.toLowerCase();
+  if (
+    lower.includes('http://') ||
+    lower.includes('javascript:') ||
+    lower.includes('data:') ||
+    lower.includes('blob:') ||
+    lower.includes('file:')
+  ) {
+    return false;
+  }
+
+  // Future improvement: whitelist Cloudinary/CDN domains here
+  return true;
+}
+
 function validateItem(item, adminUid, overrideRoom = null) {
   if (!item || typeof item !== 'object') {
     return 'Dữ liệu bài không hợp lệ.';
@@ -242,6 +280,15 @@ function validateItem(item, adminUid, overrideRoom = null) {
   }
   if (!sugg.engagementQuestion?.trim()) {
     return 'Thiếu câu hỏi gợi mở (engagementQuestion).';
+  }
+  // Validate imageUrl if present in item
+  if (item.imageUrl !== undefined && item.imageUrl !== null) {
+    const norm = normalizeImageUrl(item.imageUrl);
+    if (norm !== '') {
+      if (!isValidHttpsImageUrl(norm)) {
+        return 'Link ảnh không hợp lệ. Vui lòng dùng URL HTTPS hợp lệ hoặc xoá ảnh để đăng bài không kèm ảnh.';
+      }
+    }
   }
   return null; // valid
 }

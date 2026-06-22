@@ -1067,6 +1067,16 @@ input:checked + .slider:before { transform: translateX(14px); }
 }
 .post-images.grid-1 .post-image { max-height: 300px; }
 
+/* Phase 2C.3B - AI Post Image Styling to prevent CLS */
+.post-card-ai-approved .post-image {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background-color: #F2F4F2; /* Cream/sage background placeholder */
+  border-radius: 12px;
+  width: 100%;
+  max-height: none !important; /* Override standard post-image max-height limit to respect 16/9 aspect-ratio */
+}
+
 /* ── FAB Create Post ── */
 .fab-create-post {
   position: absolute;
