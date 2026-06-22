@@ -243,6 +243,7 @@ export default function App() {
             momName: 'Đô',
             numBabies: 1,
             status: 'born',
+            role: 'admin',
             babies: [
               {
                 id: 'baby-0',

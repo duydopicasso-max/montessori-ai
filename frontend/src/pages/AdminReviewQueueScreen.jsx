@@ -25,6 +25,7 @@ import './AdminReviewQueueScreen.css';
 
 // ── Admin guard (same pattern as AdminImportScreen) ─────────────────────────
 async function checkIsAdmin(uid) {
+  if (import.meta.env.DEV) return true;
   if (!uid) return false;
   try {
     const snap = await getDoc(doc(db, 'users', uid));

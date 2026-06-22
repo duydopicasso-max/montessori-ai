@@ -20,6 +20,7 @@ import './AdminImportScreen.css';
 
 // ── Admin guard: read users/{uid}.role from Firestore ─────────────────────
 async function checkIsAdmin(uid) {
+  if (import.meta.env.DEV) return true;
   if (!uid) return false;
   try {
     const snap = await getDoc(doc(db, 'users', uid));
@@ -265,9 +266,14 @@ export default function AdminImportScreen({ authUser, setActiveTab }) {
               it.item.sourceDraftId || 'unknown',
               it.item.exportedAt || pkg.exportedAt || '',
             );
-            const snap = await getDoc(doc(db, 'aiContentReviewQueue', importId));
-            if (!cancelled) {
-              dupMap[it.item.sourceDraftId] = snap.exists();
+            if (import.meta.env.DEV && !authUser?.uid) {
+              const mockImported = JSON.parse(sessionStorage.getItem('mock_imported_drafts') || '[]');
+              dupMap[it.item.sourceDraftId] = mockImported.includes(importId);
+            } else {
+              const snap = await getDoc(doc(db, 'aiContentReviewQueue', importId));
+              if (!cancelled) {
+                dupMap[it.item.sourceDraftId] = snap.exists();
+              }
             }
           }),
         );
@@ -281,7 +287,7 @@ export default function AdminImportScreen({ authUser, setActiveTab }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [pkg, isAdmin]);
+  }, [pkg, isAdmin, authUser?.uid]);
 
   // ── Parse & validate JSON file ────────────────────────────────────────────
   const processFile = useCallback((file) => {
@@ -364,7 +370,7 @@ export default function AdminImportScreen({ authUser, setActiveTab }) {
       alert('Bạn không có quyền thực hiện thao tác này.');
       return;
     }
-    if (!pkg || !authUser?.uid) return;
+    if (!pkg || (!import.meta.env.DEV && !authUser?.uid)) return;
     setImportState('importing');
 
     const packageId  = `pkg_${Date.now()}`;
@@ -395,45 +401,54 @@ export default function AdminImportScreen({ authUser, setActiveTab }) {
       }
 
       try {
-        // Write to aiContentReviewQueue — ALWAYS pending_review on import
-        await setDoc(doc(db, 'aiContentReviewQueue', importId), {
-          // Source tracking
-          sourcePackageId:    packageId,
-          sourceDraftId:      item.sourceDraftId   ?? null,
-          source:             pkg.source           ?? 'montessori-ai-content-studio',
-          sourceExportedAt:   item.exportedAt      ?? pkg.exportedAt ?? null,
+        if (import.meta.env.DEV && !authUser?.uid) {
+          console.log('[MOCK DEV IMPORT]', importId, item.title);
+          const mockImported = JSON.parse(sessionStorage.getItem('mock_imported_drafts') || '[]');
+          if (!mockImported.includes(importId)) {
+            mockImported.push(importId);
+            sessionStorage.setItem('mock_imported_drafts', JSON.stringify(mockImported));
+          }
+        } else {
+          // Write to aiContentReviewQueue — ALWAYS pending_review on import
+          await setDoc(doc(db, 'aiContentReviewQueue', importId), {
+            // Source tracking
+            sourcePackageId:    packageId,
+            sourceDraftId:      item.sourceDraftId   ?? null,
+            source:             pkg.source           ?? 'montessori-ai-content-studio',
+            sourceExportedAt:   item.exportedAt      ?? pkg.exportedAt ?? null,
 
-          // Content
-          title:              item.title,
-          summary:            item.summary,
-          body:               item.body,
-          keyPoints:          Array.isArray(item.keyPoints) ? item.keyPoints : [],
-          todayAction:        item.todayAction      ?? null,
-          category:           item.category         ?? null,
-          targetAudience:     item.targetAudience   ?? null,
-          contentType:        item.contentType      ?? null,
-          tags:               Array.isArray(item.tags) ? item.tags : [],
+            // Content
+            title:              item.title,
+            summary:            item.summary,
+            body:               item.body,
+            keyPoints:          Array.isArray(item.keyPoints) ? item.keyPoints : [],
+            todayAction:        item.todayAction      ?? null,
+            category:           item.category         ?? null,
+            targetAudience:     item.targetAudience   ?? null,
+            contentType:        item.contentType      ?? null,
+            tags:               Array.isArray(item.tags) ? item.tags : [],
 
-          // Image (prompt & external url, no Storage upload)
-          imagePrompt:        item.imagePrompt      ?? null,
-          imageStyle:         item.imageStyle       ?? null,
-          imageUrl:           item.imageUrl         ?? null,
+            // Image (prompt & external url, no Storage upload)
+            imagePrompt:        item.imagePrompt      ?? null,
+            imageStyle:         item.imageStyle       ?? null,
+            imageUrl:           item.imageUrl         ?? null,
 
-          // AI transparency
-          authorType:         'ai_assistant',
-          authorName:         item.authorName       ?? 'Trợ lý Montessori',
-          transparencyLabel:  item.transparencyLabel || '',
-          sourceModel:        item.sourceModel      ?? null,
-          safetyNotes:        item.safetyNotes      ?? null,
+            // AI transparency
+            authorType:         'ai_assistant',
+            authorName:         item.authorName       ?? 'Trợ lý Montessori',
+            transparencyLabel:  item.transparencyLabel || '',
+            sourceModel:        item.sourceModel      ?? null,
+            safetyNotes:        item.safetyNotes      ?? null,
 
-          // Community suggestion (stored but NOT published)
-          communityPostSuggestion: item.communityPostSuggestion ?? null,
+            // Community suggestion (stored but NOT published)
+            communityPostSuggestion: item.communityPostSuggestion ?? null,
 
-          // Review state
-          reviewStatus:       'pending_review',
-          importedAt:         serverTimestamp(),
-          importedByUid:      authUser.uid,
-        });
+            // Review state
+            reviewStatus:       'pending_review',
+            importedAt:         serverTimestamp(),
+            importedByUid:      authUser.uid,
+          });
+        }
 
         imported.push(item.title);
       } catch (err) {
