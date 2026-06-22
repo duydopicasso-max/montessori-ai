@@ -143,3 +143,23 @@ Vui lòng xem xét và phản hồi các câu hỏi sau để chúng tôi tiến
 1. Bạn có muốn lưu **Lịch sử nhập gói (Import History)** tập trung vào Firestore (cần tạo collection mới, ví dụ `aiContentImportLogs`) hay chỉ cần lưu cục bộ ở `LocalStorage` của Admin để đơn giản và an toàn nhất?
 2. Trong bảng xem trước (Pre-import Preview), khi phát hiện bài trùng lặp, bạn có muốn cung cấp tùy chọn **"Ghi đè bài cũ"** không, hay chỉ cần bỏ qua (Skip) như luồng hiện tại để đảm bảo an toàn tuyệt đối?
 3. Giao diện kéo thả file có cần hỗ trợ hiển thị danh sách chi tiết các bài viết dạng thu gọn (Accordion) để xem trước toàn bộ nội dung body không, hay chỉ cần hiện thông tin rút gọn (Tiêu đề, loại bài, danh mục, trạng thái ảnh)?
+
+---
+
+## 🏛️ 11. Phase 3A Implementation Decisions (Quyết định triển khai thực tế)
+
+Dưới đây là các quyết định thiết kế đã được chốt và triển khai thực tế trong Phase 3A:
+
+* **Import History**: Lưu trữ cục bộ thông qua `LocalStorage` của trình duyệt admin hiện tại với key `montessori_admin_import_history_v1`. Tối đa 20 đợt (batch) gần nhất, chỉ lưu metadata tóm tắt, không lưu nội dung package JSON hay chi tiết body từng bài để tránh quá tải bộ nhớ. Có nút cho phép admin chủ động xóa lịch sử này trên trình duyệt.
+* **Duplicate Handling**: Áp dụng cơ chế **Skip-only** (Bỏ qua hoàn toàn bài trùng lặp dựa trên khóa băm `importId`). Không hỗ trợ ghi đè (Overwrite) và không làm thay đổi các bản ghi đã có trong hàng chờ duyệt (`aiContentReviewQueue`).
+* **Pre-import Preview & Verification**:
+  * Các bài viết được hiển thị dưới dạng thẻ collapsed/accordion. Chỉ mở xem chi tiết (title, body, tags, todayAction, suggestion) khi admin nhấn nút "Xem chi tiết".
+  * Mặc định hiển thị tối đa 20 bài viết đầu tiên để tối ưu hiệu năng trình duyệt. Nếu có nhiều hơn, hiển thị thông báo "Còn X bài viết khác chưa hiển thị" kèm nút "Hiển thị tất cả".
+  * Báo cáo tiền kiểm tra (Pre-import Preview) sẽ thống kê chi tiết lỗi cấu trúc dữ liệu. Nếu phát hiện bất kỳ **Hard error** nào (lỗi cấu trúc nghiêm trọng ở gói hoặc từng bài viết), nút "Import" sẽ bị khóa hoàn toàn. Admin bắt buộc phải sửa lỗi trong file JSON trước khi import để đảm bảo tính toàn vẹn của lô dữ liệu.
+  * Các cảnh báo (Warnings) như thiếu summary, body ngắn, ảnh không phải Cloudinary... chỉ hiển thị nhằm cảnh báo admin mà không chặn nút import.
+* **Bảo toàn Backend**:
+  * Dữ liệu vẫn được đưa vào collection `aiContentReviewQueue` dưới trạng thái `pending_review` (không đổi tên, không tạo collection mới).
+  * Quy trình phê duyệt và xuất bản thủ công của Admin qua `AdminReviewQueueScreen.jsx` được bảo toàn nguyên vẹn.
+  * Không có thêm Cloud Functions hay thay đổi Firestore Security Rules nào trong phase này.
+  * Không sử dụng Firebase Storage và không tự động xuất bản (No auto publish).
+

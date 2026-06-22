@@ -12,6 +12,7 @@ import MomentsScreen   from './pages/MomentsScreen.jsx';
 import CommunityScreen from './pages/CommunityScreen.jsx';
 import AdminImportScreen from './pages/AdminImportScreen.jsx';
 import AdminReviewQueueScreen from './pages/AdminReviewQueueScreen.jsx';
+import { isLocalDevMode } from './utils/devMode.js';
 import './App.css';
 
 /* ══ SVG Outline Navigation Icons ══ */
@@ -235,7 +236,7 @@ export default function App() {
           setLoading(false);
         });
       } else {
-        if (import.meta.env.DEV && typeof window !== 'undefined' && localStorage.getItem('test_baby_age_days') !== null) {
+        if (isLocalDevMode && localStorage.getItem('test_baby_age_days') !== null) {
           const mockUser = { uid: null, photoURL: null };
           setAuthUser(mockUser);
           setProfile({
@@ -243,6 +244,7 @@ export default function App() {
             momName: 'Đô',
             numBabies: 1,
             status: 'born',
+            role: 'admin',
             babies: [
               {
                 id: 'baby-0',
@@ -411,7 +413,7 @@ export default function App() {
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}
         {activeTab === 'ingest'       && <IngestScreen />}
         {/* Admin-only: not in NAV_TABS, not visible to regular users */}
-        {activeTab === 'admin-import'  && <AdminImportScreen authUser={authUser} />}
+        {activeTab === 'admin-import'  && <AdminImportScreen authUser={authUser} setActiveTab={setActiveTab} />}
         {activeTab === 'admin-review'  && <AdminReviewQueueScreen authUser={authUser} />}
       </main>
 

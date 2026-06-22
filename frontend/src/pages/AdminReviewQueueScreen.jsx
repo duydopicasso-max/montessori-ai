@@ -21,10 +21,12 @@ import {
   publishApprovedAiContent, PUBLISH_RESULT, ROOM_NAME_TO_ID,
   normalizeImageUrl, isValidHttpsImageUrl,
 } from '../utils/publishToRoom.js';
+import { isLocalDevMode } from '../utils/devMode.js';
 import './AdminReviewQueueScreen.css';
 
 // ── Admin guard (same pattern as AdminImportScreen) ─────────────────────────
 async function checkIsAdmin(uid) {
+  if (isLocalDevMode) return true;
   if (!uid) return false;
   try {
     const snap = await getDoc(doc(db, 'users', uid));
