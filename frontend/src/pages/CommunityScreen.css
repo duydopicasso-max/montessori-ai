@@ -2230,3 +2230,43 @@ input:checked + .slider:before { transform: translateX(14px); }
 .skel-pinned { height: 100px; border-radius: 18px; }
 .skel-topics { height: 80px; border-radius: 18px; }
 .skel-post   { height: 120px; border-radius: 18px; }
+
+/* ── Phase 2C.3A AI Post Community Polish ── */
+.post-card-ai-approved {
+  border-color: rgba(92, 158, 122, 0.16) !important;
+  background: #FAFBF9 !important; /* Subtle sage cream background */
+}
+.post-ai-approved-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: #2F6B4F; /* Sage green dark */
+  background: #EAF0EC; /* Sage cream light */
+  border: 1.5px solid rgba(92, 158, 122, 0.25);
+  padding: 1.5px 6.5px;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+}
+.post-ai-assistant-avatar-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #5C9E7A; /* Sage green circle */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(92, 158, 122, 0.15);
+}
+.post-transparency-box {
+  margin: 4px 0 10px 0;
+  padding: 8px 12px;
+  background: #F2F4F2; /* Cream-sage very light background */
+  border-left: 3px solid #7DB896; /* Accent sage border */
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  font-style: italic;
+  font-weight: 600;
+}
