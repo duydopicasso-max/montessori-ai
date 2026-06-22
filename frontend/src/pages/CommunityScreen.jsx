@@ -15,7 +15,8 @@ import { db } from '../firebase.js';
 import './CommunityScreen.css';
 import {
   PregnancyIcon, FoodBowlIcon, SleepMoonIcon,
-  HealthHeartIcon, FamilyIcon, ChatBubbleIcon
+  HealthHeartIcon, FamilyIcon, ChatBubbleIcon,
+  LeafIcon
 } from '../icons.jsx';
 import InboxView from '../components/dm/InboxView.jsx';
 import DMRequestSheet from '../components/dm/DMRequestSheet.jsx';
@@ -1227,10 +1228,17 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest 
   );
 }
 
+/* ── AI Assistant Post Helper ── */
+const isAiAssistantPost = (message) => {
+  return message?.authorType === "ai_assistant"
+    || message?.senderName === "Trợ lý Montessori";
+};
+
 /* ── Post Card ── */
 function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave, onReply, onImageClick, onSendDMRequest }) {
   const isMe = msg.senderId === currentUser.uid;
   const isAI = msg.isAI === true;
+  const isAiPost = isAiAssistantPost(msg);
   const [menuOpen, setMenuOpen] = useState(false);
   const likeCount  = (msg.likes   || 0) + (liked ? 1 : 0);
   const replyCount = (msg.replies || 0);
@@ -1246,7 +1254,7 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
   }
 
   return (
-    <div className={`post-card ${isAI ? 'post-card-ai' : ''} ${isMe ? 'post-card-me' : ''}`}>
+    <div className={`post-card ${isAI ? 'post-card-ai' : ''} ${isAiPost ? 'post-card-ai-approved' : ''} ${isMe && !isAiPost ? 'post-card-me' : ''}`}>
       <div className="post-card-author">
         {isAI ? (
           <div className="post-ai-avatar">
@@ -1256,6 +1264,16 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
               <line x1="9" y1="9" x2="9.01" y2="9"/>
               <line x1="15" y1="9" x2="15.01" y2="9"/>
             </svg>
+          </div>
+        ) : isAiPost ? (
+          <div className="post-avatar-wrap">
+            {msg.senderPhoto ? (
+              <Avatar name={msg.senderName} photo={msg.senderPhoto} size={40} />
+            ) : (
+              <div className="post-ai-assistant-avatar-fallback" title="Trợ lý Montessori">
+                <LeafIcon size={20} strokeWidth={2} />
+              </div>
+            )}
           </div>
         ) : msg.isAnon ? (
           <button
@@ -1280,16 +1298,18 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
         <div className="post-author-info">
           <div className="post-author-name-row">
             <span className="post-author-name"
-              onClick={() => !isMe && !isAI && onUserClick?.(msg)}
-              style={{ cursor: isMe || isAI ? 'default' : 'pointer' }}>
+              onClick={() => !isMe && !isAI && !isAiPost && onUserClick?.(msg)}
+              style={{ cursor: isMe || isAI || isAiPost ? 'default' : 'pointer' }}>
               {isAI ? 'Montessori AI' : (msg.senderName || 'Thành viên')}
             </span>
             {isAI      && <span className="post-ai-badge">AI</span>}
+            {isAiPost  && <span className="post-ai-approved-badge">AI đã duyệt</span>}
             {msg.isAnon && !isAI && <span className="post-anon-badge">Ẩn danh</span>}
-            {isMe      && !isAI && <span className="post-me-badge">Bạn</span>}
+            {isMe      && !isAI && !isAiPost && <span className="post-me-badge">Bạn</span>}
           </div>
           <span className="post-author-sub">
             {isAI ? 'Montessori AI'
+              : isAiPost ? 'Trợ lý Montessori'
               : msg.isAnon ? 'Thành viên ẩn danh'
               : msg.senderBaby ? `Mẹ của ${msg.senderBaby}`
               : 'Thành viên'}
@@ -1318,7 +1338,7 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
                 ) : (
                   <>
                     <button className="post-menu-item" onClick={onSave}>{saved2 ? 'Bỏ lưu' : 'Lưu bài'}</button>
-                    {!msg.isAnon && msg.senderId && onSendDMRequest && (
+                    {!msg.isAnon && msg.senderId && !isAiPost && onSendDMRequest && (
                       <button
                         className="post-menu-item"
                         onClick={() => onSendDMRequest({
@@ -1340,6 +1360,12 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
           </div>
         </div>
       </div>
+
+      {isAiPost && msg.transparencyLabel && (
+        <div className="post-transparency-box">
+          {msg.transparencyLabel}
+        </div>
+      )}
 
       {msg.title && <h4 className="post-title">{msg.title}</h4>}
       {msg.text  && <p  className="post-content">{msg.text}</p>}
