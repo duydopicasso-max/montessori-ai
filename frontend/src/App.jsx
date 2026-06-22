@@ -411,7 +411,7 @@ export default function App() {
         {activeTab === 'moments'   && <MomentsScreen profile={sharedProfile} />}
         {activeTab === 'ingest'       && <IngestScreen />}
         {/* Admin-only: not in NAV_TABS, not visible to regular users */}
-        {activeTab === 'admin-import'  && <AdminImportScreen authUser={authUser} />}
+        {activeTab === 'admin-import'  && <AdminImportScreen authUser={authUser} setActiveTab={setActiveTab} />}
         {activeTab === 'admin-review'  && <AdminReviewQueueScreen authUser={authUser} />}
       </main>
 
