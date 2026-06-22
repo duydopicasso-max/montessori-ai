@@ -61,7 +61,16 @@ service cloud.firestore {
                     && request.resource.data.transparencyLabel is string
                     && request.resource.data.likes          == 0
                     && request.resource.data.replies        == 0
-                    && request.resource.data.images         is list;
+                    && request.resource.data.images         is list
+                    && request.resource.data.images.size()  <= 1
+                    && (
+                      request.resource.data.images.size() == 0
+                      || (
+                        request.resource.data.images[0] is string
+                        && request.resource.data.images[0].size() <= 2048
+                        && request.resource.data.images[0].matches('^https://.*')
+                      )
+                    );
 
       allow update: if isSignedIn()
                     && resource.data.senderId == request.auth.uid;
@@ -273,8 +282,6 @@ service cloud.firestore {
                     && request.resource.data.importedByUid == request.auth.uid
                     && request.resource.data.authorType    == 'ai_assistant';
 
-      // Admins can update review metadata OR publish fields.
-      // Content fields (body, title, source, etc.) remain immutable.
       allow update: if isAdmin()
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly([
@@ -283,21 +290,34 @@ service cloud.firestore {
                          'reviewNotes', 'updatedAt',
                          // Publish fields (Phase 2C.2)
                          'publishStatus', 'publishedAt', 'publishedByUid',
-                         'publishedPostId'
+                         'publishedPostId',
+                         // Image fields (Phase 2C.3B)
+                         'imageUrl'
                        ])
-                    && (!('reviewStatus' in request.resource.data.diff(resource.data).affectedKeys())
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewStatus'])
                         || request.resource.data.reviewStatus in [
                              'pending_review', 'needs_edit',
                              'approved_for_publish', 'rejected'
                            ])
-                    && (!('reviewedByUid' in request.resource.data.diff(resource.data).affectedKeys())
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewedByUid'])
                         || request.resource.data.reviewedByUid == request.auth.uid)
-                    && (!('publishStatus' in request.resource.data.diff(resource.data).affectedKeys())
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishStatus'])
                         || request.resource.data.publishStatus in ['published', 'unpublished'])
-                    && (!('publishedByUid' in request.resource.data.diff(resource.data).affectedKeys())
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishedByUid'])
                         || request.resource.data.publishedByUid == request.auth.uid)
-                    && (!('publishedPostId' in request.resource.data.diff(resource.data).affectedKeys())
-                        || request.resource.data.publishedPostId is string);
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishedPostId'])
+                        || request.resource.data.publishedPostId is string)
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['imageUrl'])
+                        || (
+                          request.resource.data.imageUrl is string
+                          && (
+                            request.resource.data.imageUrl == ""
+                            || (
+                              request.resource.data.imageUrl.size() <= 2048
+                              && request.resource.data.imageUrl.matches('^https://.*')
+                            )
+                          )
+                        ));
 
       // Hard deletes allowed only by admin (e.g. discard rejected items)
       allow delete: if isAdmin();

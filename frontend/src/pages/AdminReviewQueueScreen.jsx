@@ -19,6 +19,7 @@ import {
 import { db } from '../firebase.js';
 import {
   publishApprovedAiContent, PUBLISH_RESULT, ROOM_NAME_TO_ID,
+  normalizeImageUrl, isValidHttpsImageUrl,
 } from '../utils/publishToRoom.js';
 import './AdminReviewQueueScreen.css';
 
@@ -85,6 +86,25 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
   const [publishMsg,    setPublishMsg]   = useState('');
   const [err,           setErr]          = useState('');
 
+  // Image URL editing states (Phase 2C.3B)
+  const [inputImageUrl, setInputImageUrl] = useState(item.imageUrl || '');
+  const [savedImageUrl, setSavedImageUrl] = useState(item.imageUrl || '');
+  const [savingImg,     setSavingImg]    = useState(false);
+  const [imgErr,        setImgErr]       = useState('');
+
+  // Sync state when detail modal item changes
+  useEffect(() => {
+    setStatus(item.reviewStatus || 'pending_review');
+    setPublishStatus(item.publishStatus || '');
+    setPublishedPostId(item.publishedPostId || '');
+    setSelectedRoom(item.communityPostSuggestion?.room || '');
+    setNotes(item.reviewNotes || '');
+    setInputImageUrl(item.imageUrl || '');
+    setSavedImageUrl(item.imageUrl || '');
+    setSavingImg(false);
+    setImgErr('');
+  }, [item]);
+
   const doUpdate = useCallback(async (nextStatus) => {
     setErr('');
     setSaving(true);
@@ -137,7 +157,31 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     } finally {
       setPublishing(false);
     }
-  }, [authUid, item, status, publishStatus, onUpdate]);
+  }, [authUid, item, status, publishStatus, onUpdate, selectedRoom, suggestedRoom]);
+
+  const handleSaveImageUrl = useCallback(async () => {
+    setImgErr('');
+    setSavingImg(true);
+    try {
+      const norm = normalizeImageUrl(inputImageUrl);
+      if (norm !== '') {
+        if (!isValidHttpsImageUrl(norm)) {
+          throw new Error('Link ảnh không hợp lệ. Vui lòng dùng URL HTTPS hợp lệ hoặc xoá ảnh để đăng bài không kèm ảnh.');
+        }
+      }
+      const ref = doc(db, 'aiContentReviewQueue', item.id);
+      await updateDoc(ref, {
+        imageUrl: norm,
+        updatedAt: serverTimestamp(),
+      });
+      setSavedImageUrl(norm);
+      onUpdate(item.id, { imageUrl: norm });
+    } catch (e) {
+      setImgErr(e.message || 'Lỗi khi lưu link ảnh.');
+    } finally {
+      setSavingImg(false);
+    }
+  }, [item.id, inputImageUrl, onUpdate]);
 
   const requestUpdate = (nextStatus) => {
     if (nextStatus === 'approved_for_publish') {
@@ -227,12 +271,81 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
             </section>
           )}
 
-          {(item.imagePrompt || item.imageUrl) && (
+          {(item.imagePrompt || item.imageUrl || inputImageUrl !== '' || savedImageUrl !== '') && (
             <section className="arq-modal-section">
-              <h3>Hình ảnh</h3>
-              {item.imageUrl && <img src={item.imageUrl} alt="preview" className="arq-image" />}
-              {item.imagePrompt && <p className="arq-hint">Prompt: {item.imagePrompt}</p>}
-              {item.imageStyle && <p className="arq-hint">Style: {item.imageStyle}</p>}
+              <h3>Hình ảnh bài viết</h3>
+              
+              <div className="arq-image-edit-wrap" style={{ marginTop: '8px', marginBottom: '12px' }}>
+                <label htmlFor="image-url-input" className="arq-image-label" style={{ fontWeight: 'bold', display: 'block', marginBottom: '6px', fontSize: '13px', color: '#555' }}>
+                  Link ảnh (URL HTTPS hoặc rỗng để xoá ảnh)
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    id="image-url-input"
+                    type="text"
+                    className="arq-input"
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #ccc', fontSize: '14px', outline: 'none' }}
+                    value={inputImageUrl}
+                    onChange={(e) => setInputImageUrl(e.target.value)}
+                    disabled={publishStatus === 'published' || saving || publishing || savingImg}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  {inputImageUrl !== savedImageUrl && (
+                    <button
+                      className="arq-btn arq-btn-primary"
+                      onClick={handleSaveImageUrl}
+                      disabled={savingImg || publishStatus === 'published'}
+                      style={{ whiteSpace: 'nowrap', borderRadius: '8px', padding: '8px 14px', background: '#2f6b4f', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      {savingImg ? 'Đang lưu…' : 'Lưu link ảnh'}
+                    </button>
+                  )}
+                </div>
+                {imgErr && <p className="arq-error" style={{ color: '#c0392b', marginTop: '6px', fontSize: '13px', fontWeight: '500' }}>{imgErr}</p>}
+              </div>
+
+              {inputImageUrl.trim().startsWith('https://') && (
+                <div className="arq-image-preview-box" style={{ marginTop: '12px', marginBottom: '12px' }}>
+                  <img
+                    src={inputImageUrl.trim()}
+                    alt="Xem trước hình ảnh"
+                    className="arq-image"
+                    style={{ maxWidth: '100%', maxHeight: '300px', display: 'block', borderRadius: '8px', border: '1px solid #ddd' }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      const parent = e.target.parentNode;
+                      if (parent && !parent.querySelector('.arq-img-error-text')) {
+                        const errText = document.createElement('p');
+                        errText.className = 'arq-img-error-text';
+                        errText.style.color = '#c0392b';
+                        errText.style.fontSize = '13px';
+                        errText.style.marginTop = '4px';
+                        errText.innerText = 'Không thể tải ảnh từ URL này. Vui lòng kiểm tra lại link.';
+                        parent.appendChild(errText);
+                      }
+                    }}
+                    onLoad={(e) => {
+                      e.target.style.display = 'block';
+                      const parent = e.target.parentNode;
+                      const errText = parent?.querySelector('.arq-img-error-text');
+                      if (errText) {
+                        errText.remove();
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
+              {item.imagePrompt && (
+                <p className="arq-hint" style={{ marginTop: '8px', fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                  <b>Prompt gợi ý:</b> {item.imagePrompt}
+                </p>
+              )}
+              {item.imageStyle && (
+                <p className="arq-hint" style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                  <b>Style:</b> {item.imageStyle}
+                </p>
+              )}
             </section>
           )}
 
@@ -357,14 +470,27 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
                   ✓ Đã xuất bản
                 </button>
               ) : (
-                <button
-                  className="arq-btn arq-btn-publish"
-                  disabled={publishing || saving || status !== 'approved_for_publish'}
-                  onClick={requestPublish}
-                  title={status !== 'approved_for_publish' ? 'Bài cần được duyệt trước khi xuất bản' : ''}
-                >
-                  {publishing ? 'Đang xuất bản…' : 'Xuất bản'}
-                </button>
+                <>
+                  <button
+                    className="arq-btn arq-btn-publish"
+                    disabled={publishing || saving || status !== 'approved_for_publish' || inputImageUrl !== savedImageUrl}
+                    onClick={requestPublish}
+                    title={
+                      status !== 'approved_for_publish'
+                        ? 'Bài cần được duyệt trước khi xuất bản'
+                        : inputImageUrl !== savedImageUrl
+                          ? 'Vui lòng lưu link ảnh trước khi xuất bản'
+                          : ''
+                    }
+                  >
+                    {publishing ? 'Đang xuất bản…' : 'Xuất bản'}
+                  </button>
+                  {status === 'approved_for_publish' && inputImageUrl !== savedImageUrl && (
+                    <p className="arq-publish-warning-hint" style={{ color: '#b05800', marginTop: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                      Vui lòng lưu link ảnh trước khi xuất bản.
+                    </p>
+                  )}
+                </>
               )}
               {status !== 'approved_for_publish' && publishStatus !== 'published' && (
                 <p className="arq-hint arq-publish-hint">Duyệt bài trước để kích hoạt xuất bản</p>

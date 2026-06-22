@@ -172,6 +172,18 @@ check('D12: publishedByUid ownership enforced (== request.auth.uid)',
 check('D13: publishedPostId is string when set',
   queueSection.includes('publishedPostId is string'));
 
+check("D14: Update allowlist has imageUrl field (Phase 2C.3B)",
+  queueSection.includes("'imageUrl'"));
+
+check("D15: imageUrl validated using matches('^https://.*')",
+  queueSection.includes("imageUrl.matches('^https://.*')"));
+
+check("D16: imageUrl validated for empty string (== '')",
+  queueSection.includes('imageUrl == ""') || queueSection.includes("imageUrl == ''"));
+
+check("D17: imageUrl matches hasAny(['imageUrl']) check",
+  queueSection.includes("affectedKeys().hasAny(['imageUrl'])"));
+
 // ── E: Publish Action — chatRooms AI Post Rule (Phase 2C.2) ──────────────
 console.log(`\n${BOLD}Section E: chatRooms — AI Post Publish Rule (Phase 2C.2)${RESET}`);
 
@@ -207,6 +219,12 @@ check('E10: Regular user post blocked if authorType present (! in check)',
 
 check('E10b: Regular user post text still limited to 2000',
   chatSection.includes('text.size() <= 2000'));
+
+check("E11: chatRooms AI post images size limited to <= 1",
+  chatSection.includes("images.size()  <= 1") || chatSection.includes("images.size() <= 1"));
+
+check("E12: chatRooms AI post images[0] requires matches('^https://.*')",
+  chatSection.includes("images[0].matches('^https://.*')"));
 
 // ── S: Structural Integrity ────────────────────────────────────────────────
 console.log(`\n${BOLD}Bonus: Structural Integrity${RESET}`);
