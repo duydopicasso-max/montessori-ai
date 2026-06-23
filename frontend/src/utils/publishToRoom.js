@@ -164,7 +164,7 @@ export async function publishApprovedAiContent({ db, item, adminUid, overrideRoo
       // Resolve optional knowledgeArticle (Phase 5A)
       const hasKnowledgeArticle = latestData.title?.trim() && latestData.body?.trim();
       const knowledgeArticle = hasKnowledgeArticle ? {
-        title: latestData.title.trim(),
+        title: latestData.title.trim().slice(0, 220),
         summary: latestData.summary?.trim() || "",
         body: latestData.body.trim(),
         keyPoints: Array.isArray(latestData.keyPoints) ? latestData.keyPoints : [],
@@ -177,7 +177,7 @@ export async function publishApprovedAiContent({ db, item, adminUid, overrideRoo
 
       // 3c. Create public message
       const msgData = {
-        title:            sugg.postTitle.trim(),
+        title:            sugg.postTitle.trim().slice(0, 220),
         text:             msgText,
         images:           images,
         label:            null,

@@ -67,6 +67,7 @@ service cloud.firestore {
                     && request.resource.data.text.size()    >  0
                     && request.resource.data.text.size()    <= 5000
                     && request.resource.data.title          is string
+                    && request.resource.data.title.size()   <= 220
                     && request.resource.data.sourceQueueId  is string
                     && request.resource.data.transparencyLabel is string
                     && request.resource.data.likes          == 0
@@ -90,7 +91,7 @@ service cloud.firestore {
                           'tags', 'imageUrl', 'source', 'transparencyLabel'
                         ])
                         && request.resource.data.knowledgeArticle.title is string
-                        && request.resource.data.knowledgeArticle.title.size() <= 160
+                        && request.resource.data.knowledgeArticle.title.size() <= 220
                         && request.resource.data.knowledgeArticle.summary is string
                         && request.resource.data.knowledgeArticle.summary.size() <= 500
                         && request.resource.data.knowledgeArticle.body is string
