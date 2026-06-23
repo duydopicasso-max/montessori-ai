@@ -659,6 +659,38 @@ export default function AdminReviewQueueScreen({ authUser }) {
     setFetchErr('');
     (async () => {
       try {
+        if (isLocalDevMode && !authUser?.uid) {
+          // Dev mode local mock fallback
+          const mockReviewItems = [
+            {
+              id: 'mock-draft-unique-qa-123',
+              title: 'Dạy trẻ tự lập sớm',
+              summary: 'Cách tốt nhất để giúp trẻ tự lập sớm theo phương pháp Montessori.',
+              body: 'Trẻ từ 2 tuổi có thể tự cất dọn đồ chơi của mình và bắt đầu tự lập nếu được ba mẹ kiên nhẫn đồng hành và hướng dẫn một cách khoa học.',
+              todayAction: 'Khuyến khích bé tự cất gọn 1 món đồ chơi sau khi chơi xong.',
+              keyPoints: ['Tạo môi trường vừa tầm', 'Động viên khích lệ trẻ', 'Tránh làm hộ con'],
+              tags: ['tự lập', 'montessori'],
+              authorType: 'ai_assistant',
+              authorName: 'Trợ lý Montessori',
+              transparencyLabel: 'Nội dung được tạo bởi AI',
+              reviewStatus: 'approved_for_publish',
+              contentType: 'Bài đăng hội nhóm',
+              communityPostSuggestion: {
+                room: 'Chuyện Gia Đình',
+                postTitle: 'Trải nghiệm rèn trẻ tự lập của ba mẹ',
+                postBody: 'Mời ba mẹ cùng thảo luận chia sẻ cách giúp bé tự lập hơn.',
+                engagementQuestion: 'Bé nhà bạn đã biết tự dọn đồ chơi chưa?'
+              },
+              imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
+            }
+          ];
+          if (!cancelled) {
+            setItems(mockReviewItems);
+            setLoading(false);
+          }
+          return;
+        }
+
         const q = query(
           collection(db, 'aiContentReviewQueue'),
           orderBy('importedAt', 'desc')
@@ -668,9 +700,39 @@ export default function AdminReviewQueueScreen({ authUser }) {
           setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         }
       } catch (e) {
-        if (!cancelled) setFetchErr('Không tải được dữ liệu: ' + (e.message || 'Lỗi không xác định'));
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (isLocalDevMode) {
+          console.warn('[DEV] Firestore queue query blocked, fallback to mock list.');
+          const mockReviewItems = [
+            {
+              id: 'mock-draft-unique-qa-123',
+              title: 'Dạy trẻ tự lập sớm',
+              summary: 'Cách tốt nhất để giúp trẻ tự lập sớm theo phương pháp Montessori.',
+              body: 'Trẻ từ 2 tuổi có thể tự cất dọn đồ chơi của mình và bắt đầu tự lập nếu được ba mẹ kiên nhẫn đồng hành và hướng dẫn một cách khoa học.',
+              todayAction: 'Khuyến khích bé tự cất gọn 1 món đồ chơi sau khi chơi xong.',
+              keyPoints: ['Tạo môi trường vừa tầm', 'Động viên khích lệ trẻ', 'Tránh làm hộ con'],
+              tags: ['tự lập', 'montessori'],
+              authorType: 'ai_assistant',
+              authorName: 'Trợ lý Montessori',
+              transparencyLabel: 'Nội dung được tạo bởi AI',
+              reviewStatus: 'approved_for_publish',
+              contentType: 'Bài đăng hội nhóm',
+              communityPostSuggestion: {
+                room: 'Chuyện Gia Đình',
+                postTitle: 'Trải nghiệm rèn trẻ tự lập của ba mẹ',
+                postBody: 'Mời ba mẹ cùng thảo luận chia sẻ cách giúp bé tự lập hơn.',
+                engagementQuestion: 'Bé nhà bạn đã biết tự dọn đồ chơi chưa?'
+              },
+              imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
+            }
+          ];
+          if (!cancelled) {
+            setItems(mockReviewItems);
+            setLoading(false);
+          }
+        } else {
+          if (!cancelled) setFetchErr('Không tải được dữ liệu: ' + (e.message || 'Lỗi không xác định'));
+          if (!cancelled) setLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };

@@ -2280,3 +2280,38 @@ input:checked + .slider:before { transform: translateX(14px); }
   font-style: italic;
   font-weight: 600;
 }
+
+/* ── Phase 5A: Knowledge Detail link styling ── */
+.post-knowledge-detail-link-wrap {
+  margin: 10px 0 10px 0;
+}
+
+.msg-knowledge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0f7f3;
+  border: 1.5px solid #b2cbb9;
+  color: #2f6b4f;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.msg-knowledge-btn:hover {
+  background: #e8f5ee;
+  border-color: #2f6b4f;
+  color: #1a3a28;
+}
+
+.msg-knowledge-btn:active {
+  transform: scale(0.98);
+}
+
+.msg-knowledge-btn-icon {
+  font-size: 0.9rem;
+}

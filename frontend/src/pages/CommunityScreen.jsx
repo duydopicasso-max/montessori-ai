@@ -22,6 +22,8 @@ import InboxView from '../components/dm/InboxView.jsx';
 import DMRequestSheet from '../components/dm/DMRequestSheet.jsx';
 import PrivateChatView from '../components/dm/PrivateChatView.jsx';
 import UserProfileSheet from '../components/community/UserProfileSheet.jsx';
+import KnowledgeArticleSheet from '../components/community/KnowledgeArticleSheet.jsx';
+import { isLocalDevMode } from '../utils/devMode.js';
 
 /* ── Room icon map ── */
 const ROOM_ICON_MAP = {
@@ -212,7 +214,16 @@ export default function CommunityScreen({ profile }) {
       });
       setCustomRooms(valid);
       setLoading(false);
-    }, () => { setError(true); setLoading(false); });
+    }, (err) => {
+      if (isLocalDevMode) {
+        console.warn('[DEV] Failed to load customRooms from Firestore, falling back to empty list.');
+        setCustomRooms([]);
+        setLoading(false);
+      } else {
+        setError(true);
+        setLoading(false);
+      }
+    });
     return unsub;
   }, []);
 
@@ -864,6 +875,7 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest 
   const [pinnedExpanded, setPinnedExpanded] = useState(false);
   const [showAISheet, setShowAISheet] = useState(false);
   const [imageViewUrl, setImageViewUrl] = useState(null);
+  const [selectedKnowledge, setSelectedKnowledge] = useState(null);
   const [likes, setLikes]             = useState({});
   const [saved, setSaved]             = useState({});
   const [directText, setDirectText]   = useState('');
@@ -939,7 +951,51 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest 
       setMessages(msgs);
       setLoading(false);
       setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 100);
-    }, () => { setLoadError(true); setLoading(false); });
+    }, (error) => {
+      if (isLocalDevMode) {
+        console.warn('[DEV] Firestore read blocked, loading mock messages for UI testing.');
+        const mockMsgs = [
+          {
+            id: 'mock-old-post',
+            text: 'Chào các mẹ, có ai đang cho con ăn dặm không ạ?',
+            senderId: 'user-normal-002',
+            senderName: 'Mẹ Lan',
+            createdAt: { toDate: () => new Date(Date.now() - 3600000) },
+            likes: 2,
+            replies: 1
+          },
+          {
+            id: 'mock-ai-post',
+            title: 'Trải nghiệm rèn trẻ tự lập của ba mẹ',
+            text: 'Mời ba mẹ cùng thảo luận chia sẻ cách giúp bé tự lập hơn. Bé nhà bạn đã biết tự dọn đồ chơi chưa?',
+            senderId: 'user-admin-001',
+            senderName: 'Trợ lý Montessori',
+            authorType: 'ai_assistant',
+            isAI: true,
+            createdAt: { toDate: () => new Date() },
+            likes: 0,
+            replies: 0,
+            transparencyLabel: 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.',
+            knowledgeArticle: {
+              title: 'Dạy trẻ tự lập sớm',
+              summary: 'Cách tốt nhất để giúp trẻ tự lập sớm theo phương pháp Montessori.',
+              body: 'Trẻ từ 2 tuổi có thể tự cất dọn đồ chơi của mình và bắt đầu tự lập nếu được ba mẹ kiên nhẫn đồng hành và hướng dẫn một cách khoa học.',
+              todayAction: 'Khuyến khích bé tự cất gọn 1 món đồ chơi sau khi chơi xong.',
+              keyPoints: ['Tạo môi trường vừa tầm', 'Động viên khích lệ trẻ', 'Tránh làm hộ con'],
+              tags: ['tự lập', 'montessori'],
+              imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000',
+              source: 'montessori-ai-content-studio',
+              transparencyLabel: 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.'
+            }
+          }
+        ];
+        setMessages(mockMsgs);
+        setLoading(false);
+      } else {
+        setLoadError(true);
+        setLoading(false);
+      }
+    });
     return unsub;
   }, [room.id, room.isCustom]);
 
@@ -1125,6 +1181,7 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest 
                     onReply={() => { setDirectText(`@${msg.senderName || ''} `); inputRef.current?.focus(); }}
                     onImageClick={(url) => setImageViewUrl(url)}
                     onSendDMRequest={onSendDMRequest}
+                    onReadKnowledge={(article) => setSelectedKnowledge(article)}
                   />
                 ))}
               </div>
@@ -1224,6 +1281,14 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest 
       )}
 
       {showRules && <CommunityRulesSheet onClose={() => setShowRules(false)} roomType={roomType} />}
+
+      {/* KNOWLEDGE ARTICLE SHEET (Phase 5A) */}
+      {selectedKnowledge && (
+        <KnowledgeArticleSheet
+          article={selectedKnowledge}
+          onClose={() => setSelectedKnowledge(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1235,7 +1300,7 @@ const isAiAssistantPost = (message) => {
 };
 
 /* ── Post Card ── */
-function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave, onReply, onImageClick, onSendDMRequest }) {
+function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave, onReply, onImageClick, onSendDMRequest, onReadKnowledge }) {
   const isMe = msg.senderId === currentUser.uid;
   const isAI = msg.isAI === true;
   const isAiPost = isAiAssistantPost(msg);
@@ -1369,6 +1434,18 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
 
       {msg.title && <h4 className="post-title">{msg.title}</h4>}
       {msg.text  && <p  className="post-content">{msg.text}</p>}
+
+      {isAiPost && msg.knowledgeArticle && msg.knowledgeArticle.title && msg.knowledgeArticle.body && (
+        <div className="post-knowledge-detail-link-wrap">
+          <button 
+            className="msg-knowledge-btn"
+            onClick={() => onReadKnowledge?.(msg.knowledgeArticle)}
+            aria-label="Đọc thêm kiến thức Montessori"
+          >
+            <span className="msg-knowledge-btn-icon">📖</span> Đọc thêm kiến thức Montessori
+          </button>
+        </div>
+      )}
 
       {msg.images?.length > 0 && (
         <div className={`post-images grid-${Math.min(msg.images.length, 4)}`}>

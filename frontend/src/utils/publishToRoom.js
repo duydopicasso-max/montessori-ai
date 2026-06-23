@@ -161,8 +161,22 @@ export async function publishApprovedAiContent({ db, item, adminUid, overrideRoo
       }
       const images = normImageUrl !== '' ? [normImageUrl] : [];
 
+      // Resolve optional knowledgeArticle (Phase 5A)
+      const hasKnowledgeArticle = latestData.title?.trim() && latestData.body?.trim();
+      const knowledgeArticle = hasKnowledgeArticle ? {
+        title: latestData.title.trim(),
+        summary: latestData.summary?.trim() || "",
+        body: latestData.body.trim(),
+        keyPoints: Array.isArray(latestData.keyPoints) ? latestData.keyPoints : [],
+        todayAction: latestData.todayAction?.trim() || "",
+        tags: Array.isArray(latestData.tags) ? latestData.tags : [],
+        imageUrl: normImageUrl || "",
+        source: "montessori-ai-content-studio",
+        transparencyLabel: latestData.transparencyLabel?.trim() || "Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt."
+      } : null;
+
       // 3c. Create public message
-      tx.set(messageRef, {
+      const msgData = {
         title:            sugg.postTitle.trim(),
         text:             msgText,
         images:           images,
@@ -176,9 +190,15 @@ export async function publishApprovedAiContent({ db, item, adminUid, overrideRoo
         likes:            0,
         replies:          0,
         authorType:       AI_ASSISTANT_AUTHOR_TYPE,
-        transparencyLabel: item.transparencyLabel || '',
+        transparencyLabel: latestData.transparencyLabel || item.transparencyLabel || '',
         sourceQueueId:    item.id,
-      });
+      };
+
+      if (knowledgeArticle) {
+        msgData.knowledgeArticle = knowledgeArticle;
+      }
+
+      tx.set(messageRef, msgData);
 
       // 3d. Update queue document
       tx.update(queueRef, {
