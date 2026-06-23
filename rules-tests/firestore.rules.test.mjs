@@ -451,6 +451,22 @@ async function main() {
     }), ADMIN_UID));
   });
 
+  await it('F13: Admin can create AI message with 120-character tag', async () => {
+    expectAllow(await restWrite('chatRooms/pregnancy/messages/msg-f13', aiMessage({
+      knowledgeArticle: validArticle({
+        tags: ['a'.repeat(120)]
+      })
+    }), ADMIN_UID));
+  });
+
+  await it('F14: Admin CANNOT create AI message with 121-character tag', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-f14', aiMessage({
+      knowledgeArticle: validArticle({
+        tags: ['a'.repeat(121)]
+      })
+    }), ADMIN_UID));
+  });
+
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log('\n' + '─'.repeat(62));
   console.log(`${BOLD}Results:${RESET}`);

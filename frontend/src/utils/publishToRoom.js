@@ -169,7 +169,7 @@ export async function publishApprovedAiContent({ db, item, adminUid, overrideRoo
         body: latestData.body.trim(),
         keyPoints: Array.isArray(latestData.keyPoints) ? latestData.keyPoints : [],
         todayAction: latestData.todayAction?.trim() || "",
-        tags: Array.isArray(latestData.tags) ? latestData.tags : [],
+        tags: Array.isArray(latestData.tags) ? latestData.tags.map(t => typeof t === 'string' ? t.trim().slice(0, 120) : '').filter(Boolean) : [],
         imageUrl: normImageUrl || "",
         source: "montessori-ai-content-studio",
         transparencyLabel: latestData.transparencyLabel?.trim() || "Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt."
