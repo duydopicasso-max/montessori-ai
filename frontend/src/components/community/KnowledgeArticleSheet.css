@@ -1,0 +1,264 @@
+/* KnowledgeArticleSheet.css
+ * Phase 5A — Bottom Sheet styling for AI Knowledge detail view.
+ * Color palette: Forest green (#1a3a28, #2f6b4f), Cream warm (#f6f7f3), Crisp lines (#d8e8de).
+ */
+
+.kas-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 20, 15, 0.55);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: kas-fade-in 0.2s ease-out;
+}
+
+@keyframes kas-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.kas-sheet {
+  background: #fff;
+  width: 100%;
+  max-width: 600px;
+  border-radius: 20px 20px 0 0;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -8px 30px rgba(26, 58, 40, 0.15);
+  animation: kas-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  position: relative;
+  /* Avoid overlapping with system bar / bottom navigation */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes kas-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Handle bar at the top */
+.kas-handle-bar {
+  width: 36px;
+  height: 4px;
+  background: #d8e8de;
+  border-radius: 2px;
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+}
+
+/* Header styling */
+.kas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 20px 14px;
+  border-bottom: 1px solid #eef2ee;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.kas-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.kas-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #2f6b4f;
+  background: #e8f5ee;
+  padding: 3px 8px;
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.kas-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #1a3a28;
+  line-height: 1.35;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.kas-close-btn {
+  background: #f4f6f4;
+  border: none;
+  font-size: 1rem;
+  color: #5c6e64;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.kas-close-btn:hover {
+  background: #e8ece8;
+  color: #1a3a28;
+}
+
+/* Scrollable body content */
+.kas-body {
+  overflow-y: auto;
+  padding: 16px 20px 30px;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Summary styling */
+.kas-summary-box {
+  background: #fcfdfc;
+  border-left: 3px solid #2f6b4f;
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+}
+
+.kas-summary-text {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #3f4e45;
+  line-height: 1.55;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Image styling */
+.kas-image-box {
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f6f7f3;
+  border: 1px solid #d8e8de;
+}
+
+.kas-image {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Body content text */
+.kas-body-text {
+  font-size: 0.92rem;
+  color: #2b332e;
+  line-height: 1.68;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Sections (KeyPoints / Today Action) */
+.kas-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kas-section-title {
+  font-size: 0.78rem;
+  font-weight: 750;
+  color: #2f6b4f;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.kas-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kas-list-item {
+  font-size: 0.88rem;
+  color: #2c3530;
+  line-height: 1.5;
+}
+
+.kas-action-section {
+  background: #f7faf8;
+  border: 1.5px dashed #b2cbb9;
+  padding: 14px;
+  border-radius: 10px;
+}
+
+.kas-action-text {
+  font-size: 0.88rem;
+  color: #1a3a28;
+  line-height: 1.55;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Tags wrap */
+.kas-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.kas-tag {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #2f6b4f;
+  background: #f0f7f3;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+/* Disclaimer footer section */
+.kas-disclaimer {
+  border-top: 1px solid #eef2ee;
+  padding-top: 14px;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kas-disclaimer p {
+  font-size: 0.78rem;
+  color: #728277;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.kas-disclaimer-sub {
+  font-style: italic;
+  color: #8c9c91 !important;
+}
+
+/* Responsive adjustments */
+@media (min-width: 640px) {
+  .kas-sheet {
+    border-radius: 16px 16px 16px 16px;
+    margin-bottom: 24px;
+    max-height: 80vh;
+    box-shadow: 0 10px 40px rgba(26, 58, 40, 0.2);
+    animation: kas-zoom-in 0.2s ease-out;
+  }
+  .kas-overlay {
+    align-items: center;
+  }
+}
+
+@keyframes kas-zoom-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

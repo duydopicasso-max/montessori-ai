@@ -22,6 +22,7 @@ import InboxView from '../components/dm/InboxView.jsx';
 import DMRequestSheet from '../components/dm/DMRequestSheet.jsx';
 import PrivateChatView from '../components/dm/PrivateChatView.jsx';
 import UserProfileSheet from '../components/community/UserProfileSheet.jsx';
+import KnowledgeArticleSheet from '../components/community/KnowledgeArticleSheet.jsx';
 
 /* ── Room icon map ── */
 const ROOM_ICON_MAP = {
@@ -864,6 +865,7 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest 
   const [pinnedExpanded, setPinnedExpanded] = useState(false);
   const [showAISheet, setShowAISheet] = useState(false);
   const [imageViewUrl, setImageViewUrl] = useState(null);
+  const [selectedKnowledge, setSelectedKnowledge] = useState(null);
   const [likes, setLikes]             = useState({});
   const [saved, setSaved]             = useState({});
   const [directText, setDirectText]   = useState('');
@@ -1125,6 +1127,7 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest 
                     onReply={() => { setDirectText(`@${msg.senderName || ''} `); inputRef.current?.focus(); }}
                     onImageClick={(url) => setImageViewUrl(url)}
                     onSendDMRequest={onSendDMRequest}
+                    onReadKnowledge={(article) => setSelectedKnowledge(article)}
                   />
                 ))}
               </div>
@@ -1224,6 +1227,14 @@ function ChatRoomView({ room, onBack, currentUser, onUserClick, onSendDMRequest 
       )}
 
       {showRules && <CommunityRulesSheet onClose={() => setShowRules(false)} roomType={roomType} />}
+
+      {/* KNOWLEDGE ARTICLE SHEET (Phase 5A) */}
+      {selectedKnowledge && (
+        <KnowledgeArticleSheet
+          article={selectedKnowledge}
+          onClose={() => setSelectedKnowledge(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1235,7 +1246,7 @@ const isAiAssistantPost = (message) => {
 };
 
 /* ── Post Card ── */
-function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave, onReply, onImageClick, onSendDMRequest }) {
+function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave, onReply, onImageClick, onSendDMRequest, onReadKnowledge }) {
   const isMe = msg.senderId === currentUser.uid;
   const isAI = msg.isAI === true;
   const isAiPost = isAiAssistantPost(msg);
@@ -1369,6 +1380,18 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
 
       {msg.title && <h4 className="post-title">{msg.title}</h4>}
       {msg.text  && <p  className="post-content">{msg.text}</p>}
+
+      {isAiPost && msg.knowledgeArticle && msg.knowledgeArticle.title && msg.knowledgeArticle.body && (
+        <div className="post-knowledge-detail-link-wrap">
+          <button 
+            className="msg-knowledge-btn"
+            onClick={() => onReadKnowledge?.(msg.knowledgeArticle)}
+            aria-label="Đọc thêm kiến thức Montessori"
+          >
+            <span className="msg-knowledge-btn-icon">📖</span> Đọc thêm kiến thức Montessori
+          </button>
+        </div>
+      )}
 
       {msg.images?.length > 0 && (
         <div className={`post-images grid-${Math.min(msg.images.length, 4)}`}>

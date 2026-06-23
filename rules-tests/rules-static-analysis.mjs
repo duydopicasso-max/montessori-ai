@@ -226,6 +226,29 @@ check("E11: chatRooms AI post images size limited to <= 1",
 check("E12: chatRooms AI post images[0] requires matches('^https://.*')",
   chatSection.includes("images[0].matches('^https://.*')"));
 
+// ── F: chatRooms — AI Post knowledgeArticle (Phase 5A) ─────────────────────
+console.log(`\n${BOLD}Section F: chatRooms — AI Post knowledgeArticle (Phase 5A)${RESET}`);
+
+check('F1: chatRooms AI post has knowledgeArticle key whitelist check',
+  chatSection.includes("keys().hasOnly([") && chatSection.includes("'knowledgeArticle'"));
+
+check('F2: knowledgeArticle fields type checks (title, summary, body, keyPoints, todayAction, tags, imageUrl, source, transparencyLabel)',
+  ['title', 'summary', 'body', 'keyPoints', 'todayAction', 'tags', 'imageUrl', 'source', 'transparencyLabel'].every(f => 
+    chatSection.includes(`knowledgeArticle.${f}`)
+  ));
+
+check('F3: knowledgeArticle body size limit <= 8000',
+  chatSection.includes('knowledgeArticle.body.size() <= 8000'));
+
+check('F4: knowledgeArticle imageUrl HTTPS or empty',
+  chatSection.includes("knowledgeArticle.imageUrl == \"\"") && chatSection.includes("knowledgeArticle.imageUrl.matches('^https://.*')"));
+
+check('F5: Update message rule blocks normal users from setting/modifying authorType',
+  chatSection.includes("!('authorType' in request.resource.data)"));
+
+check('F6: Update message rule blocks normal users from setting/modifying knowledgeArticle',
+  chatSection.includes("!('knowledgeArticle' in request.resource.data)"));
+
 // ── S: Structural Integrity ────────────────────────────────────────────────
 console.log(`\n${BOLD}Bonus: Structural Integrity${RESET}`);
 

@@ -191,3 +191,15 @@ Tạo một component bottom sheet custom (`KnowledgeDetailSheet.jsx`):
 > Vui lòng xác nhận các điểm sau trước khi tiến hành code ở phase tiếp theo:
 > 1. Bạn muốn hiển thị màn hình đọc thêm dưới dạng **Bottom Sheet** (trượt lên từ đáy màn hình, phù hợp mobile) hay **Modal chính giữa màn hình** (phù hợp cả desktop)?
 > 2. Có cần bổ sung thêm nút "Chia sẻ bài viết kiến thức" hay chỉ cần đọc và đóng lại?
+
+---
+
+## 16. Phase 5A implementation notes
+
+- **Implemented embed `knowledgeArticle`**: Copied public-safe fields from the approved review queue document (`title`, `summary`, `body`, `keyPoints`, `todayAction`, `tags`, `imageUrl`, `source`, `transparencyLabel`) directly into the community room message during the admin publish transaction.
+- **Bottom Sheet UI**: Designed a mobile-first custom slide-up bottom sheet with Forest Green accents, warm cream palette, smooth transitions, drag handle, close button, and standard disclaimer text.
+- **No auto import**: The import process remains fully controlled by the admin.
+- **No auto publish**: Admin review and publish flow remains intact.
+- **No public read from `aiContentReviewQueue`**: Restricts the public client from accessing queue collections; detail reading relies strictly on the embedded `knowledgeArticle` map in the chat room message.
+- **No Content Studio changes**: Avoided changes to `montessori-ai-content-studio`.
+- **Rules updated but not deployed**: Updated `firestore.rules` with strict field type validations and length constraints (e.g. body <= 8000). The changes compile successfully and pass all 29 integration tests and 59 static checkers, but are not deployed in this phase.

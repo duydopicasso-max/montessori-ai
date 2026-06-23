@@ -351,6 +351,69 @@ async function main() {
     expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-5', aiMessage({ images: ['javascript:alert(1)'] }), ADMIN_UID));
   });
 
+  // ════════════════════════════════════════════════════════════════════════
+  // SECTION F — chatRooms AI Post: knowledgeArticle constraints (Phase 5A)
+  // ════════════════════════════════════════════════════════════════════════
+  console.log(`\n${BOLD}Section F: chatRooms — AI Post knowledgeArticle constraints (Phase 5A)${RESET}`);
+
+  function validArticle(ov = {}) {
+    return {
+      title: 'Kiến thức Montessori',
+      summary: 'Tóm tắt bài viết',
+      body: 'Nội dung chi tiết',
+      keyPoints: ['Ý 1', 'Ý 2'],
+      todayAction: 'Hành động hôm nay',
+      tags: ['tag1', 'tag2'],
+      imageUrl: 'https://example.com/article.jpg',
+      source: 'montessori-ai-content-studio',
+      transparencyLabel: 'Duyệt bởi Admin',
+      ...ov,
+    };
+  }
+
+  await it('F1: Admin can create AI message with valid knowledgeArticle', async () => {
+    expectAllow(await restWrite('chatRooms/pregnancy/messages/msg-f1', aiMessage({
+      knowledgeArticle: validArticle()
+    }), ADMIN_UID));
+  });
+
+  await it('F2: Admin can create AI message without knowledgeArticle', async () => {
+    expectAllow(await restWrite('chatRooms/pregnancy/messages/msg-f2', aiMessage(), ADMIN_UID));
+  });
+
+  await it('F3: Admin CANNOT create AI message if knowledgeArticle contains disallowed fields', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-f3', aiMessage({
+      knowledgeArticle: validArticle({ disallowedField: 'hack' })
+    }), ADMIN_UID));
+  });
+
+  await it('F4: Admin CANNOT create AI message if knowledgeArticle body is too long', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-f4', aiMessage({
+      knowledgeArticle: validArticle({ body: 'a'.repeat(8001) })
+    }), ADMIN_UID));
+  });
+
+  await it('F5: Admin CANNOT create AI message if knowledgeArticle imageUrl is not HTTPS', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-f5', aiMessage({
+      knowledgeArticle: validArticle({ imageUrl: 'http://example.com/photo.jpg' })
+    }), ADMIN_UID));
+  });
+
+  await it('F6: Normal user CANNOT create AI message with knowledgeArticle', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-f6', aiMessage({
+      knowledgeArticle: validArticle()
+    }), NORMAL_UID));
+  });
+
+  await it('F7: Normal user CANNOT update message to add/modify knowledgeArticle', async () => {
+    // Write message as admin first
+    await restWrite('chatRooms/pregnancy/messages/msg-f7', aiMessage(), 'owner');
+    // Normal user attempts to update
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-f7', {
+      knowledgeArticle: validArticle()
+    }, NORMAL_UID, ['knowledgeArticle']));
+  });
+
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log('\n' + '─'.repeat(62));
   console.log(`${BOLD}Results:${RESET}`);
