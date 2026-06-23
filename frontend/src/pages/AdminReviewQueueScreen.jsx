@@ -698,6 +698,7 @@ export default function AdminReviewQueueScreen({ authUser }) {
         const snap = await getDocs(q);
         if (!cancelled) {
           setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          setLoading(false);
         }
       } catch (e) {
         if (isLocalDevMode) {
