@@ -72,6 +72,65 @@ function StatusBadge({ status }) {
   );
 }
 
+// ── CustomSelect ─────────────────────────────────────────────────────────────
+function CustomSelect({ value, onChange, options, ariaLabel }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOpt = options.find(o => o.value === value);
+  const currentLabel = selectedOpt ? selectedOpt.label : '';
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOutsideClick = () => setIsOpen(false);
+    const timer = setTimeout(() => {
+      window.addEventListener('click', handleOutsideClick);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('click', handleOutsideClick);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="arq-custom-select-container">
+      <button
+        type="button"
+        className={`arq-custom-select-trigger ${isOpen ? 'active' : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        aria-label={ariaLabel}
+        aria-expanded={isOpen}
+      >
+        <span className="arq-custom-select-label">{currentLabel}</span>
+        <span className="arq-custom-select-arrow" />
+      </button>
+      {isOpen && (
+        <ul className="arq-custom-select-options" role="listbox">
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <li
+                key={opt.value}
+                className={`arq-custom-select-option ${isSelected ? 'selected' : ''}`}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+              >
+                <span className="arq-option-label">{opt.label}</span>
+                {isSelected && <span className="arq-option-checkmark">✓</span>}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ── Detail Modal ─────────────────────────────────────────────────────────────
 function DetailModal({ item, authUid, onClose, onUpdate }) {
   const [status,        setStatus]       = useState(item.reviewStatus  || 'pending_review');
@@ -654,26 +713,35 @@ export default function AdminReviewQueueScreen({ authUser }) {
           onChange={e => setSearch(e.target.value)}
           aria-label="Tìm kiếm bài viết"
         />
-        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} aria-label="Lọc theo trạng thái">
-          {REVIEW_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
+        <CustomSelect
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={REVIEW_STATUSES}
+          ariaLabel="Lọc theo trạng thái"
+        />
         {types.length > 0 && (
-          <select value={filterType} onChange={e => setFilterType(e.target.value)} aria-label="Lọc theo loại nội dung">
-            <option value="">Tất cả loại</option>
-            {types.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <CustomSelect
+            value={filterType}
+            onChange={setFilterType}
+            options={[{ value: '', label: 'Tất cả loại' }, ...types.map(t => ({ value: t, label: t }))] }
+            ariaLabel="Lọc theo loại nội dung"
+          />
         )}
         {cats.length > 0 && (
-          <select value={filterCat} onChange={e => setFilterCat(e.target.value)} aria-label="Lọc theo danh mục">
-            <option value="">Tất cả danh mục</option>
-            {cats.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <CustomSelect
+            value={filterCat}
+            onChange={setFilterCat}
+            options={[{ value: '', label: 'Tất cả danh mục' }, ...cats.map(c => ({ value: c, label: c }))] }
+            ariaLabel="Lọc theo danh mục"
+          />
         )}
         {auds.length > 0 && (
-          <select value={filterAud} onChange={e => setFilterAud(e.target.value)} aria-label="Lọc theo đối tượng">
-            <option value="">Tất cả đối tượng</option>
-            {auds.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <CustomSelect
+            value={filterAud}
+            onChange={setFilterAud}
+            options={[{ value: '', label: 'Tất cả đối tượng' }, ...auds.map(a => ({ value: a, label: a }))] }
+            ariaLabel="Lọc theo đối tượng"
+          />
         )}
         {(search || filterStatus || filterType || filterCat || filterAud) && (
           <button className="arq-clear-btn" onClick={() => { setSearch(''); setFilterStatus(''); setFilterType(''); setFilterCat(''); setFilterAud(''); }}>
