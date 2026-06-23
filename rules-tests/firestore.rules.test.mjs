@@ -414,6 +414,43 @@ async function main() {
     }, NORMAL_UID, ['knowledgeArticle']));
   });
 
+  await it('F8: Admin can create AI message with representative long-title knowledgeArticle', async () => {
+    expectAllow(await restWrite('chatRooms/pregnancy/messages/msg-f8', aiMessage({
+      title: 'Nuôi dưỡng sự tự lập qua chủ đề: Chăm sóc sức khỏe và quan sát: “khủng hoảng tuổi lên 2, mẹ mất bình tĩnh, trẻ không hợp tác”',
+      knowledgeArticle: validArticle({
+        title: 'Nuôi dưỡng sự tự lập qua chủ đề: Chăm sóc sức khỏe và quan sát: “khủng hoảng tuổi lên 2, mẹ mất bình tĩnh, trẻ không hợp tác”'
+      })
+    }), ADMIN_UID));
+  });
+
+  await it('F9: Admin can create AI message with 220-character message title', async () => {
+    expectAllow(await restWrite('chatRooms/pregnancy/messages/msg-f9', aiMessage({
+      title: 'a'.repeat(220)
+    }), ADMIN_UID));
+  });
+
+  await it('F10: Admin CANNOT create AI message with 221-character message title', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-f10', aiMessage({
+      title: 'a'.repeat(221)
+    }), ADMIN_UID));
+  });
+
+  await it('F11: Admin can create AI message with 220-character knowledgeArticle title', async () => {
+    expectAllow(await restWrite('chatRooms/pregnancy/messages/msg-f11', aiMessage({
+      knowledgeArticle: validArticle({
+        title: 'a'.repeat(220)
+      })
+    }), ADMIN_UID));
+  });
+
+  await it('F12: Admin CANNOT create AI message with 221-character knowledgeArticle title', async () => {
+    expectDeny(await restWrite('chatRooms/pregnancy/messages/msg-f12', aiMessage({
+      knowledgeArticle: validArticle({
+        title: 'a'.repeat(221)
+      })
+    }), ADMIN_UID));
+  });
+
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log('\n' + '─'.repeat(62));
   console.log(`${BOLD}Results:${RESET}`);
