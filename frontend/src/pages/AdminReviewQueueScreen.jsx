@@ -13,7 +13,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
-  collection, doc, getDoc, getDocs, updateDoc,
+  collection, doc, getDoc, getDocs, updateDoc, deleteDoc,
   serverTimestamp, query, orderBy,
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
@@ -190,6 +190,22 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     }
   }, [authUid, item.id, notes, onUpdate]);
 
+  const doDelete = useCallback(async () => {
+    setErr('');
+    setSaving(true);
+    try {
+      const ref = doc(db, 'aiContentReviewQueue', item.id);
+      await deleteDoc(ref);
+      onUpdate(item.id, null);
+      onClose();
+    } catch (e) {
+      setErr('Lỗi khi xóa bài viết: ' + (e.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+      setConfirm(null);
+    }
+  }, [item.id, onUpdate, onClose]);
+
   const doPublish = useCallback(async () => {
     setErr('');
     setPublishMsg('');
@@ -267,6 +283,13 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     setConfirm({
       type: 'publish',
       message: `Bài này sẽ được đăng vào nhóm “${displayRoom}”${overrideNote} với tên Trợ lý Montessori. Hành động này sẽ tạo bài công khai trong cộng đồng. Bạn có chắc muốn tiếp tục không?`,
+    });
+  };
+
+  const requestDelete = () => {
+    setConfirm({
+      type: 'delete',
+      message: 'Bạn có chắc chắn muốn xóa bài viết này không? Hành động này sẽ xóa vĩnh viễn dữ liệu khỏi hàng chờ.',
     });
   };
 
@@ -521,6 +544,12 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
               disabled={saving || publishing || status === 'rejected'}
               onClick={() => requestUpdate('rejected')}
             >✕ Từ chối</button>
+            <button
+              className="arq-btn arq-btn-delete"
+              disabled={saving || publishing}
+              onClick={requestDelete}
+              style={{ marginLeft: 'auto' }}
+            >✕ Xóa bài</button>
           </div>
 
           {/* ── Publish action (only for approved community posts) ── */}
@@ -573,6 +602,12 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
                     disabled={publishing}
                     onClick={doPublish}
                   >{publishing ? 'Đang xuất bản…' : 'Xác nhận xuất bản'}</button>
+                ) : confirm.type === 'delete' ? (
+                  <button
+                    className="arq-btn arq-btn-delete"
+                    disabled={saving}
+                    onClick={doDelete}
+                  >{saving ? 'Đang xóa…' : 'Xác nhận xóa'}</button>
                 ) : (
                   <button
                     className="arq-btn arq-btn-primary"
@@ -604,6 +639,7 @@ export default function AdminReviewQueueScreen({ authUser }) {
   const [filterType,   setFilterType]   = useState('');
   const [filterCat,    setFilterCat]    = useState('');
   const [filterAud,    setFilterAud]    = useState('');
+  const [confirmDeleteCard, setConfirmDeleteCard] = useState(null);
 
   // ── Admin check ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -642,8 +678,24 @@ export default function AdminReviewQueueScreen({ authUser }) {
 
   // ── Local update after review or publish action (optimistic) ───────────────
   const handleUpdate = useCallback((id, patch) => {
-    setItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
-    setSelected(prev => prev?.id === id ? { ...prev, ...patch } : prev);
+    if (patch === null) {
+      setItems(prev => prev.filter(it => it.id !== id));
+      setSelected(null);
+    } else {
+      setItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+      setSelected(prev => prev?.id === id ? { ...prev, ...patch } : prev);
+    }
+  }, []);
+
+  const handleDeleteCard = useCallback(async (id) => {
+    setFetchErr('');
+    try {
+      const ref = doc(db, 'aiContentReviewQueue', id);
+      await deleteDoc(ref);
+      setItems(prev => prev.filter(it => it.id !== id));
+    } catch (e) {
+      setFetchErr('Lỗi khi xóa: ' + (e.message || 'Lỗi không xác định'));
+    }
   }, []);
 
   // ── Derived filter options ─────────────────────────────────────────────────
@@ -783,11 +835,21 @@ export default function AdminReviewQueueScreen({ authUser }) {
                 {item.targetAudience && <span>{item.targetAudience}</span>}
                 <span className="arq-card-date">{fmtDate(item.importedAt)}</span>
               </div>
-              <button
-                className="arq-card-btn"
-                onClick={() => setSelected(item)}
-                aria-label={`Xem chi tiết: ${item.title}`}
-              >Xem & Duyệt →</button>
+              <div className="arq-card-actions">
+                <button
+                  className="arq-card-btn"
+                  onClick={() => setSelected(item)}
+                  aria-label={`Xem chi tiết: ${item.title}`}
+                >Xem & Duyệt →</button>
+                <button
+                  className="arq-card-delete-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDeleteCard(item);
+                  }}
+                  aria-label={`Xóa bài: ${item.title}`}
+                >Xóa</button>
+              </div>
             </li>
           ))}
         </ul>
@@ -801,6 +863,26 @@ export default function AdminReviewQueueScreen({ authUser }) {
           onClose={() => setSelected(null)}
           onUpdate={handleUpdate}
         />
+      )}
+
+      {/* ── Confirm Delete Card Dialog ── */}
+      {confirmDeleteCard && (
+        <div className="arq-confirm-overlay" style={{ position: 'fixed', zIndex: 1100 }}>
+          <div className="arq-confirm-box">
+            <p>Bạn có chắc chắn muốn xóa bài viết <strong>“{confirmDeleteCard.title}”</strong> không? Hành động này sẽ xóa vĩnh viễn khỏi hàng chờ và không thể hoàn tác.</p>
+            <div className="arq-confirm-actions">
+              <button className="arq-btn arq-btn-ghost" onClick={() => setConfirmDeleteCard(null)}>Huỷ</button>
+              <button
+                className="arq-btn arq-btn-delete"
+                onClick={async () => {
+                  const id = confirmDeleteCard.id;
+                  setConfirmDeleteCard(null);
+                  await handleDeleteCard(id);
+                }}
+              >Xác nhận xóa</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

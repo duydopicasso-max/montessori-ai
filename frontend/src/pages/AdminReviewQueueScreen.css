@@ -797,3 +797,36 @@
   margin: 0.3rem 0;
   color: #333;
 }
+
+/* ── Phase 3A: Discard/Delete Queue Item Actions ── */
+.arq-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.arq-card-delete-btn {
+  padding: 6px 14px;
+  background: none;
+  color: #c0392b;
+  border: 1.5px solid #f0a0a0;
+  border-radius: 5px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.arq-card-delete-btn:hover {
+  background: #fdecea;
+}
+.arq-card-delete-btn:active {
+  transform: scale(0.98);
+}
+
+.arq-btn-delete {
+  background: #c0392b;
+  color: #fff;
+  border: none;
+}
+.arq-btn-delete:hover:not(:disabled) {
+  background: #a0281b;
+}
