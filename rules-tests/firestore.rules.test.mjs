@@ -317,6 +317,25 @@ async function main() {
     }, NORMAL_UID, ['imageUrl', 'updatedAt']));
   });
 
+  await it('D7: Admin can update library publish fields in queue', async () => {
+    await restWrite('aiContentReviewQueue/update-test-7', queueItem(ADMIN_UID), 'owner');
+    expectAllow(await restWrite('aiContentReviewQueue/update-test-7', {
+      publishStatus: 'published',
+      publishedDestination: 'montessori_library',
+      publishedLibraryArticleId: 'lib_update-test-7',
+      librarySection: 'pregnancy',
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, ADMIN_UID, ['publishStatus', 'publishedDestination', 'publishedLibraryArticleId', 'librarySection', 'updatedAt']));
+  });
+
+  await it('D8: Admin CANNOT update librarySection to invalid value', async () => {
+    await restWrite('aiContentReviewQueue/update-test-8', queueItem(ADMIN_UID), 'owner');
+    expectDeny(await restWrite('aiContentReviewQueue/update-test-8', {
+      librarySection: 'invalid',
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, ADMIN_UID, ['librarySection', 'updatedAt']));
+  });
+
   // ════════════════════════════════════════════════════════════════════════
   // SECTION E — chatRooms AI Post: Image Array constraints (Phase 2C.3B)
   // ════════════════════════════════════════════════════════════════════════

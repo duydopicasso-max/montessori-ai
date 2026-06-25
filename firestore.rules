@@ -357,7 +357,9 @@ service cloud.firestore {
                          'publishStatus', 'publishedAt', 'publishedByUid',
                          'publishedPostId',
                          // Image fields (Phase 2C.3B)
-                         'imageUrl'
+                         'imageUrl',
+                         // Library publish fields (Phase 6A)
+                         'publishedDestination', 'publishedLibraryArticleId', 'librarySection'
                        ])
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewStatus'])
                         || request.resource.data.reviewStatus in [
@@ -372,6 +374,12 @@ service cloud.firestore {
                         || request.resource.data.publishedByUid == request.auth.uid)
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishedPostId'])
                         || request.resource.data.publishedPostId is string)
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishedDestination'])
+                        || request.resource.data.publishedDestination == 'montessori_library')
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishedLibraryArticleId'])
+                        || request.resource.data.publishedLibraryArticleId is string)
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['librarySection'])
+                        || request.resource.data.librarySection in ['pregnancy', 'postpartum'])
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['imageUrl'])
                         || (
                           request.resource.data.imageUrl is string

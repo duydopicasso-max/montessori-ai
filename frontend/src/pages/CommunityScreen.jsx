@@ -192,6 +192,7 @@ export default function CommunityScreen({ profile }) {
   const [libraryArticles, setLibraryArticles] = useState([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
   const [libraryError, setLibraryError] = useState(false);
+  const [selectedLibraryArticle, setSelectedLibraryArticle] = useState(null);
 
   // Compute unread conversation count (messages not yet read by current user)
   const unreadConvCount = conversations.filter(c => {
@@ -758,7 +759,7 @@ export default function CommunityScreen({ profile }) {
                   <div
                     key={article.id}
                     className="library-card"
-                    onClick={() => setSelectedKnowledge(article)}
+                    onClick={() => setSelectedLibraryArticle(article)}
                     style={{
                       background: 'white',
                       borderRadius: '12px',
@@ -859,6 +860,14 @@ export default function CommunityScreen({ profile }) {
           currentUser={{ uid: user?.uid, name: authorName, photo: authorPhoto, baby: authorBaby }}
           onClose={() => setShowDMRequestSheet(null)}
           onSent={(msg) => showDmToast(msg)}
+        />
+      )}
+
+      {/* ── LIBRARY DETAIL SHEET ── */}
+      {selectedLibraryArticle && (
+        <KnowledgeArticleSheet
+          article={selectedLibraryArticle}
+          onClose={() => setSelectedLibraryArticle(null)}
         />
       )}
 
