@@ -586,6 +586,21 @@ async function main() {
     expectAllow(await restWrite('montessoriLibraryArticles/article-g10', errorArticle, ADMIN_UID));
   });
 
+  await it('G11: Admin can read unpublished library article', async () => {
+    await restWrite('montessoriLibraryArticles/article-g11', libraryArticle({ status: 'draft' }), 'owner');
+    expectAllow(await restRead('montessoriLibraryArticles/article-g11', ADMIN_UID));
+  });
+
+  await it('G12: Admin can read non-existent library article (returns 404, not 403)', async () => {
+    const status = await restRead('montessoriLibraryArticles/non-existent-article', ADMIN_UID);
+    if (status !== 404) throw new Error(`Expected 404 got ${status}`);
+  });
+
+  await it('G13: Normal user cannot read non-existent library article (returns 403)', async () => {
+    const status = await restRead('montessoriLibraryArticles/non-existent-article', NORMAL_UID);
+    expectDeny(status);
+  });
+
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log('\n' + '─'.repeat(62));
   console.log(`${BOLD}Results:${RESET}`);
