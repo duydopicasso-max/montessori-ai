@@ -857,6 +857,23 @@ export default function AdminReviewQueueScreen({ authUser }) {
                 engagementQuestion: 'Bé nhà bạn đã biết tự dọn đồ chơi chưa?'
               },
               imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
+            },
+            {
+              id: 'mock-library-qa-456',
+              title: 'Thai giáo âm nhạc cho mẹ bầu',
+              summary: 'Hướng dẫn thai giáo âm nhạc đúng cách cho mẹ bầu trong 3 tháng đầu thai kỳ.',
+              body: 'Thai giáo âm nhạc giúp kích thích não bộ thai nhi phát triển sớm. Ba mẹ nên chọn các bản nhạc cổ điển hoặc nhạc không lời có giai điệu du dương, thư giãn.',
+              todayAction: 'Dành 15 phút buổi tối nghe nhạc không lời thư giãn cùng bé yêu.',
+              keyPoints: ['Chọn nhạc nhẹ nhàng', 'Nghe 15-20 phút mỗi ngày', 'Tránh âm lượng quá lớn'],
+              tags: ['thai giáo', 'mẹ bầu', 'âm nhạc'],
+              category: 'Thai giáo',
+              targetAudience: 'Mẹ bầu 3 tháng đầu',
+              contentType: 'Bài kiến thức ngắn',
+              authorType: 'ai_assistant',
+              authorName: 'Trợ lý Montessori',
+              transparencyLabel: 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.',
+              reviewStatus: 'approved_for_publish',
+              imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
             }
           ];
           if (!cancelled) {
@@ -898,6 +915,23 @@ export default function AdminReviewQueueScreen({ authUser }) {
                 postBody: 'Mời ba mẹ cùng thảo luận chia sẻ cách giúp bé tự lập hơn.',
                 engagementQuestion: 'Bé nhà bạn đã biết tự dọn đồ chơi chưa?'
               },
+              imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
+            },
+            {
+              id: 'mock-library-qa-456',
+              title: 'Thai giáo âm nhạc cho mẹ bầu',
+              summary: 'Hướng dẫn thai giáo âm nhạc đúng cách cho mẹ bầu trong 3 tháng đầu thai kỳ.',
+              body: 'Thai giáo âm nhạc giúp kích thích não bộ thai nhi phát triển sớm. Ba mẹ nên chọn các bản nhạc cổ điển hoặc nhạc không lời có giai điệu du dương, thư giãn.',
+              todayAction: 'Dành 15 phút buổi tối nghe nhạc không lời thư giãn cùng bé yêu.',
+              keyPoints: ['Chọn nhạc nhẹ nhàng', 'Nghe 15-20 phút mỗi ngày', 'Tránh âm lượng quá lớn'],
+              tags: ['thai giáo', 'mẹ bầu', 'âm nhạc'],
+              category: 'Thai giáo',
+              targetAudience: 'Mẹ bầu 3 tháng đầu',
+              contentType: 'Bài kiến thức ngắn',
+              authorType: 'ai_assistant',
+              authorName: 'Trợ lý Montessori',
+              transparencyLabel: 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.',
+              reviewStatus: 'approved_for_publish',
               imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
             }
           ];
