@@ -336,6 +336,23 @@ async function main() {
     }, ADMIN_UID, ['librarySection', 'updatedAt']));
   });
 
+  await it('D9: Admin can update queue item with library publish fields including publishedAt, publishedByUid, and publishedPostId', async () => {
+    await restWrite('aiContentReviewQueue/update-test-9', queueItem(ADMIN_UID), 'owner');
+    expectAllow(await restWrite('aiContentReviewQueue/update-test-9', {
+      publishStatus: 'published',
+      publishedAt: '2026-06-20T10:00:00Z',
+      publishedByUid: ADMIN_UID,
+      publishedPostId: 'montessoriLibraryArticles/lib_update-test-9',
+      publishedDestination: 'montessori_library',
+      publishedLibraryArticleId: 'lib_update-test-9',
+      librarySection: 'postpartum',
+      updatedAt: '2026-06-20T10:00:00Z',
+    }, ADMIN_UID, [
+      'publishStatus', 'publishedAt', 'publishedByUid', 'publishedPostId',
+      'publishedDestination', 'publishedLibraryArticleId', 'librarySection', 'updatedAt'
+    ]));
+  });
+
   // ════════════════════════════════════════════════════════════════════════
   // SECTION E — chatRooms AI Post: Image Array constraints (Phase 2C.3B)
   // ════════════════════════════════════════════════════════════════════════
@@ -556,6 +573,17 @@ async function main() {
       headers: authHdr(ADMIN_UID)
     });
     expectAllow(resDel.status);
+  });
+
+  await it('G10: Admin can publish exact error article payload', async () => {
+    const errorArticle = libraryArticle({
+      title: 'Nuôi dưỡng sự tự lập qua chủ đề: Mẹ bầu 3 tháng đầu tiên',
+      contentType: 'Bài hướng dẫn thực hành',
+      category: 'Thai kỳ',
+      targetAudience: 'Mẹ có bé 0–6 tháng',
+      librarySection: 'postpartum',
+    });
+    expectAllow(await restWrite('montessoriLibraryArticles/article-g10', errorArticle, ADMIN_UID));
   });
 
   // ── Summary ────────────────────────────────────────────────────────────────
