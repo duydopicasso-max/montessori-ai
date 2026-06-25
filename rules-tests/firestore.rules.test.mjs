@@ -467,6 +467,78 @@ async function main() {
     }), ADMIN_UID));
   });
 
+  // ════════════════════════════════════════════════════════════════════════
+  // SECTION G — montessoriLibraryArticles (Phase 6A)
+  // ════════════════════════════════════════════════════════════════════════
+  console.log(`\n${BOLD}Section G: montessoriLibraryArticles — Library constraints (Phase 6A)${RESET}`);
+
+  function libraryArticle(ov = {}) {
+    return {
+      title: 'Bài viết Thư viện',
+      summary: 'Tóm tắt ngắn gọn',
+      body: 'Nội dung chi tiết bài viết thư viện.',
+      keyPoints: ['Ý 1', 'Ý 2'],
+      todayAction: 'Hành động hôm nay',
+      tags: ['tag1', 'tag2'],
+      imageUrl: 'https://example.com/photo.jpg',
+      category: 'Dinh dưỡng',
+      targetAudience: 'Mẹ bầu 3 tháng',
+      contentType: 'Bài kiến thức ngắn',
+      librarySection: 'pregnancy',
+      sourceQueueId: 'queue-001',
+      authorType: 'ai_assistant',
+      transparencyLabel: 'Duyệt bởi Admin',
+      publishedAt: '2026-06-20T10:00:00Z',
+      publishedByUid: ADMIN_UID,
+      status: 'published',
+      ...ov,
+    };
+  }
+
+  await it('G1: Signed-in user can read published library article', async () => {
+    await restWrite('montessoriLibraryArticles/article-g1', libraryArticle(), 'owner');
+    expectAllow(await restRead('montessoriLibraryArticles/article-g1', NORMAL_UID));
+  });
+
+  await it('G2: Unauthenticated user cannot read library article', async () => {
+    expectDeny(await restRead('montessoriLibraryArticles/article-g1', null));
+  });
+
+  await it('G3: User cannot read unpublished library article', async () => {
+    await restWrite('montessoriLibraryArticles/article-g3', libraryArticle({ status: 'draft' }), 'owner');
+    expectDeny(await restRead('montessoriLibraryArticles/article-g3', NORMAL_UID));
+  });
+
+  await it('G4: Normal user CANNOT create library article', async () => {
+    expectDeny(await restWrite('montessoriLibraryArticles/article-g4', libraryArticle(), NORMAL_UID));
+  });
+
+  await it('G5: Admin can create valid library article', async () => {
+    expectAllow(await restWrite('montessoriLibraryArticles/article-g5', libraryArticle(), ADMIN_UID));
+  });
+
+  await it('G6: Admin CANNOT create library article with invalid librarySection', async () => {
+    expectDeny(await restWrite('montessoriLibraryArticles/article-g6', libraryArticle({ librarySection: 'invalid' }), ADMIN_UID));
+  });
+
+  await it('G7: Admin CANNOT create library article with HTTP imageUrl', async () => {
+    expectDeny(await restWrite('montessoriLibraryArticles/article-g7', libraryArticle({ imageUrl: 'http://example.com/img.jpg' }), ADMIN_UID));
+  });
+
+  await it('G8: Admin CANNOT create library article with disallowed fields', async () => {
+    expectDeny(await restWrite('montessoriLibraryArticles/article-g8', libraryArticle({ hackField: 'hack' }), ADMIN_UID));
+  });
+
+  await it('G9: Admin can update and delete library article', async () => {
+    await restWrite('montessoriLibraryArticles/article-g9', libraryArticle(), 'owner');
+    expectAllow(await restWrite('montessoriLibraryArticles/article-g9', libraryArticle({ title: 'New Title' }), ADMIN_UID));
+    const resDel = await fetch(`${FS_BASE}/montessoriLibraryArticles/article-g9`, {
+      method: 'DELETE',
+      headers: authHdr(ADMIN_UID)
+    });
+    expectAllow(resDel.status);
+  });
+
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log('\n' + '─'.repeat(62));
   console.log(`${BOLD}Results:${RESET}`);

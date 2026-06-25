@@ -187,6 +187,12 @@ export default function CommunityScreen({ profile }) {
   const [showDMRequestSheet, setShowDMRequestSheet] = useState(null); // { uid, name, photo, baby }
   const [dmToast, setDmToast]                 = useState('');
 
+  // Library Tab States (Phase 6A)
+  const [librarySection, setLibrarySection] = useState('pregnancy'); // 'pregnancy' | 'postpartum'
+  const [libraryArticles, setLibraryArticles] = useState([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [libraryError, setLibraryError] = useState(false);
+
   // Compute unread conversation count (messages not yet read by current user)
   const unreadConvCount = conversations.filter(c => {
     const myCount = c.unreadCounts?.[user?.uid];
@@ -226,6 +232,45 @@ export default function CommunityScreen({ profile }) {
     });
     return unsub;
   }, []);
+
+  /* ── Load library articles (Phase 6A) ── */
+  useEffect(() => {
+    if (tab !== 'library') return;
+    let active = true;
+    setLoadingLibrary(true);
+    setLibraryError(false);
+
+    const loadArticles = async () => {
+      try {
+        const q = query(
+          collection(db, 'montessoriLibraryArticles'),
+          where('librarySection', '==', librarySection),
+          where('status', '==', 'published')
+        );
+        const snap = await getDocs(q);
+        if (!active) return;
+        const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Client-side sort to avoid index requirements in Phase 6A
+        docs.sort((a, b) => {
+          const tA = a.publishedAt?.seconds || 0;
+          const tB = b.publishedAt?.seconds || 0;
+          return tB - tA;
+        });
+        setLibraryArticles(docs);
+      } catch (e) {
+        console.error('Error loading library articles:', e);
+        if (!active) return;
+        setLibraryError(true);
+      } finally {
+        if (active) setLoadingLibrary(false);
+      }
+    };
+
+    loadArticles();
+    return () => {
+      active = false;
+    };
+  }, [tab, librarySection]);
 
   /* ── DM Toast helper ── */
   const showDmToast = useCallback((msg) => {
@@ -477,6 +522,12 @@ export default function CommunityScreen({ profile }) {
             <span className="tab-badge">{inboxBadgeLabel}</span>
           )}
         </button>
+        <button
+          className={`comm-tab ${tab === 'library' ? 'active' : ''}`}
+          onClick={() => setTab('library')}
+        >
+          Thư viện Montessori
+        </button>
       </div>
 
       <div className="community-content">
@@ -637,6 +688,141 @@ export default function CommunityScreen({ profile }) {
             onOpenConversation={(conv) => setActiveConversation(conv)}
             onSwitchToRooms={() => setTab('rooms')}
           />
+        )}
+
+        {/* ── LIBRARY TAB (Phase 6A) ── */}
+        {!error && tab === 'library' && (
+          <div className="library-view" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Sub-tabs selector */}
+            <div className="library-subtabs" style={{ display: 'flex', gap: '10px', background: 'rgba(92, 158, 122, 0.05)', padding: '6px', borderRadius: '10px' }}>
+              <button
+                className={`lib-subtab ${librarySection === 'pregnancy' ? 'active' : ''}`}
+                onClick={() => setLibrarySection('pregnancy')}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontFamily: 'Nunito, sans-serif',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: librarySection === 'pregnancy' ? '#2F6B4F' : 'transparent',
+                  color: librarySection === 'pregnancy' ? 'white' : 'var(--text-secondary)'
+                }}
+              >
+                🤰 Mẹ bầu
+              </button>
+              <button
+                className={`lib-subtab ${librarySection === 'postpartum' ? 'active' : ''}`}
+                onClick={() => setLibrarySection('postpartum')}
+                style={{
+                  flex: 1,
+                  padding: '10px 12px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontFamily: 'Nunito, sans-serif',
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: librarySection === 'postpartum' ? '#2F6B4F' : 'transparent',
+                  color: librarySection === 'postpartum' ? 'white' : 'var(--text-secondary)'
+                }}
+              >
+                👶 Mẹ sau sinh
+              </button>
+            </div>
+
+            {/* Error or Empty or Loading State */}
+            {libraryError && (
+              <div className="comm-error-card" style={{ padding: '24px', textAlign: 'center' }}>
+                <p className="comm-error-title" style={{ fontWeight: 'bold', color: '#c0392b' }}>Không thể tải thư viện lúc này</p>
+                <p className="comm-error-sub">Mẹ thử lại sau nhé.</p>
+              </div>
+            )}
+
+            {loadingLibrary ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+                <p style={{ color: '#888', fontSize: '14px', fontWeight: 600 }}>Đang tải thư viện...</p>
+              </div>
+            ) : !libraryError && libraryArticles.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#888', background: '#fcfbf9', borderRadius: '12px', border: '1px dashed #ddd' }}>
+                <p style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Chưa có bài viết nào trong mục này</p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px' }}>Admin đang duyệt và cập nhật thêm kiến thức, mẹ quay lại sau nhé.</p>
+              </div>
+            ) : (
+              <div className="library-list" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {libraryArticles.map(article => (
+                  <div
+                    key={article.id}
+                    className="library-card"
+                    onClick={() => setSelectedKnowledge(article)}
+                    style={{
+                      background: 'white',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(92, 158, 122, 0.1)',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+                      overflow: 'hidden',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {article.imageUrl && (
+                      <div style={{ width: '100%', aspectRatio: '16/9', overflow: 'hidden', background: '#f5f5f5' }}>
+                        <img
+                          src={article.imageUrl}
+                          alt={article.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    <div style={{ padding: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                        {article.contentType && (
+                          <span style={{ fontSize: '11px', fontWeight: 800, background: 'rgba(92, 158, 122, 0.08)', color: '#2F6B4F', padding: '2px 8px', borderRadius: '6px' }}>
+                            {article.contentType}
+                          </span>
+                        )}
+                        {article.category && (
+                          <span style={{ fontSize: '11px', color: '#777' }}>
+                            · {article.category}
+                          </span>
+                        )}
+                      </div>
+                      <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: 700, color: '#2F6B4F', lineHeight: '1.4' }}>
+                        {article.title}
+                      </h3>
+                      {article.summary && (
+                        <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#666', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {article.summary}
+                        </p>
+                      )}
+                      
+                      {Array.isArray(article.tags) && article.tags.length > 0 && (
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                          {article.tags.slice(0, 4).map((tag, idx) => (
+                            <span key={idx} style={{ fontSize: '11px', color: '#888' }}>
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div style={{ borderTop: '1px solid rgba(92, 158, 122, 0.06)', paddingTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ color: '#2F6B4F', fontSize: '14px', fontWeight: 'bold' }}>✓</span>
+                          <span style={{ fontSize: '11px', color: '#2F6B4F', fontWeight: 700 }}>Nội dung được Admin duyệt</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
