@@ -320,6 +320,14 @@ function validateItem(item, adminUid, overrideRoom = null) {
  * @returns {Promise<{ result: string, publishedPostId?: string, error?: string }>}
  */
 export async function publishApprovedLibraryArticle({ db, item, adminUid, librarySection }) {
+  let debugInfo = {
+    itemId: item?.id,
+    librarySection,
+    adminUid,
+    sanitizedArticleKeys: [],
+    queueUpdateKeys: [],
+  };
+
   // ── Step 1: Pre-flight validation ─────────────────────────────────────────
   if (!['pregnancy', 'postpartum'].includes(librarySection)) {
     return {
@@ -392,19 +400,33 @@ export async function publishApprovedLibraryArticle({ db, item, adminUid, librar
       // Resolve images
       const normImageUrl = normalizeImageUrl(latestData.imageUrl || item.imageUrl);
       if (normImageUrl !== '') {
-        if (!isValidHttpsImageUrl(normImageUrl)) {
-          throw new Error('Link ảnh không hợp lệ. Vui lòng dùng URL HTTPS hợp lệ hoặc xoá ảnh để đăng bài không kèm ảnh.');
+        if (!isValidHttpsImageUrl(normImageUrl) || normImageUrl.length > 1000) {
+          throw new Error('Link ảnh không hợp lệ hoặc vượt quá 1000 ký tự. Vui lòng dùng URL HTTPS hợp lệ.');
         }
       }
+
+      // Sanitize keyPoints: array <= 10, each item string sliced to 600, filtered out empty
+      const rawKeyPoints = latestData.keyPoints || item.keyPoints || [];
+      const keyPoints = (Array.isArray(rawKeyPoints) ? rawKeyPoints : [])
+        .map(kp => typeof kp === 'string' ? kp.trim().slice(0, 600) : '')
+        .filter(Boolean)
+        .slice(0, 10);
+
+      // Sanitize tags: array <= 12, each tag string sliced to 120, filtered out empty
+      const rawTags = latestData.tags || item.tags || [];
+      const tags = (Array.isArray(rawTags) ? rawTags : [])
+        .map(t => typeof t === 'string' ? t.trim().slice(0, 120) : '')
+        .filter(Boolean)
+        .slice(0, 12);
 
       // Build safe library article document
       const articleData = {
         title:              (latestData.title || item.title || '').trim().slice(0, 220),
         summary:            (latestData.summary || item.summary || '').trim().slice(0, 600),
-        body:               (latestData.body || item.body || '').trim(),
-        keyPoints:          Array.isArray(latestData.keyPoints || item.keyPoints) ? (latestData.keyPoints || item.keyPoints) : [],
+        body:               (latestData.body || item.body || '').trim().slice(0, 10000),
+        keyPoints:          keyPoints,
         todayAction:        (latestData.todayAction || item.todayAction || '').trim().slice(0, 1000),
-        tags:               Array.isArray(latestData.tags || item.tags) ? (latestData.tags || item.tags) : [],
+        tags:               tags,
         imageUrl:           normImageUrl,
         category:           (latestData.category || item.category || '').slice(0, 80),
         targetAudience:     (latestData.targetAudience || item.targetAudience || '').slice(0, 120),
@@ -417,6 +439,12 @@ export async function publishApprovedLibraryArticle({ db, item, adminUid, librar
         publishedByUid:     adminUid,
         status:             'published',
       };
+
+      debugInfo.sanitizedArticleKeys = Object.keys(articleData);
+      debugInfo.queueUpdateKeys = [
+        'publishStatus', 'publishedAt', 'publishedByUid', 'publishedPostId',
+        'publishedDestination', 'publishedLibraryArticleId', 'librarySection', 'updatedAt'
+      ];
 
       // 3c. Set article and update queue
       tx.set(articleRef, articleData);
@@ -446,9 +474,8 @@ export async function publishApprovedLibraryArticle({ db, item, adminUid, librar
       publishedPostId: publishedPostPath,
     };
   } catch (err) {
-    const msg = err?.code === 'permission-denied'
-      ? 'Không có quyền xuất bản. Vui lòng kiểm tra lại quyền admin và Firestore Rules.'
-      : `Lỗi khi xuất bản vào Thư viện: ${err?.message || 'Lỗi không xác định'}`;
+    console.error('Library publish detailed error:', err, debugInfo);
+    const msg = `Lỗi (${err?.code || 'unknown'}): ${err?.message || 'Lỗi không xác định'}. Keys: [${(debugInfo.sanitizedArticleKeys || []).join(', ')}]`;
     return { result: PUBLISH_RESULT.ERROR, error: msg };
   }
 }

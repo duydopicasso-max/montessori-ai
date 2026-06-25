@@ -402,8 +402,8 @@ service cloud.firestore {
     // ════════════════════════════════════════════════════════
 
     match /montessoriLibraryArticles/{articleId} {
-      // Signed-in users can read published articles
-      allow read: if isSignedIn() && resource.data.status == 'published';
+      // Signed-in users can read published articles, and admins can read any articles (including draft or non-existent ones)
+      allow read: if isAdmin() || (isSignedIn() && resource.data.status == 'published');
 
       // Only admins can create/update/delete library articles
       allow create: if isAdmin()
