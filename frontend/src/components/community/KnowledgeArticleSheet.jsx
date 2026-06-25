@@ -21,7 +21,11 @@ export default function KnowledgeArticleSheet({ article, onClose }) {
         
         <div className="kas-header">
           <div className="kas-header-left">
-            <span className="kas-badge">Kiến thức Montessori</span>
+            <span className="kas-badge">
+              {article.librarySection 
+                ? `Thư viện Montessori · ${article.librarySection === 'pregnancy' ? 'Mẹ bầu' : 'Mẹ sau sinh'}` 
+                : 'Kiến thức Montessori'}
+            </span>
             <h2 className="kas-title">{article.title}</h2>
           </div>
           <button className="kas-close-btn" onClick={onClose} aria-label="Đóng">✕</button>

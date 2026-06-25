@@ -312,3 +312,144 @@ function validateItem(item, adminUid, overrideRoom = null) {
   }
   return null; // valid
 }
+
+/**
+ * Publish an approved AI library article to the montessoriLibraryArticles collection.
+ *
+ * @param {{ db: Firestore, item: object, adminUid: string, librarySection: string }} params
+ * @returns {Promise<{ result: string, publishedPostId?: string, error?: string }>}
+ */
+export async function publishApprovedLibraryArticle({ db, item, adminUid, librarySection }) {
+  // ── Step 1: Pre-flight validation ─────────────────────────────────────────
+  if (!['pregnancy', 'postpartum'].includes(librarySection)) {
+    return {
+      result: PUBLISH_RESULT.ERROR,
+      error: `Chuyên mục Thư viện "${librarySection}" không hợp lệ. Phải là "pregnancy" hoặc "postpartum".`,
+    };
+  }
+  if (!item || typeof item !== 'object') {
+    return { result: PUBLISH_RESULT.ERROR, error: 'Dữ liệu bài không hợp lệ.' };
+  }
+  if (!item.id || typeof item.id !== 'string') {
+    return { result: PUBLISH_RESULT.ERROR, error: 'Bài không có ID hợp lệ.' };
+  }
+  if (!adminUid || typeof adminUid !== 'string') {
+    return { result: PUBLISH_RESULT.ERROR, error: 'Không xác định được tài khoản admin.' };
+  }
+  if (item.reviewStatus !== 'approved_for_publish') {
+    return {
+      result: PUBLISH_RESULT.ERROR,
+      error: `Chỉ xuất bản bài có trạng thái "Đã duyệt". Trạng thái hiện tại: "${item.reviewStatus || '(trống)'}".`,
+    };
+  }
+  if (item.publishStatus === 'published') {
+    return { result: PUBLISH_RESULT.ERROR, error: 'Bài này đã được xuất bản rồi.' };
+  }
+  if (item.contentType === 'Bài đăng hội nhóm') {
+    return {
+      result: PUBLISH_RESULT.ERROR,
+      error: 'Bài đăng hội nhóm phải được đăng vào phòng cộng đồng, không phải thư viện.',
+    };
+  }
+
+  // ── Step 2: Build deterministic document ID ─────────────────────────────────
+  const sanitizedId = item.id.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100);
+  const articleId = `lib_${sanitizedId}`;
+  const publishedPostPath = `montessoriLibraryArticles/${articleId}`;
+
+  const queueRef = doc(db, 'aiContentReviewQueue', item.id);
+  const articleRef = doc(db, 'montessoriLibraryArticles', articleId);
+
+  // ── Step 3: Atomic transaction ────────────────────────────────────────────
+  try {
+    const txResult = await runTransaction(db, async (tx) => {
+      // 3a. Re-read queue doc to avoid race condition
+      const queueSnap = await tx.get(queueRef);
+      if (!queueSnap.exists()) {
+        throw new Error('Không tìm thấy bài trong hàng chờ. Vui lòng tải lại trang.');
+      }
+      const latestData = queueSnap.data();
+      if (latestData.publishStatus === 'published') {
+        return { alreadyPublished: true, publishedPostId: latestData.publishedPostId };
+      }
+
+      // 3b. Check if article already exists
+      const articleSnap = await tx.get(articleRef);
+      if (articleSnap.exists()) {
+        tx.update(queueRef, {
+          publishStatus:             'published',
+          publishedAt:               serverTimestamp(),
+          publishedByUid:            adminUid,
+          publishedPostId:           publishedPostPath,
+          publishedDestination:      'montessori_library',
+          publishedLibraryArticleId: articleId,
+          librarySection:            librarySection,
+          updatedAt:                 serverTimestamp(),
+        });
+        return { alreadyPublished: true, publishedPostId: publishedPostPath };
+      }
+
+      // Resolve images
+      const normImageUrl = normalizeImageUrl(latestData.imageUrl || item.imageUrl);
+      if (normImageUrl !== '') {
+        if (!isValidHttpsImageUrl(normImageUrl)) {
+          throw new Error('Link ảnh không hợp lệ. Vui lòng dùng URL HTTPS hợp lệ hoặc xoá ảnh để đăng bài không kèm ảnh.');
+        }
+      }
+
+      // Build safe library article document
+      const articleData = {
+        title:              (latestData.title || item.title || '').trim().slice(0, 220),
+        summary:            (latestData.summary || item.summary || '').trim().slice(0, 600),
+        body:               (latestData.body || item.body || '').trim(),
+        keyPoints:          Array.isArray(latestData.keyPoints || item.keyPoints) ? (latestData.keyPoints || item.keyPoints) : [],
+        todayAction:        (latestData.todayAction || item.todayAction || '').trim().slice(0, 1000),
+        tags:               Array.isArray(latestData.tags || item.tags) ? (latestData.tags || item.tags) : [],
+        imageUrl:           normImageUrl,
+        category:           (latestData.category || item.category || '').slice(0, 80),
+        targetAudience:     (latestData.targetAudience || item.targetAudience || '').slice(0, 120),
+        contentType:        (latestData.contentType || item.contentType || '').slice(0, 80),
+        librarySection:     librarySection,
+        sourceQueueId:      item.id,
+        authorType:         'ai_assistant',
+        transparencyLabel:  (latestData.transparencyLabel || item.transparencyLabel || 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.').slice(0, 300),
+        publishedAt:        serverTimestamp(),
+        publishedByUid:     adminUid,
+        status:             'published',
+      };
+
+      // 3c. Set article and update queue
+      tx.set(articleRef, articleData);
+      tx.update(queueRef, {
+        publishStatus:             'published',
+        publishedAt:               serverTimestamp(),
+        publishedByUid:            adminUid,
+        publishedPostId:           publishedPostPath,
+        publishedDestination:      'montessori_library',
+        publishedLibraryArticleId: articleId,
+        librarySection:            librarySection,
+        updatedAt:                 serverTimestamp(),
+      });
+
+      return { alreadyPublished: false, publishedPostId: publishedPostPath };
+    });
+
+    if (txResult.alreadyPublished) {
+      return {
+        result:          PUBLISH_RESULT.ALREADY_PUBLISHED,
+        publishedPostId: txResult.publishedPostId,
+      };
+    }
+
+    return {
+      result:          PUBLISH_RESULT.SUCCESS,
+      publishedPostId: publishedPostPath,
+    };
+  } catch (err) {
+    const msg = err?.code === 'permission-denied'
+      ? 'Không có quyền xuất bản. Vui lòng kiểm tra lại quyền admin và Firestore Rules.'
+      : `Lỗi khi xuất bản vào Thư viện: ${err?.message || 'Lỗi không xác định'}`;
+    return { result: PUBLISH_RESULT.ERROR, error: msg };
+  }
+}
+

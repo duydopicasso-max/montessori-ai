@@ -36,6 +36,20 @@ service cloud.firestore {
         || (kp.size() >= 1 && kp[0] is string && kp[0].size() <= 500 && (kp.size() == 1 || (kp[1] is string && kp[1].size() <= 500 && (kp.size() == 2 || (kp[2] is string && kp[2].size() <= 500 && (kp.size() == 3 || (kp[3] is string && kp[3].size() <= 500 && (kp.size() == 4 || (kp[4] is string && kp[4].size() <= 500 && (kp.size() == 5 || (kp[5] is string && kp[5].size() <= 500 && (kp.size() == 6 || (kp[6] is string && kp[6].size() <= 500 && (kp.size() == 7 || (kp[7] is string && kp[7].size() <= 500)))))))))))))));
     }
 
+    function validateLibraryKeyPoints(kp) {
+      return kp.size() == 0
+        || (kp.size() >= 1 && kp[0] is string && kp[0].size() <= 600 && (kp.size() == 1 ||
+           (kp[1] is string && kp[1].size() <= 600 && (kp.size() == 2 ||
+           (kp[2] is string && kp[2].size() <= 600 && (kp.size() == 3 ||
+           (kp[3] is string && kp[3].size() <= 600 && (kp.size() == 4 ||
+           (kp[4] is string && kp[4].size() <= 600 && (kp.size() == 5 ||
+           (kp[5] is string && kp[5].size() <= 600 && (kp.size() == 6 ||
+           (kp[6] is string && kp[6].size() <= 600 && (kp.size() == 7 ||
+           (kp[7] is string && kp[7].size() <= 600 && (kp.size() == 8 ||
+           (kp[8] is string && kp[8].size() <= 600 && (kp.size() == 9 ||
+           (kp[9] is string && kp[9].size() <= 600)))))))))))))))))));
+    }
+
     function validateTags(tags) {
       return tags.size() == 0
         || (tags.size() >= 1 && tags[0] is string && tags[0].size() <= 120 && (tags.size() == 1 || (tags[1] is string && tags[1].size() <= 120 && (tags.size() == 2 || (tags[2] is string && tags[2].size() <= 120 && (tags.size() == 3 || (tags[3] is string && tags[3].size() <= 120 && (tags.size() == 4 || (tags[4] is string && tags[4].size() <= 120 && (tags.size() == 5 || (tags[5] is string && tags[5].size() <= 120 && (tags.size() == 6 || (tags[6] is string && tags[6].size() <= 120 && (tags.size() == 7 || (tags[7] is string && tags[7].size() <= 120 && (tags.size() == 8 || (tags[8] is string && tags[8].size() <= 120 && (tags.size() == 9 || (tags[9] is string && tags[9].size() <= 120 && (tags.size() == 10 || (tags[10] is string && tags[10].size() <= 120 && (tags.size() == 11 || (tags[11] is string && tags[11].size() <= 120)))))))))))))))))))))));
@@ -343,7 +357,9 @@ service cloud.firestore {
                          'publishStatus', 'publishedAt', 'publishedByUid',
                          'publishedPostId',
                          // Image fields (Phase 2C.3B)
-                         'imageUrl'
+                         'imageUrl',
+                         // Library publish fields (Phase 6A)
+                         'publishedDestination', 'publishedLibraryArticleId', 'librarySection'
                        ])
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewStatus'])
                         || request.resource.data.reviewStatus in [
@@ -358,6 +374,12 @@ service cloud.firestore {
                         || request.resource.data.publishedByUid == request.auth.uid)
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishedPostId'])
                         || request.resource.data.publishedPostId is string)
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishedDestination'])
+                        || request.resource.data.publishedDestination == 'montessori_library')
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['publishedLibraryArticleId'])
+                        || request.resource.data.publishedLibraryArticleId is string)
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['librarySection'])
+                        || request.resource.data.librarySection in ['pregnancy', 'postpartum'])
                     && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['imageUrl'])
                         || (
                           request.resource.data.imageUrl is string
@@ -374,6 +396,61 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+
+    // ════════════════════════════════════════════════════════
+    // MONTESSORI LIBRARY ARTICLES (Phase 6A)
+    // ════════════════════════════════════════════════════════
+
+    match /montessoriLibraryArticles/{articleId} {
+      // Signed-in users can read published articles
+      allow read: if isSignedIn() && resource.data.status == 'published';
+
+      // Only admins can create/update/delete library articles
+      allow create: if isAdmin()
+                    && request.resource.data.keys().hasOnly([
+                      'title', 'summary', 'body', 'keyPoints', 'todayAction',
+                      'tags', 'imageUrl', 'category', 'targetAudience',
+                      'contentType', 'librarySection', 'sourceQueueId',
+                      'authorType', 'transparencyLabel', 'publishedAt',
+                      'publishedByUid', 'status'
+                    ])
+                    && request.resource.data.status == 'published'
+                    && request.resource.data.librarySection in ['pregnancy', 'postpartum']
+                    && request.resource.data.authorType == 'ai_assistant'
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() <= 220
+                    && request.resource.data.summary is string
+                    && request.resource.data.summary.size() <= 600
+                    && request.resource.data.body is string
+                    && request.resource.data.body.size() <= 10000
+                    && request.resource.data.keyPoints is list
+                    && request.resource.data.keyPoints.size() <= 10
+                    && validateLibraryKeyPoints(request.resource.data.keyPoints)
+                    && request.resource.data.todayAction is string
+                    && request.resource.data.todayAction.size() <= 1000
+                    && request.resource.data.tags is list
+                    && request.resource.data.tags.size() <= 12
+                    && validateTags(request.resource.data.tags)
+                    && request.resource.data.imageUrl is string
+                    && request.resource.data.imageUrl.size() <= 1000
+                    && (
+                      request.resource.data.imageUrl == ""
+                      || request.resource.data.imageUrl.matches('^https://.*')
+                    )
+                    && request.resource.data.category is string
+                    && request.resource.data.category.size() <= 80
+                    && request.resource.data.targetAudience is string
+                    && request.resource.data.targetAudience.size() <= 120
+                    && request.resource.data.contentType is string
+                    && request.resource.data.contentType.size() <= 80
+                    && request.resource.data.sourceQueueId is string
+                    && request.resource.data.transparencyLabel is string
+                    && request.resource.data.transparencyLabel.size() <= 300
+                    && request.resource.data.publishedByUid == request.auth.uid;
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
 
     // ════════════════════════════════════════════════════════
     // CATCH-ALL: Deny everything else

@@ -18,7 +18,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase.js';
 import {
-  publishApprovedAiContent, PUBLISH_RESULT, ROOM_NAME_TO_ID,
+  publishApprovedAiContent, publishApprovedLibraryArticle, PUBLISH_RESULT, ROOM_NAME_TO_ID,
   normalizeImageUrl, isValidHttpsImageUrl,
 } from '../utils/publishToRoom.js';
 import { isLocalDevMode } from '../utils/devMode.js';
@@ -153,6 +153,27 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
   const [savingImg,     setSavingImg]    = useState(false);
   const [imgErr,        setImgErr]       = useState('');
 
+  // Library selection states (Phase 6A)
+  const getSuggestedLibrarySection = useCallback((targetAudience) => {
+    const targetStr = (targetAudience || '').toLowerCase();
+    if (targetStr.includes('mẹ bầu') || targetStr.includes('pregnancy') || targetStr.includes('bầu')) {
+      return 'pregnancy';
+    }
+    if (
+      targetStr.includes('bé') ||
+      targetStr.includes('sau sinh') ||
+      targetStr.includes('mẹ có bé') ||
+      targetStr.includes('1–2 tuổi') ||
+      targetStr.includes('6–12 tháng') ||
+      targetStr.includes('postpartum')
+    ) {
+      return 'postpartum';
+    }
+    return ''; // let admin choose
+  }, []);
+
+  const [selectedLibrarySection, setSelectedLibrarySection] = useState(() => getSuggestedLibrarySection(item.targetAudience));
+
   // Sync state when detail modal item changes
   useEffect(() => {
     setStatus(item.reviewStatus || 'pending_review');
@@ -164,7 +185,8 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     setSavedImageUrl(item.imageUrl || '');
     setSavingImg(false);
     setImgErr('');
-  }, [item]);
+    setSelectedLibrarySection(getSuggestedLibrarySection(item.targetAudience));
+  }, [item, getSuggestedLibrarySection]);
 
   const doUpdate = useCallback(async (nextStatus) => {
     setErr('');
@@ -236,6 +258,43 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     }
   }, [authUid, item, status, publishStatus, onUpdate, selectedRoom, suggestedRoom]);
 
+  const doLibraryPublish = useCallback(async () => {
+    if (!selectedLibrarySection) {
+      setErr('Vui lòng chọn chuyên mục Thư viện trước khi xuất bản.');
+      return;
+    }
+    setErr('');
+    setPublishMsg('');
+    setPublishing(true);
+    setConfirm(null);
+    try {
+      const currentItem = { ...item, reviewStatus: status, publishStatus };
+      const res = await publishApprovedLibraryArticle({
+        db,
+        item: currentItem,
+        adminUid: authUid,
+        librarySection: selectedLibrarySection,
+      });
+      if (res.result === PUBLISH_RESULT.SUCCESS) {
+        setPublishStatus('published');
+        setPublishedPostId(res.publishedPostId || '');
+        setPublishMsg('Đã xuất bản bài viết vào Thư viện.');
+        onUpdate(item.id, { publishStatus: 'published', publishedPostId: res.publishedPostId });
+      } else if (res.result === PUBLISH_RESULT.ALREADY_PUBLISHED) {
+        setPublishStatus('published');
+        setPublishedPostId(res.publishedPostId || item.publishedPostId || '');
+        setPublishMsg('Bài viết này đã được xuất bản từ trước.');
+        onUpdate(item.id, { publishStatus: 'published', publishedPostId: res.publishedPostId });
+      } else {
+        setErr(res.error || 'Lỗi không xác định khi xuất bản vào Thư viện.');
+      }
+    } catch (e) {
+      setErr('Lỗi khi xuất bản: ' + (e?.message || 'Lỗi không xác định'));
+    } finally {
+      setPublishing(false);
+    }
+  }, [authUid, item, status, publishStatus, onUpdate, selectedLibrarySection]);
+
   const handleSaveImageUrl = useCallback(async () => {
     setImgErr('');
     setSavingImg(true);
@@ -283,6 +342,18 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     setConfirm({
       type: 'publish',
       message: `Bài này sẽ được đăng vào nhóm “${displayRoom}”${overrideNote} với tên Trợ lý Montessori. Hành động này sẽ tạo bài công khai trong cộng đồng. Bạn có chắc muốn tiếp tục không?`,
+    });
+  };
+
+  const requestLibraryPublish = () => {
+    if (!selectedLibrarySection) {
+      setErr('Vui lòng chọn chuyên mục Thư viện trước khi xuất bản.');
+      return;
+    }
+    const displaySection = selectedLibrarySection === 'pregnancy' ? 'Mẹ bầu' : 'Mẹ sau sinh';
+    setConfirm({
+      type: 'publish_library',
+      message: `Bài viết này sẽ được xuất bản vào Thư viện Montessori chuyên mục “${displaySection}”. Tác giả sẽ hiển thị dưới tên Trợ lý Montessori. Bạn có chắc chắn muốn tiếp tục không?`,
     });
   };
 
@@ -490,6 +561,61 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
             </section>
           )}
 
+          {item.contentType !== 'Bài đăng hội nhóm' && (
+            <section className="arq-modal-section arq-library-box" style={{ background: 'rgba(92, 158, 122, 0.05)', padding: '12px 14px', borderRadius: '8px', border: '1px solid rgba(92, 158, 122, 0.15)' }}>
+              <h3>📚 Đề xuất xuất bản vào Thư viện</h3>
+
+              {/* Section selector */}
+              <div className="arq-room-selector-wrap" style={{ marginTop: '10px' }}>
+                <label htmlFor="library-section-select" className="arq-room-label" style={{ fontWeight: 'bold', display: 'block', marginBottom: '6px', fontSize: '13px' }}>
+                  Chuyên mục Thư viện
+                </label>
+                <select
+                  id="library-section-select"
+                  className="arq-room-select"
+                  value={selectedLibrarySection}
+                  onChange={(e) => setSelectedLibrarySection(e.target.value)}
+                  disabled={publishStatus === 'published' || publishing}
+                  style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc' }}
+                >
+                  <option value="">-- Chọn chuyên mục Thư viện --</option>
+                  <option value="pregnancy">Mẹ bầu</option>
+                  <option value="postpartum">Mẹ sau sinh</option>
+                </select>
+              </div>
+
+              {item.targetAudience && (
+                <p className="arq-hint" style={{ marginTop: '8px', fontSize: '13px', color: '#555' }}>
+                  <b>Đối tượng (AI gợi ý):</b> {item.targetAudience}
+                  {getSuggestedLibrarySection(item.targetAudience) ? (
+                    <span style={{ color: '#2F6B4F', marginLeft: '6px', fontWeight: 'bold' }}>
+                      (Gợi ý chuyên mục: {getSuggestedLibrarySection(item.targetAudience) === 'pregnancy' ? 'Mẹ bầu' : 'Mẹ sau sinh'})
+                    </span>
+                  ) : (
+                    <span style={{ color: '#b05800', marginLeft: '6px', fontWeight: 'bold' }}>
+                      (Chưa tự động nhận diện được, vui lòng chọn thủ công)
+                    </span>
+                  )}
+                </p>
+              )}
+
+              {/* Publish status */}
+              {publishStatus === 'published' ? (
+                <div className="arq-publish-done" style={{ marginTop: '12px' }}>
+                  <span className="arq-publish-check">✓</span>
+                  <span>Đã xuất bản vào Thư viện ({selectedLibrarySection === 'pregnancy' ? 'Mẹ bầu' : 'Mẹ sau sinh'})</span>
+                  {publishedPostId && (
+                    <p className="arq-hint arq-publish-path" style={{ wordBreak: 'break-all' }}>{publishedPostId}</p>
+                  )}
+                </div>
+              ) : (
+                status === 'approved_for_publish' && (
+                  <p className="arq-hint arq-publish-ready" style={{ marginTop: '10px' }}>Bài đã duyệt — sẵn sàng xuất bản vào Thư viện</p>
+                )
+              )}
+            </section>
+          )}
+
           <section className="arq-modal-section arq-meta-box">
             <h3>Thông tin nguồn</h3>
             <div className="arq-meta-grid">
@@ -587,6 +713,49 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
               )}
             </div>
           )}
+
+          {/* ── Publish action for library articles (Phase 6A) ── */}
+          {item.contentType !== 'Bài đăng hội nhóm' && (
+            <div className="arq-publish-row">
+              {publishStatus === 'published' ? (
+                <button className="arq-btn arq-btn-published" disabled>
+                  ✓ Đã xuất bản vào Thư viện
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="arq-btn arq-btn-publish"
+                    disabled={publishing || saving || status !== 'approved_for_publish' || inputImageUrl !== savedImageUrl || !selectedLibrarySection}
+                    onClick={requestLibraryPublish}
+                    title={
+                      status !== 'approved_for_publish'
+                        ? 'Bài cần được duyệt trước khi xuất bản'
+                        : inputImageUrl !== savedImageUrl
+                          ? 'Vui lòng lưu link ảnh trước khi xuất bản'
+                          : !selectedLibrarySection
+                            ? 'Vui lòng chọn chuyên mục Thư viện'
+                            : ''
+                    }
+                  >
+                    {publishing ? 'Đang xuất bản…' : 'Xuất bản vào Thư viện'}
+                  </button>
+                  {status === 'approved_for_publish' && inputImageUrl !== savedImageUrl && (
+                    <p className="arq-publish-warning-hint" style={{ color: '#b05800', marginTop: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                      Vui lòng lưu link ảnh trước khi xuất bản.
+                    </p>
+                  )}
+                  {status === 'approved_for_publish' && inputImageUrl === savedImageUrl && !selectedLibrarySection && (
+                    <p className="arq-publish-warning-hint" style={{ color: '#b05800', marginTop: '6px', fontSize: '13px', fontWeight: 'bold' }}>
+                      Vui lòng chọn chuyên mục Thư viện để kích hoạt xuất bản.
+                    </p>
+                  )}
+                </>
+              )}
+              {status !== 'approved_for_publish' && publishStatus !== 'published' && (
+                <p className="arq-hint arq-publish-hint">Duyệt bài trước để kích hoạt xuất bản</p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Confirm Dialog ── */}
@@ -601,6 +770,12 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
                     className="arq-btn arq-btn-publish"
                     disabled={publishing}
                     onClick={doPublish}
+                  >{publishing ? 'Đang xuất bản…' : 'Xác nhận xuất bản'}</button>
+                ) : confirm.type === 'publish_library' ? (
+                  <button
+                    className="arq-btn arq-btn-publish"
+                    disabled={publishing}
+                    onClick={doLibraryPublish}
                   >{publishing ? 'Đang xuất bản…' : 'Xác nhận xuất bản'}</button>
                 ) : confirm.type === 'delete' ? (
                   <button
@@ -682,6 +857,23 @@ export default function AdminReviewQueueScreen({ authUser }) {
                 engagementQuestion: 'Bé nhà bạn đã biết tự dọn đồ chơi chưa?'
               },
               imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
+            },
+            {
+              id: 'mock-library-qa-456',
+              title: 'Thai giáo âm nhạc cho mẹ bầu',
+              summary: 'Hướng dẫn thai giáo âm nhạc đúng cách cho mẹ bầu trong 3 tháng đầu thai kỳ.',
+              body: 'Thai giáo âm nhạc giúp kích thích não bộ thai nhi phát triển sớm. Ba mẹ nên chọn các bản nhạc cổ điển hoặc nhạc không lời có giai điệu du dương, thư giãn.',
+              todayAction: 'Dành 15 phút buổi tối nghe nhạc không lời thư giãn cùng bé yêu.',
+              keyPoints: ['Chọn nhạc nhẹ nhàng', 'Nghe 15-20 phút mỗi ngày', 'Tránh âm lượng quá lớn'],
+              tags: ['thai giáo', 'mẹ bầu', 'âm nhạc'],
+              category: 'Thai giáo',
+              targetAudience: 'Mẹ bầu 3 tháng đầu',
+              contentType: 'Bài kiến thức ngắn',
+              authorType: 'ai_assistant',
+              authorName: 'Trợ lý Montessori',
+              transparencyLabel: 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.',
+              reviewStatus: 'approved_for_publish',
+              imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
             }
           ];
           if (!cancelled) {
@@ -723,6 +915,23 @@ export default function AdminReviewQueueScreen({ authUser }) {
                 postBody: 'Mời ba mẹ cùng thảo luận chia sẻ cách giúp bé tự lập hơn.',
                 engagementQuestion: 'Bé nhà bạn đã biết tự dọn đồ chơi chưa?'
               },
+              imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
+            },
+            {
+              id: 'mock-library-qa-456',
+              title: 'Thai giáo âm nhạc cho mẹ bầu',
+              summary: 'Hướng dẫn thai giáo âm nhạc đúng cách cho mẹ bầu trong 3 tháng đầu thai kỳ.',
+              body: 'Thai giáo âm nhạc giúp kích thích não bộ thai nhi phát triển sớm. Ba mẹ nên chọn các bản nhạc cổ điển hoặc nhạc không lời có giai điệu du dương, thư giãn.',
+              todayAction: 'Dành 15 phút buổi tối nghe nhạc không lời thư giãn cùng bé yêu.',
+              keyPoints: ['Chọn nhạc nhẹ nhàng', 'Nghe 15-20 phút mỗi ngày', 'Tránh âm lượng quá lớn'],
+              tags: ['thai giáo', 'mẹ bầu', 'âm nhạc'],
+              category: 'Thai giáo',
+              targetAudience: 'Mẹ bầu 3 tháng đầu',
+              contentType: 'Bài kiến thức ngắn',
+              authorType: 'ai_assistant',
+              authorName: 'Trợ lý Montessori',
+              transparencyLabel: 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.',
+              reviewStatus: 'approved_for_publish',
               imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1000'
             }
           ];
