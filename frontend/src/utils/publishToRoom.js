@@ -320,6 +320,14 @@ function validateItem(item, adminUid, overrideRoom = null) {
  * @returns {Promise<{ result: string, publishedPostId?: string, error?: string }>}
  */
 export async function publishApprovedLibraryArticle({ db, item, adminUid, librarySection }) {
+  let debugInfo = {
+    itemId: item?.id,
+    librarySection,
+    adminUid,
+    sanitizedArticleKeys: [],
+    queueUpdateKeys: [],
+  };
+
   // ── Step 1: Pre-flight validation ─────────────────────────────────────────
   if (!['pregnancy', 'postpartum'].includes(librarySection)) {
     return {
@@ -432,6 +440,12 @@ export async function publishApprovedLibraryArticle({ db, item, adminUid, librar
         status:             'published',
       };
 
+      debugInfo.sanitizedArticleKeys = Object.keys(articleData);
+      debugInfo.queueUpdateKeys = [
+        'publishStatus', 'publishedAt', 'publishedByUid', 'publishedPostId',
+        'publishedDestination', 'publishedLibraryArticleId', 'librarySection', 'updatedAt'
+      ];
+
       // 3c. Set article and update queue
       tx.set(articleRef, articleData);
       tx.update(queueRef, {
@@ -460,9 +474,8 @@ export async function publishApprovedLibraryArticle({ db, item, adminUid, librar
       publishedPostId: publishedPostPath,
     };
   } catch (err) {
-    const msg = err?.code === 'permission-denied'
-      ? 'Không có quyền xuất bản. Vui lòng kiểm tra lại quyền admin và Firestore Rules.'
-      : `Lỗi khi xuất bản vào Thư viện: ${err?.message || 'Lỗi không xác định'}`;
+    console.error('Library publish detailed error:', err, debugInfo);
+    const msg = `Lỗi (${err?.code || 'unknown'}): ${err?.message || 'Lỗi không xác định'}. Keys: [${(debugInfo.sanitizedArticleKeys || []).join(', ')}]`;
     return { result: PUBLISH_RESULT.ERROR, error: msg };
   }
 }
