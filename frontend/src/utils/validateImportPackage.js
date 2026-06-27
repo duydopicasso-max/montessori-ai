@@ -72,10 +72,31 @@ export function validateImportPackage(pkg) {
     );
   }
 
+  const seenSourceDraftIds = new Set();
+
   // ── Per-item validation ───────────────────────────────────────────────────
   pkg.items.forEach((item, idx) => {
     const itemErrors = [];
     const itemWarnings = [];
+
+    // Normalize sourceDraftId and id to ensure they are synchronized
+    const rawSourceDraftId = item.sourceDraftId !== undefined && item.sourceDraftId !== null ? String(item.sourceDraftId).trim() : '';
+    const rawId = item.id !== undefined && item.id !== null ? String(item.id).trim() : '';
+    const normalizedSourceDraftId = rawSourceDraftId || rawId;
+
+    if (!normalizedSourceDraftId) {
+      itemErrors.push('Bài viết thiếu định danh nguồn (sourceDraftId/id).');
+    } else {
+      item.sourceDraftId = normalizedSourceDraftId;
+      item.id = item.id || normalizedSourceDraftId;
+
+      // Check uniqueness within the package
+      if (seenSourceDraftIds.has(normalizedSourceDraftId)) {
+        itemErrors.push(`Trùng định danh nguồn trong gói import: ${normalizedSourceDraftId}. Mỗi bài cần có id/sourceDraftId riêng.`);
+      } else {
+        seenSourceDraftIds.add(normalizedSourceDraftId);
+      }
+    }
 
     // Title checks
     if (!item.title || typeof item.title !== 'string' || !item.title.trim()) {
@@ -249,11 +270,15 @@ export function validateImportPackage(pkg) {
  * Uses a simple hash (no crypto needed in browser).
  */
 export function generateImportId(sourceDraftId, exportedAt) {
-  const str = `${sourceDraftId}__${exportedAt}`;
+  const trimmed = sourceDraftId ? String(sourceDraftId).trim() : '';
+  if (!trimmed) {
+    throw new Error('Cannot generate importId without sourceDraftId.');
+  }
+  const str = `${trimmed}__${exportedAt}`;
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
   }
   const hex = (hash >>> 0).toString(16).padStart(8, '0');
-  return `imp_${hex}_${(sourceDraftId || 'unknown').slice(0, 16).replace(/[^a-zA-Z0-9]/g, '_')}`;
+  return `imp_${hex}_${trimmed.slice(0, 16).replace(/[^a-zA-Z0-9]/g, '_')}`;
 }
