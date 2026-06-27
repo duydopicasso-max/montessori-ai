@@ -513,4 +513,197 @@ function makeBaseCommunityPackage(itemOverwrites) {
   assert.strictEqual(normalizeCommunityRoom(undefined), undefined);
 }
 
+// Case 24: JSON chỉ có id, không có sourceDraftId => valid, sourceDraftId được normalize từ id.
+{
+  const pkg = {
+    packageSchemaVersion: "1.0",
+    packageType: "montessori_publish_package",
+    source: "montessori-ai-content-studio",
+    itemCount: 1,
+    exportedAt: "2026-06-22T09:00:00Z",
+    items: [
+      {
+        id: "draft_only_id",
+        title: "Dạy trẻ tự lập",
+        body: "Trẻ từ 2 tuổi có thể tự cất đồ chơi và tự xúc ăn nếu được hướng dẫn đúng cách theo phương pháp Montessori.",
+        tags: ["tự lập"],
+        authorType: "ai_assistant",
+        authorName: "Trợ lý Montessori",
+        transparencyLabel: "AI Content",
+        exportedStatus: "pending_import",
+        approvedStatus: "approved"
+      }
+    ]
+  };
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  assert.strictEqual(res.items[0].item.sourceDraftId, "draft_only_id");
+  assert.strictEqual(res.items[0].item.id, "draft_only_id");
+
+  // Verify generateImportId does not throw and does not contain "unknown"
+  const importId = generateImportId(res.items[0].item.sourceDraftId, pkg.exportedAt);
+  assert.ok(!importId.includes("unknown"));
+}
+
+// Case 25: JSON chỉ có sourceDraftId, không có id => valid, id được sync từ sourceDraftId.
+{
+  const pkg = {
+    packageSchemaVersion: "1.0",
+    packageType: "montessori_publish_package",
+    source: "montessori-ai-content-studio",
+    itemCount: 1,
+    exportedAt: "2026-06-22T09:00:00Z",
+    items: [
+      {
+        sourceDraftId: "draft_only_sourcedraftid",
+        title: "Dạy trẻ tự lập",
+        body: "Trẻ từ 2 tuổi có thể tự cất đồ chơi và tự xúc ăn nếu được hướng dẫn đúng cách theo phương pháp Montessori.",
+        tags: ["tự lập"],
+        authorType: "ai_assistant",
+        authorName: "Trợ lý Montessori",
+        transparencyLabel: "AI Content",
+        exportedStatus: "pending_import",
+        approvedStatus: "approved"
+      }
+    ]
+  };
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  assert.strictEqual(res.items[0].item.sourceDraftId, "draft_only_sourcedraftid");
+  assert.strictEqual(res.items[0].item.id, "draft_only_sourcedraftid");
+  
+  const importId = generateImportId(res.items[0].item.sourceDraftId, pkg.exportedAt);
+  assert.ok(!importId.includes("unknown"));
+}
+
+// Case 26: JSON có cả id và sourceDraftId giống nhau => valid.
+{
+  const pkg = {
+    packageSchemaVersion: "1.0",
+    packageType: "montessori_publish_package",
+    source: "montessori-ai-content-studio",
+    itemCount: 1,
+    exportedAt: "2026-06-22T09:00:00Z",
+    items: [
+      {
+        id: "draft_same",
+        sourceDraftId: "draft_same",
+        title: "Dạy trẻ tự lập",
+        body: "Trẻ từ 2 tuổi có thể tự cất đồ chơi và tự xúc ăn nếu được hướng dẫn đúng cách theo phương pháp Montessori.",
+        tags: ["tự lập"],
+        authorType: "ai_assistant",
+        authorName: "Trợ lý Montessori",
+        transparencyLabel: "AI Content",
+        exportedStatus: "pending_import",
+        approvedStatus: "approved"
+      }
+    ]
+  };
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  assert.strictEqual(res.items[0].item.sourceDraftId, "draft_same");
+  assert.strictEqual(res.items[0].item.id, "draft_same");
+}
+
+// Case 27: JSON có cả id và sourceDraftId khác nhau => dùng sourceDraftId làm canonical import key, không overwrite id.
+{
+  const pkg = {
+    packageSchemaVersion: "1.0",
+    packageType: "montessori_publish_package",
+    source: "montessori-ai-content-studio",
+    itemCount: 1,
+    exportedAt: "2026-06-22T09:00:00Z",
+    items: [
+      {
+        id: "id_diff",
+        sourceDraftId: "sourcedraftid_diff",
+        title: "Dạy trẻ tự lập",
+        body: "Trẻ từ 2 tuổi có thể tự cất đồ chơi và tự xúc ăn nếu được hướng dẫn đúng cách theo phương pháp Montessori.",
+        tags: ["tự lập"],
+        authorType: "ai_assistant",
+        authorName: "Trợ lý Montessori",
+        transparencyLabel: "AI Content",
+        exportedStatus: "pending_import",
+        approvedStatus: "approved"
+      }
+    ]
+  };
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  assert.strictEqual(res.items[0].item.sourceDraftId, "sourcedraftid_diff");
+  assert.strictEqual(res.items[0].item.id, "id_diff"); // not overwritten
+
+  const importId = generateImportId(res.items[0].item.sourceDraftId, pkg.exportedAt);
+  assert.ok(!importId.includes("unknown"));
+}
+
+// Case 28: JSON thiếu cả id và sourceDraftId => hard error.
+{
+  const pkg = {
+    packageSchemaVersion: "1.0",
+    packageType: "montessori_publish_package",
+    source: "montessori-ai-content-studio",
+    itemCount: 1,
+    exportedAt: "2026-06-22T09:00:00Z",
+    items: [
+      {
+        title: "Dạy trẻ tự lập",
+        body: "Trẻ từ 2 tuổi có thể tự cất đồ chơi và tự xúc ăn nếu được hướng dẫn đúng cách theo phương pháp Montessori.",
+        tags: ["tự lập"],
+        authorType: "ai_assistant",
+        authorName: "Trợ lý Montessori",
+        transparencyLabel: "AI Content",
+        exportedStatus: "pending_import",
+        approvedStatus: "approved"
+      }
+    ]
+  };
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, false);
+  assert.ok(hasError(res, "Bài viết thiếu định danh nguồn (sourceDraftId/id)."));
+  
+  // Verify generateImportId throws error on empty sourceDraftId
+  assert.throws(() => {
+    generateImportId("", pkg.exportedAt);
+  }, /Cannot generate importId without sourceDraftId/);
+}
+
+// Case 29: Nhiều item trong cùng package trùng id/sourceDraftId => hard error.
+{
+  const pkg = {
+    packageSchemaVersion: "1.0",
+    packageType: "montessori_publish_package",
+    source: "montessori-ai-content-studio",
+    itemCount: 2,
+    exportedAt: "2026-06-22T09:00:00Z",
+    items: [
+      {
+        id: "draft_dup",
+        title: "Dạy trẻ tự lập",
+        body: "Trẻ từ 2 tuổi có thể tự cất đồ chơi và tự xúc ăn nếu được hướng dẫn đúng cách theo phương pháp Montessori.",
+        tags: ["tự lập"],
+        authorType: "ai_assistant",
+        authorName: "Trợ lý Montessori",
+        transparencyLabel: "AI Content",
+        exportedStatus: "pending_import",
+        approvedStatus: "approved"
+      },
+      {
+        sourceDraftId: "draft_dup",
+        title: "Rèn ngủ ngon cho bé",
+        body: "Phương pháp rèn ngủ xuyên đêm giúp bé ngủ ngon hơn và mẹ có nhiều thời gian nghỉ ngơi.",
+        tags: ["rèn ngủ"],
+        authorType: "ai_assistant",
+        authorName: "Trợ lý ngủ ngon",
+        transparencyLabel: "AI Content",
+        exportedStatus: "pending_import",
+        approvedStatus: "approved"
+      }
+    ]
+  };
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, false);
+  assert.ok(hasError(res, "Trùng định danh nguồn trong gói import: draft_dup. Mỗi bài cần có id/sourceDraftId riêng."));
+}
+
 console.log("✅ ALL VALIDATE IMPORT PACKAGE TESTS PASSED SUCCESSFULLY!");
