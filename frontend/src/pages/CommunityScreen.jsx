@@ -24,6 +24,7 @@ import PrivateChatView from '../components/dm/PrivateChatView.jsx';
 import UserProfileSheet from '../components/community/UserProfileSheet.jsx';
 import KnowledgeArticleSheet from '../components/community/KnowledgeArticleSheet.jsx';
 import { isLocalDevMode } from '../utils/devMode.js';
+import { getDistinctKnowledgeArticle } from '../utils/getDistinctKnowledgeArticle.js';
 
 /* ── Room icon map ── */
 const ROOM_ICON_MAP = {
@@ -1632,17 +1633,21 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
       {msg.title && <h4 className="post-title">{msg.title}</h4>}
       {msg.text  && <p  className="post-content">{msg.text}</p>}
 
-      {isAiPost && msg.knowledgeArticle && msg.knowledgeArticle.title && msg.knowledgeArticle.body && (
-        <div className="post-knowledge-detail-link-wrap">
-          <button 
-            className="msg-knowledge-btn"
-            onClick={() => onReadKnowledge?.(msg.knowledgeArticle)}
-            aria-label="Đọc thêm kiến thức Montessori"
-          >
-            <span className="msg-knowledge-btn-icon">📖</span> Đọc thêm kiến thức Montessori
-          </button>
-        </div>
-      )}
+      {isAiPost && (() => {
+        const distinctArticle = getDistinctKnowledgeArticle(msg);
+        if (!distinctArticle) return null;
+        return (
+          <div className="post-knowledge-detail-link-wrap">
+            <button 
+              className="msg-knowledge-btn"
+              onClick={() => onReadKnowledge?.(distinctArticle)}
+              aria-label="Đọc thêm kiến thức Montessori"
+            >
+              <span className="msg-knowledge-btn-icon">📖</span> Đọc thêm kiến thức Montessori
+            </button>
+          </div>
+        );
+      })()}
 
       {msg.images?.length > 0 && (
         <div className={`post-images grid-${Math.min(msg.images.length, 4)}`}>

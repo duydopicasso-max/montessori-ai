@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { validateImportPackage, normalizeCommunityRoom } from './validateImportPackage.js';
+import { getDistinctKnowledgeArticle } from './getDistinctKnowledgeArticle.js';
 
 console.log("=== RUNNING COMMUNITY ROOM IMPORT PARSER TESTS ===");
 
@@ -105,6 +106,69 @@ function makeBaseCommunityPackage(itemOverwrites) {
       assert.ok(!val.includes('[object Object]'), `Field ${key} should not contain object notation`);
     }
   });
+}
+
+// === TESTS FOR getDistinctKnowledgeArticle ===
+
+// 11. Community post không có knowledge fields => returns null
+{
+  const msg = {
+    title: "Bài đăng cộng đồng",
+    text: "Nội dung bài viết.",
+    isAI: true
+  };
+  const art = getDistinctKnowledgeArticle(msg);
+  assert.strictEqual(art, null, "11. Post with no knowledge fields should return null");
+}
+
+// 12. Community post có knowledgeArticleSuggestion nhưng trùng lặp body => returns null
+{
+  const msg = {
+    title: "Bài đăng cộng đồng",
+    text: "Nội dung kiến thức trùng lặp.",
+    isAI: true,
+    knowledgeArticleSuggestion: {
+      title: "Bài đăng cộng đồng",
+      body: "Nội dung kiến thức trùng lặp.",
+      summary: "Tóm tắt"
+    }
+  };
+  const art = getDistinctKnowledgeArticle(msg);
+  assert.strictEqual(art, null, "12. Identical/duplicated article body should be filtered out");
+}
+
+// 13. Community post có knowledgeArticleSuggestion hợp lệ và khác biệt => trả về article
+{
+  const msg = {
+    title: "Ngừng Ép Con Nhắm Mắt Đi Ngủ",
+    text: "Mẹo nhỏ giúp con tự ngủ ngon lành.",
+    isAI: true,
+    knowledgeArticleSuggestion: {
+      title: "Kiến thức về giấc ngủ của trẻ",
+      body: "Chu kỳ giấc ngủ của bé khác biệt hoàn toàn với người lớn...",
+      summary: "Chi tiết khoa học giấc ngủ trẻ em.",
+      todayAction: "Nghe nhạc nhẹ",
+      tags: ["giấc ngủ", "montessori"]
+    }
+  };
+  const art = getDistinctKnowledgeArticle(msg);
+  assert.ok(art !== null, "13. Mapped article should not be null");
+  assert.strictEqual(art.title, "Kiến thức về giấc ngủ của trẻ", "13a. Title mapped");
+  assert.strictEqual(art.body, "Chu kỳ giấc ngủ của bé khác biệt hoàn toàn với người lớn...", "13b. Body mapped");
+  assert.strictEqual(art.todayAction, "Nghe nhạc nhẹ", "13c. todayAction mapped");
+}
+
+// 14. Nếu knowledgeArticleSuggestion thiếu body => returns null
+{
+  const msg = {
+    title: "Bài đăng",
+    text: "Nội dung",
+    knowledgeArticleSuggestion: {
+      title: "Chỉ có tiêu đề không có body"
+    }
+  };
+  const art = getDistinctKnowledgeArticle(msg);
+  assert.strictEqual(art, null, "14. Article without body should return null");
 }
 
 console.log("✅ ALL COMMUNITY ROOM IMPORT PARSER TESTS PASSED!");
