@@ -12,6 +12,28 @@ const VALID_ROOMS = [
   'Chuyện Gia Đình',
 ];
 
+const ROOM_ID_TO_NAME = {
+  'pregnancy': 'Góc Mẹ Bầu',
+  'weaning': 'Hành Trình Ăn Dặm',
+  'feeding': 'Hành Trình Ăn Dặm',
+  'sleep': 'Rèn Ngủ Xuyên Đêm',
+  'health': 'Sức Khỏe Mẹ & Bé',
+  'hygiene': 'Sức Khỏe Mẹ & Bé',
+  'family': 'Chuyện Gia Đình',
+};
+
+export function normalizeCommunityRoom(val) {
+  if (!val) return undefined;
+  const trimmed = String(val).trim();
+  if (VALID_ROOMS.includes(trimmed)) {
+    return trimmed;
+  }
+  if (ROOM_ID_TO_NAME[trimmed]) {
+    return ROOM_ID_TO_NAME[trimmed];
+  }
+  return trimmed;
+}
+
 /**
  * @param {any} pkg - Parsed JSON object
  * @returns {{ valid: boolean, errors: string[], warnings: string[], items: Array<{ item: any, errors: string[], warnings: string[], status: string }> }}
@@ -144,12 +166,30 @@ export function validateImportPackage(pkg) {
 
     // Room and post suggestion checks
     if (item.contentType === 'Bài đăng hội nhóm') {
+      const resolvedCommunityRoom = normalizeCommunityRoom(
+        item.communityRoom ||
+        item.communityPostSuggestion?.room ||
+        item.communityPostSuggestion?.communityRoom ||
+        item.room ||
+        item.roomName ||
+        item.destination?.room ||
+        item.destination?.communityRoom ||
+        item.destination?.roomId
+      );
+
+      // Mutate/normalize item values
+      item.communityRoom = resolvedCommunityRoom;
+      if (item.communityPostSuggestion && typeof item.communityPostSuggestion === 'object') {
+        item.communityPostSuggestion.room = resolvedCommunityRoom;
+        item.communityPostSuggestion.communityRoom = resolvedCommunityRoom;
+      }
+
       const cps = item.communityPostSuggestion;
       if (!cps || typeof cps !== 'object') {
         itemErrors.push('contentType là "Bài đăng hội nhóm" nhưng thiếu thông tin gợi ý đăng hội nhóm (communityPostSuggestion).');
       } else {
-        if (!VALID_ROOMS.includes(cps.room)) {
-          itemErrors.push(`Phòng đăng "${cps.room}" không hợp lệ. Phải là một trong: ${VALID_ROOMS.join(', ')}.`);
+        if (!resolvedCommunityRoom || !VALID_ROOMS.includes(resolvedCommunityRoom)) {
+          itemErrors.push(`Phòng đăng "${resolvedCommunityRoom}" không hợp lệ. Phải là một trong: ${VALID_ROOMS.join(', ')}.`);
         }
         if (!cps.postTitle || typeof cps.postTitle !== 'string' || !cps.postTitle.trim()) {
           itemErrors.push('Thiếu tiêu đề bài đăng hội nhóm (postTitle).');
