@@ -117,8 +117,8 @@ function ItemPreviewCard({ index, itemVal, isDuplicate, duplicateChecking }) {
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
         <span className="ais-meta-badge">{item.contentType || 'Hội nhóm'}</span>
         <span className="ais-meta-badge">{item.category || 'Mẹ & Bé'}</span>
-        {item.communityPostSuggestion?.room && (
-          <span className="ais-meta-badge" style={{ background: '#f5f7f8' }}>🏠 {item.communityPostSuggestion.room}</span>
+        {(item.communityRoom || item.communityPostSuggestion?.room) && (
+          <span className="ais-meta-badge" style={{ background: '#f5f7f8' }}>🏠 {item.communityRoom || item.communityPostSuggestion.room}</span>
         )}
         <span className="ais-meta-badge" style={{ color: imageColor }}>🖼️ {imageText}</span>
       </div>
@@ -442,6 +442,7 @@ export default function AdminImportScreen({ authUser, setActiveTab }) {
             safetyNotes:        item.safetyNotes      ?? null,
 
             // Community suggestion (stored but NOT published)
+            communityRoom:      item.communityRoom    ?? null,
             communityPostSuggestion: item.communityPostSuggestion ?? null,
 
             // Review state

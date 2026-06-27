@@ -1,0 +1,108 @@
+{
+  "packageSchemaVersion": "1.0",
+  "packageType": "montessori_publish_package",
+  "packageId": "montessori-content-package-2026-06-27-v6",
+  "exportedAt": "2026-06-27T07:38:00.000Z",
+  "source": "montessori-ai-content-studio",
+  "items": [
+    {
+      "id": "draft_20260627_001",
+      "contentType": "Card quote",
+      "category": "Phát triển",
+      "targetAudience": "Mẹ có bé 0–2 tuổi",
+      "authorType": "ai_assistant",
+      "authorName": "Montessori AI",
+      "transparencyLabel": "ai_generated",
+      "exportedStatus": "pending_import",
+      "approvedStatus": "approved",
+      "title": "Trật Tự Là Bình Yên Của Tâm Hồn Trẻ",
+      "summary": "Quote về nhu cầu trật tự sâu thẳm của trẻ nhỏ — không phải kỷ luật cứng nhắc, mà là sự an toàn bên trong mà mỗi đứa trẻ cần để lớn lên.",
+      "body": "Cũng như bào thai cần nước ối để lớn lên, tâm hồn trẻ cần một thế giới có trật tự để bình yên. Khi mọi thứ đúng chỗ — con thở được.\n\n— Tinh thần Montessori",
+      "keyPoints": [
+        "Trẻ 0–2 tuổi đặc biệt nhạy cảm với trật tự — đây là nhu cầu tâm lý thật sự, không phải thói quen.",
+        "Môi trường có trật tự giúp trẻ cảm thấy an toàn, bình tĩnh và tự tin khám phá thế giới xung quanh."
+      ],
+      "todayAction": "Hôm nay, thử để một góc nhỏ trong nhà luôn gọn gàng — đó là góc của con. Không cần hoàn hảo. Chỉ cần đủ ổn định để con biết chỗ này là của mình.",
+      "tags": [
+        "tinh_trat_tu",
+        "binh_yen_cho_con",
+        "montessori_tai_nha"
+      ],
+      "imagePrompt": "A minimalist, warm Montessori-style children's corner in a Vietnamese home, small wooden shelf with neatly arranged toys and books, soft morning light, peaceful and orderly, no clutter, no text, no logo, no watermark, photorealistic.",
+      "imageUrl": "",
+      "communityRoom": null,
+      "communityPostSuggestion": null,
+      "librarySection": "Mẹ sau sinh",
+      "createdAt": "2026-06-27T06:43:00.000Z",
+      "updatedAt": "2026-06-27T06:43:00.000Z"
+    },
+    {
+      "id": "draft_20260627_002",
+      "contentType": "Bài đăng hội nhóm",
+      "category": "Phát triển",
+      "targetAudience": "Mẹ có bé 1–3 tuổi",
+      "authorType": "ai_assistant",
+      "authorName": "Montessori AI",
+      "transparencyLabel": "ai_generated",
+      "exportedStatus": "pending_import",
+      "approvedStatus": "approved",
+      "title": "Tại Sao Con Thích Sờ Mọi Thứ? Đây Là Câu Trả Lời!",
+      "summary": "Trẻ nhỏ sờ, cầm, nhặt, ném — không phải vì nghịch ngợm. Đó là cách não bộ của con đang học. Montessori gọi đôi tay là công cụ của trí tuệ và khoa học hiện đại đã chứng minh điều đó.",
+      "body": "Hôm qua mình để con tự xúc cháo, kết quả là cháo đi hết một nửa ra bàn 😅\n\nNhưng thay vì giật muỗng lại, mình ngồi nhìn con loay hoay. Và thấy mắt con sáng lên rõ ràng — con đang tập trung thật sự.\n\nMontessori có một phát hiện rất thú vị: đôi tay và não bộ phát triển song song với nhau. Khi trẻ dùng tay để làm một việc gì đó — gấp giấy, đổ nước, nhặt hạt đậu — não bộ đang xử lý thông tin, xây dựng các kết nối thần kinh mới.\n\nNghĩa là mỗi lần mình cho con tự làm, dù chậm, dù lộn xộn — mình đang cho con một bài học trí tuệ thật sự.\n\nNgược lại, mỗi lần mình làm thay con vì \"nhanh hơn\" hay \"sạch hơn\" — mình vô tình lấy đi một cơ hội não bộ của con phát triển.\n\nKhông cần đồ chơi đắt tiền. Chỉ cần: cái muỗng, cái hộp, hạt gạo, mảnh vải... và thời gian để con tự khám phá.\n\nCác mẹ thường cho con tự làm gì ở nhà? Và mẹ nào cũng từng \"giật tay lại\" như mình không? 😄 Chia sẻ để mình học hỏi thêm nha!",
+      "communityRoom": "Chuyện Gia Đình",
+      "communityPostSuggestion": {
+        "postTitle": "Tại Sao Con Thích Sờ Mọi Thứ? Đây Là Câu Trả Lời!",
+        "postBody": "Hôm qua mình để con tự xúc cháo, kết quả là cháo đi hết một nửa ra bàn 😅\n\nNhưng thay vì giật muỗng lại, mình ngồi nhìn con loay hoay. Và thấy mắt con sáng lên rõ ràng — con đang tập trung thật sự.\n\nMontessori có một phát hiện rất thú vị: đôi tay và não bộ phát triển song song với nhau. Khi trẻ dùng tay để làm một việc gì đó — gấp giấy, đổ nước, nhặt hạt đậu — não bộ đang xử lý thông tin, xây dựng các kết nối thần kinh mới.\n\nNghĩa là mỗi lần mình cho con tự làm, dù chậm, dù lộn xộn — mình đang cho con một bài học trí tuệ thật sự.\n\nNgược lại, mỗi lần mình làm thay con vì \"nhanh hơn\" hay \"sạch hơn\" — mình vô tình lấy đi một cơ hội não bộ của con phát triển.\n\nKhông cần đồ chơi đắt tiền. Chỉ cần: cái muỗng, cái hộp, hạt gạo, mảnh vải... và thời gian để con tự khám phá.\n\nCác mẹ thường cho con tự làm gì ở nhà? Và mẹ nào cũng từng \"giật tay lại\" như mình không? 😄 Chia sẻ để mình học hỏi thêm nha!",
+        "engagementQuestion": "Ở nhà, mẹ thường để con tự làm việc gì nhất? Mẹ có từng muốn làm thay cho nhanh nhưng rồi lại dừng lại không?"
+      },
+      "keyPoints": [
+        "Hoạt động tay trực tiếp kích thích não bộ phát triển — mỗi thao tác tay là một bài học trí tuệ con tự dạy cho mình.",
+        "Cho trẻ tự làm dù chậm và lộn xộn quan trọng hơn làm thay để nhanh hơn hay gọn hơn.",
+        "Đồ vật đời thường như muỗng, hộp, vải đều là công cụ học tập tuyệt vời không cần tốn tiền."
+      ],
+      "todayAction": "Hôm nay mẹ thử chọn một việc nhỏ trong ngày và để con tự làm hoàn toàn — dù chỉ 5 phút. Quan sát xem con tập trung như thế nào và chia sẻ vào đây nhé!",
+      "tags": [
+        "doi_tay_tri_tue",
+        "tu_lap_tu_nho",
+        "montessori_doi_thuong"
+      ],
+      "imagePrompt": "A Vietnamese toddler happily and messily self-feeding rice porridge with a small spoon at a low Montessori table, warm indoor light, mother sitting nearby smiling patiently, natural authentic moment, no text, no logo, no watermark, photorealistic.",
+      "imageUrl": "",
+      "librarySection": null,
+      "createdAt": "2026-06-27T06:43:00.000Z",
+      "updatedAt": "2026-06-27T06:43:00.000Z"
+    },
+    {
+      "id": "draft_20260627_003",
+      "contentType": "Bài truyền cảm hứng",
+      "category": "Cảm xúc",
+      "targetAudience": "Mẹ có bé 1–3 tuổi",
+      "authorType": "ai_assistant",
+      "authorName": "Montessori AI",
+      "transparencyLabel": "ai_generated",
+      "exportedStatus": "pending_import",
+      "approvedStatus": "approved",
+      "title": "Nếu Hôm Nay Con Là Mẹ — Con Sẽ Muốn Được Đối Xử Thế Nào?",
+      "summary": "Đã bao giờ bạn thử nhìn thế giới bằng đôi mắt của con chưa? Montessori có một bài tập rất nhỏ nhưng có thể thay đổi hoàn toàn cách bạn nhìn những hành vi khó chịu của trẻ.",
+      "body": "Có một buổi chiều, con lấy cái cốc của mẹ — cái cốc đẹp, không phải đồ chơi — và bắt đầu đổ nước ra sàn.\n\nPhản xạ đầu tiên: giật lại, la lên \"Không được!\"\n\nNhưng rồi có một câu hỏi nhỏ thoáng qua: Nếu mình là con lúc này, mình đang cảm thấy gì?\n\nMontessori gọi đây là \"trò chơi đổi chỗ\" — không phải trò chơi thật sự, mà là một thực hành nội tâm. Bạn dùng trí tưởng tượng để đặt mình vào vị trí của con, nhìn lại tình huống vừa xảy ra bằng đôi mắt ba tuổi.\n\nKhi làm điều đó, bạn sẽ thấy: con không cố tình phá. Con đang khám phá. Con đang tìm hiểu điều kỳ diệu của nước — nó chảy thế nào, nó thấm ra sao, nó mát như thế nào khi chạm vào tay.\n\nKhoảng cách giữa điều bạn tưởng con đang nghĩ và điều con thật sự đang cảm — đó chính là thước đo sự thấu hiểu của bạn với con.\n\nKhông có cha mẹ nào hiểu con hoàn toàn. Nhưng mỗi lần bạn chịu dừng lại, thở, và hỏi \"Con đang cảm thấy gì nhỉ?\" — bạn đang rút ngắn khoảng cách đó thêm một chút.\n\nVà con sẽ lớn lên với một niềm tin bền vững: Mẹ không chỉ nhìn thấy mình — mẹ còn hiểu mình.\n\nĐó là thứ không bài kiểm tra IQ nào đo được. Nhưng nó sẽ theo con cả đời.",
+      "keyPoints": [
+        "Trò chơi đổi chỗ của Montessori giúp cha mẹ nhìn tình huống bằng góc nhìn của trẻ thay vì phản ứng theo cảm xúc.",
+        "Khoảng cách giữa điều cha mẹ tưởng và điều con thật sự nghĩ chính là thước đo sự thấu hiểu trong gia đình.",
+        "Trẻ lớn lên trong sự thấu hiểu sẽ có nền tảng tin tưởng vững chắc — thứ không trường học nào dạy được."
+      ],
+      "todayAction": "Tối nay, chọn một tình huống nhỏ trong ngày mà bạn đã phản ứng với con — rồi thử hỏi lại: Nếu mình là con lúc đó, mình đang cảm thấy gì? Không cần hành động gì thêm. Chỉ cần ngồi với câu hỏi đó thôi — bạn sẽ thấy điều gì đó thay đổi bên trong.",
+      "tags": [
+        "thau_hieu_con_tre",
+        "me_diu_dang",
+        "nuoi_con_bang_tam"
+      ],
+      "imagePrompt": "A tender moment of a Vietnamese mother kneeling down to eye level with her curious toddler who just spilled water, mother's expression is calm and gentle, soft afternoon light in a simple home, no anger, no text, no logo, no watermark, photorealistic.",
+      "imageUrl": "",
+      "communityRoom": null,
+      "communityPostSuggestion": null,
+      "librarySection": "Mẹ sau sinh",
+      "createdAt": "2026-06-27T06:43:00.000Z",
+      "updatedAt": "2026-06-27T06:43:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "packageSchemaVersion": "1.0",
+  "packageType": "montessori_publish_package",
+  "packageId": "montessori-content-package-2026-06-27-v6",
+  "itemCount": 1,
+  "exportedAt": "2026-06-27T07:38:00.000Z",
+  "source": "montessori-ai-content-studio",
+  "items": [
+    {
+      "id": "draft_20260627_002",
+      "sourceDraftId": "draft_20260627_002",
+      "contentType": "Bài đăng hội nhóm",
+      "category": "Phát triển",
+      "targetAudience": "Mẹ có bé 1–3 tuổi",
+      "title": "Tại Sao Con Thích Sờ Mọi Thứ? Đây Là Câu Trả Lời!",
+      "summary": "Trẻ nhỏ sờ, cầm, nhặt, ném — không phải vì nghịch ngợm.",
+      "body": "Nội dung bài hội nhóm.",
+      "communityRoom": "Chuyện Gia Đình",
+      "communityPostSuggestion": {
+        "postTitle": "Tại Sao Con Thích Sờ Mọi Thứ? Đây Là Câu Trả Lời!",
+        "postBody": "Nội dung bài hội nhóm.",
+        "engagementQuestion": "Ở nhà, mẹ thường để con tự làm việc gì nhất?"
+      },
+      "keyPoints": [
+        "Đôi tay là công cụ học tập quan trọng.",
+        "Tự làm giúp trẻ tập trung.",
+        "Cha mẹ nên quan sát trước khi can thiệp."
+      ],
+      "todayAction": "Hôm nay mẹ thử để con tự làm một việc nhỏ trong 5 phút.",
+      "tags": [
+        "doi_tay_tri_tue",
+        "tu_lap_tu_nho",
+        "montessori_doi_thuong"
+      ],
+      "imagePrompt": "A Vietnamese toddler self-feeding at a low Montessori table, warm light, no text.",
+      "imageUrl": "",
+      "librarySection": null,
+      "authorType": "ai_assistant",
+      "authorName": "Trợ lý Montessori",
+      "transparencyLabel": "Nội dung được tạo bởi AI",
+      "exportedStatus": "pending_import",
+      "approvedStatus": "approved",
+      "createdAt": "2026-06-27T06:43:00.000Z",
+      "updatedAt": "2026-06-27T06:43:00.000Z"
+    }
+  ]
+}

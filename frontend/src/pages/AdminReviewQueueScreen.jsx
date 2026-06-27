@@ -137,7 +137,7 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
   const [publishStatus, setPublishStatus] = useState(item.publishStatus || '');
   const [publishedPostId, setPublishedPostId] = useState(item.publishedPostId || '');
   // Room admin can override AI suggestion before publishing
-  const suggestedRoom = item.communityPostSuggestion?.room || '';
+  const suggestedRoom = item.communityRoom || item.communityPostSuggestion?.room || '';
   const [selectedRoom,  setSelectedRoom] = useState(suggestedRoom);
   const [notes,         setNotes]        = useState(item.reviewNotes || '');
   const [confirm,       setConfirm]      = useState(null); // { type, nextStatus?, message }
@@ -179,7 +179,7 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
     setStatus(item.reviewStatus || 'pending_review');
     setPublishStatus(item.publishStatus || '');
     setPublishedPostId(item.publishedPostId || '');
-    setSelectedRoom(item.communityPostSuggestion?.room || '');
+    setSelectedRoom(item.communityRoom || item.communityPostSuggestion?.room || '');
     setNotes(item.reviewNotes || '');
     setInputImageUrl(item.imageUrl || '');
     setSavedImageUrl(item.imageUrl || '');

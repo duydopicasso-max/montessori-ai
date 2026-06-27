@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { validateImportPackage, generateImportId } from './validateImportPackage.js';
+import { validateImportPackage, generateImportId, normalizeCommunityRoom } from './validateImportPackage.js';
 
 // Setup Mock LocalStorage for test case 13
 global.window = {
@@ -390,6 +390,127 @@ function hasWarning(res, expectedText) {
   const res = validateImportPackage(pkg);
   assert.strictEqual(res.valid, false);
   assert.ok(hasError(res, "Trường \"title\" không thể là kiểu đối tượng"));
+}
+
+// Helper to make base community post package
+function makeBaseCommunityPackage(itemOverwrites) {
+  return {
+    packageSchemaVersion: "1.0",
+    packageType: "montessori_publish_package",
+    source: "montessori-ai-content-studio",
+    itemCount: 1,
+    items: [
+      {
+        sourceDraftId: "draft_1",
+        title: "Dạy trẻ tự lập",
+        body: "Trẻ từ 2 tuổi có thể tự cất đồ chơi và tự xúc ăn nếu được hướng dẫn đúng cách theo phương pháp Montessori.",
+        tags: ["tự lập"],
+        authorType: "ai_assistant",
+        authorName: "Trợ lý Montessori",
+        transparencyLabel: "AI Content",
+        exportedStatus: "pending_import",
+        approvedStatus: "approved",
+        contentType: "Bài đăng hội nhóm",
+        imageUrl: "https://cloudinary.com/image.jpg",
+        communityPostSuggestion: {
+          postTitle: "Làm thế nào để trẻ tự lập?",
+          postBody: "Mời các mẹ thảo luận về cách khuyến khích trẻ tự lập.",
+          engagementQuestion: "Bé nhà bạn đã tự làm được việc gì rồi?"
+        },
+        ...itemOverwrites
+      }
+    ]
+  };
+}
+
+// Case 16: Top-level communityRoom = "Chuyện Gia Đình" => valid, preserved.
+{
+  const pkg = makeBaseCommunityPackage({ communityRoom: "Chuyện Gia Đình" });
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  const item = res.items[0].item;
+  assert.strictEqual(item.communityRoom, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.room, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.communityRoom, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.postTitle, "Làm thế nào để trẻ tự lập?");
+  assert.strictEqual(item.communityPostSuggestion.postBody, "Mời các mẹ thảo luận về cách khuyến khích trẻ tự lập.");
+  assert.strictEqual(item.communityPostSuggestion.engagementQuestion, "Bé nhà bạn đã tự làm được việc gì rồi?");
+}
+
+// Case 17: Room lies in communityPostSuggestion.room => resolved & normalized.
+{
+  const pkg = makeBaseCommunityPackage({});
+  pkg.items[0].communityPostSuggestion.room = "Chuyện Gia Đình";
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  const item = res.items[0].item;
+  assert.strictEqual(item.communityRoom, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.room, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.communityRoom, "Chuyện Gia Đình");
+}
+
+// Case 18: Room lies in communityPostSuggestion.communityRoom => resolved & normalized.
+{
+  const pkg = makeBaseCommunityPackage({});
+  pkg.items[0].communityPostSuggestion.communityRoom = "Chuyện Gia Đình";
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  const item = res.items[0].item;
+  assert.strictEqual(item.communityRoom, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.room, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.communityRoom, "Chuyện Gia Đình");
+}
+
+// Case 19: Room lies in room top level => resolved.
+{
+  const pkg = makeBaseCommunityPackage({ room: "Chuyện Gia Đình" });
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  const item = res.items[0].item;
+  assert.strictEqual(item.communityRoom, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.room, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.communityRoom, "Chuyện Gia Đình");
+}
+
+// Case 20: Room lies in destination.roomId (e.g. 'family') => mapped & resolved.
+{
+  const pkg = makeBaseCommunityPackage({ destination: { roomId: "family" } });
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, true);
+  const item = res.items[0].item;
+  assert.strictEqual(item.communityRoom, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.room, "Chuyện Gia Đình");
+  assert.strictEqual(item.communityPostSuggestion.communityRoom, "Chuyện Gia Đình");
+}
+
+// Case 21: Missing room => invalid.
+{
+  const pkg = makeBaseCommunityPackage({}); // no room anywhere
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, false);
+  assert.ok(hasError(res, "Phòng đăng \"undefined\" không hợp lệ"));
+}
+
+// Case 22: Incorrect room (e.g. "Family") => invalid.
+{
+  const pkg = makeBaseCommunityPackage({ communityRoom: "Family" });
+  const res = validateImportPackage(pkg);
+  assert.strictEqual(res.valid, false);
+  assert.ok(hasError(res, "Phòng đăng \"Family\" không hợp lệ"));
+}
+
+// Case 23: Test normalizeCommunityRoom function directly
+{
+  assert.strictEqual(normalizeCommunityRoom("pregnancy"), "Góc Mẹ Bầu");
+  assert.strictEqual(normalizeCommunityRoom("weaning"), "Hành Trình Ăn Dặm");
+  assert.strictEqual(normalizeCommunityRoom("feeding"), "Hành Trình Ăn Dặm");
+  assert.strictEqual(normalizeCommunityRoom("sleep"), "Rèn Ngủ Xuyên Đêm");
+  assert.strictEqual(normalizeCommunityRoom("health"), "Sức Khỏe Mẹ & Bé");
+  assert.strictEqual(normalizeCommunityRoom("hygiene"), "Sức Khỏe Mẹ & Bé");
+  assert.strictEqual(normalizeCommunityRoom("family"), "Chuyện Gia Đình");
+  assert.strictEqual(normalizeCommunityRoom("Chuyện Gia Đình"), "Chuyện Gia Đình");
+  assert.strictEqual(normalizeCommunityRoom("Family"), "Family"); // no match
+  assert.strictEqual(normalizeCommunityRoom(undefined), undefined);
 }
 
 console.log("✅ ALL VALIDATE IMPORT PACKAGE TESTS PASSED SUCCESSFULLY!");
