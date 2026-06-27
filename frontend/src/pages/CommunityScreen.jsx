@@ -1623,7 +1623,9 @@ function PostCard({ msg, currentUser, onUserClick, liked, saved2, onLike, onSave
 
       {isAiPost && msg.transparencyLabel && (
         <div className="post-transparency-box">
-          {msg.transparencyLabel}
+          {msg.transparencyLabel === 'ai_generated'
+            ? 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.'
+            : msg.transparencyLabel}
         </div>
       )}
 

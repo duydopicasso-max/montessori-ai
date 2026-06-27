@@ -621,7 +621,16 @@ function DetailModal({ item, authUid, onClose, onUpdate }) {
             <div className="arq-meta-grid">
               {item.authorName       && <><span>Tác giả</span><span>{item.authorName}</span></>}
               {item.authorType       && <><span>Loại tác giả</span><span>{item.authorType}</span></>}
-              {item.transparencyLabel && <><span>Nhãn AI</span><span>{item.transparencyLabel}</span></>}
+              {item.transparencyLabel && (
+                <>
+                  <span>Nhãn AI</span>
+                  <span>
+                    {item.transparencyLabel === 'ai_generated'
+                      ? 'Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt. (ai_generated)'
+                      : item.transparencyLabel}
+                  </span>
+                </>
+              )}
               {item.sourceModel      && <><span>Model</span><span>{item.sourceModel}</span></>}
               {item.safetyNotes      && <><span>Safety</span><span>{item.safetyNotes}</span></>}
             </div>

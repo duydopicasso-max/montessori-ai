@@ -77,7 +77,11 @@ export default function KnowledgeArticleSheet({ article, onClose }) {
           )}
 
           <div className="kas-disclaimer">
-            <p>{article.transparencyLabel || "Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt."}</p>
+            <p>
+              {article.transparencyLabel === 'ai_generated'
+                ? "Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt."
+                : (article.transparencyLabel || "Nội dung gợi ý từ Trợ lý Montessori, đã được admin duyệt.")}
+            </p>
             <p className="kas-disclaimer-sub">Thông tin chỉ mang tính tham khảo, không thay thế tư vấn y tế/chuyên môn.</p>
           </div>
         </div>
